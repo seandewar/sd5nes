@@ -1,5 +1,7 @@
 #pragma once
 
+#include <memory>
+
 #include "NESTypes.h"
 
 /**
@@ -24,5 +26,8 @@ public:
 	* Returns true on success, false on failure. If failure, outVal is not modified.
 	*/
 	bool Read(u16 addr, u8* outVal);
+
+private:
+	std::unique_ptr<u8[]> data_;
 };
 

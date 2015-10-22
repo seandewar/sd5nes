@@ -38,7 +38,7 @@ struct NESCPURegisters
 * Enum containing the different interrupts used by the NES CPU.
 * Sorted by interrupt priority (0 = highest, 2 = lowest).
 */
-enum class NESCPUInterrupts : u8
+enum class NESCPUInterrupt : u8
 {
 	/* RESET interrupt - highest priority. */
 	RESET = 0,
@@ -48,6 +48,22 @@ enum class NESCPUInterrupts : u8
 
 	/* IRQ/BRK interrupt - lowest priority. */
 	IRQBRK = 2
+};
+
+/**
+* Enum containing the different addressing modes of operands.
+*/
+enum class NESCPUOpAddressingMode
+{
+	IMMEDIATE,
+	ZEROPAGE,
+	ZEROPAGE_X,
+	ABSOLUTE,
+	ABSOLUTE_X,
+	ABSOLUTE_Y,
+	INDIRECT_X,
+	INDIRECT_Y,
+	UNKNOWN
 };
 
 /**
@@ -61,7 +77,18 @@ public:
 
 private:
 	NESCPURegisters reg_;
-
 	NESMemory& mem_;
+
+	// Gets the addressing mode of the specified opcode.
+	static NESCPUOpAddressingMode GetOpAddressingMode(u8 op);
+
+	// Used to set how many CPU cycles were used by an opcode's execution.
+	void SetOpUsedCycles(int cycleAmount);
+
+	// Executes the next opcode at the PC.
+	bool ExecuteNextOp();
+
+	// Execute Add with Carry (ADC).
+	bool ExecuteOpADC(NESCPUOpAddressingMode addrMode);
 };
 

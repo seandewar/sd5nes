@@ -44,5 +44,8 @@
     <ClInclude Include="NESEmulationConstants.h">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="NESCPUOpConstants.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
   </ItemGroup>
 </Project>

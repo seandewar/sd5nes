@@ -1,0 +1,11 @@
+#pragma once
+
+/* Add with Carry (ADC) opcodes */
+#define NES_OP_ADC_IMMEDIATE 0x69
+#define NES_OP_ADC_ZEROPAGE 0x65
+#define NES_OP_ADC_ZEROPAGE_X 0x75
+#define NES_OP_ADC_ABSOLUTE 0x6D
+#define NES_OP_ADC_ABSOLUTE_X 0x7D
+#define NES_OP_ADC_ABSOLUTE_Y 0x79
+#define NES_OP_ADC_INDIRECT_X 0x61
+#define NES_OP_ADC_INDIRECT_Y 0x71
