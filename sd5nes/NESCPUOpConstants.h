@@ -1,6 +1,9 @@
 #pragma once
 
-/* Add with Carry (ADC) opcodes */
+/* Invalid / Unknown opcode. */
+#define NES_OP_INVALID 0xFF
+
+/* ADC */
 #define NES_OP_ADC_IMMEDIATE 0x69
 #define NES_OP_ADC_ZEROPAGE 0x65
 #define NES_OP_ADC_ZEROPAGE_X 0x75
@@ -9,3 +12,20 @@
 #define NES_OP_ADC_ABSOLUTE_Y 0x79
 #define NES_OP_ADC_INDIRECT_X 0x61
 #define NES_OP_ADC_INDIRECT_Y 0x71
+
+/* AND */
+#define NES_OP_AND_IMMEDIATE 0x29
+#define NES_OP_AND_ZEROPAGE 0x25
+#define NES_OP_AND_ZEROPAGE_X 0x35
+#define NES_OP_AND_ABSOLUTE 0x2D
+#define NES_OP_AND_ABSOLUTE_X 0x3D
+#define NES_OP_AND_ABSOLUTE_Y 0x39
+#define NES_OP_AND_INDIRECT_X 0x21
+#define NES_OP_AND_INDIRECT_Y 0x31
+
+/* ASL */
+#define NES_OP_ASL_ACCUMULATOR 0x0A
+#define NES_OP_ASL_ZEROPAGE 0x06
+#define NES_OP_ASL_ZEROPAGE_X 0x16
+#define NES_OP_ASL_ABSOLUTE 0x0E
+#define NES_OP_ASL_ABSOLUTE_X 0x1E

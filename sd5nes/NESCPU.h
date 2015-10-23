@@ -67,6 +67,7 @@ enum class NESCPUOpAddressingMode
 	ABSOLUTE_Y,
 	INDIRECT_X,
 	INDIRECT_Y,
+	ACCUMULATOR,
 	UNKNOWN
 };
 
@@ -111,6 +112,8 @@ public:
 	NESCPU(NESMemory& memory);
 	~NESCPU();
 
+	u8 GetCurrentOpcode() const;
+
 private:
 	// Allows init of static stuff such as registration of opcode mapp
 	static NESCPUStaticInit staticInit_;
@@ -124,12 +127,34 @@ private:
 	// Gets the addressing mode of the specified opcode.
 	static NESCPUOpAddressingMode GetOpAddressingMode(u8 op);
 
+	// Edits outOpSize with the size of the opcode. Returns true on success and false on failure.
+	// If false, or outOpSize is null, outOpSize is not modified.
+	static bool GetOpSizeFromAddressingMode(NESCPUOpAddressingMode addrMode, int* outOpSize);
+
 	NESCPURegisters reg_;
 	NESMemory& mem_;
+
+	u8 currentOp_;
+
+	// Reads the value of the next op's immediate argument depending on its addressing mode.
+	bool ReadOpArgValue(u8* outVal);
+
+	// Writes an op's result to the intended piece of memory / register.
+	bool WriteOpResult(u8 result);
 
 	// Executes the next opcode at the PC.
 	bool ExecuteNextOp();
 
+	/****************************************/
+	/****** Instruction Implementation ******/
+	/****************************************/
+
 	// Execute Add with Carry (ADC).
 	bool ExecuteOpADC();
+
+	// Execute AND with Accumulator (AND).
+	bool ExecuteOpAND();
+
+	// Execute Shift Left One Bit (Memory or Accumulator) (ASL).
+	bool ExecuteOpASL();
 };

@@ -1,9 +1,5 @@
 #pragma once
 
-/* Area of mem holding the Zero Page. */
-#define NES_MEMORY_ZERO_PAGE_START 0x0000
-#define NES_MEMORY_ZERO_PAGE_END 0x00FF
-
 /* Area of mem holding the Stack. */
 #define NES_MEMORY_STACK_START 0x0100
 #define NES_MEMORY_STACK_END 0x01FF
