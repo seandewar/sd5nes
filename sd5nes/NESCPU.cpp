@@ -67,7 +67,7 @@ bool NESCPU::ExecuteNextOp()
 {
 	// Get the next opcode.
 	u8 op;
-	if (!mem_.Read(reg_.PC, &op))
+	if (!mem_.Read8(reg_.PC, &op))
 		return false;
 
 	// Get addressing mode and execute the correct opcode.
@@ -94,22 +94,4 @@ bool NESCPU::ExecuteNextOp()
 
 bool NESCPU::ExecuteOpADC(NESCPUOpAddressingMode addrMode)
 {
-	u8 addVal;
-
-	switch (addrMode)
-	{
-	case NESCPUOpAddressingMode::IMMEDIATE:
-		if (!mem_.Read(reg_.PC + 1, &addVal))
-			return false;
-		reg_.PC += 2;
-		SetOpUsedCycles(2);
-		break;
-
-	u16 addr;
-	if (!mem_.Read(reg_.PC + 1, &addr)) // TODO make 16-bit version
-		return false;
-
-	case NESCPUOpAddressingMode::ABSOLUTE:
-
-	}
 }

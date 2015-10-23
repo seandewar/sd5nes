@@ -83,6 +83,9 @@
     <ClInclude Include="NESMemory.h" />
     <ClInclude Include="NESTypes.h" />
   </ItemGroup>
+  <ItemGroup>
+    <Text Include="CpuOpPlan.txt" />
+  </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
   </ImportGroup>
