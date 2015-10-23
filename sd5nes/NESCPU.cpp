@@ -148,16 +148,19 @@ bool NESCPU::ReadOpArgValue(u8* outVal)
 	u16 addr = 0x0000;
 	switch (it->second.addrMode)
 	{
+
 	// Immediate - read the next byte as a value.
 	case NESCPUOpAddressingMode::IMMEDIATE:
 		addr = reg_.PC + 1;
 		break;
+
 
 	// Absolute - read the next 2 bytes as an address.
 	case NESCPUOpAddressingMode::ABSOLUTE:
 		if (!mem_.Read16(reg_.PC + 1, &addr))
 			return false;
 		break;
+
 
 	// Absolute, X - read the next 2 bytes as an address and offset by X.
 	case NESCPUOpAddressingMode::ABSOLUTE_X:
@@ -167,6 +170,7 @@ bool NESCPU::ReadOpArgValue(u8* outVal)
 		addr += reg_.X;
 		break;
 
+
 	// Absolute, Y - read the next 2 bytes as an address and offset by Y.
 	case NESCPUOpAddressingMode::ABSOLUTE_Y:
 		if (!mem_.Read16(reg_.PC + 1, &addr))
@@ -175,8 +179,10 @@ bool NESCPU::ReadOpArgValue(u8* outVal)
 		addr += reg_.Y;
 		break;
 
+
 		// 8-bit representation of address used to read Zero Page and Indirect addressing types.
 		u8 addr8;
+
 
 	// ZeroPage - read the next byte as an address (convert to 2 bytes where most-significant byte is 0).
 	case NESCPUOpAddressingMode::ZEROPAGE:
@@ -186,6 +192,7 @@ bool NESCPU::ReadOpArgValue(u8* outVal)
 		addr = addr8;
 		break;
 
+
 	// ZeroPage, X - read the next byte as an address (convert to 2 bytes where most-significant byte is 0) + X.
 	case NESCPUOpAddressingMode::ZEROPAGE_X:
 		if (!mem_.Read8(reg_.PC + 1, &addr8))
@@ -194,6 +201,7 @@ bool NESCPU::ReadOpArgValue(u8* outVal)
 		addr8 += reg_.X; // Will wrap around if X is too big.
 		addr = addr8;
 		break;
+
 
 	// (Indirect, X) - read the next byte as an address (convert to 2 bytes where most-significant byte is 0) + X.
 	case NESCPUOpAddressingMode::INDIRECT_X:
@@ -207,6 +215,7 @@ bool NESCPU::ReadOpArgValue(u8* outVal)
 			return false;
 		break;
 
+
 	// (Indirect), Y - read the next byte as an address (convert to 2 bytes where most-significant byte is 0). Add 
 	case NESCPUOpAddressingMode::INDIRECT_Y:
 		if (!mem_.Read8(reg_.PC + 1, &addr8))
@@ -219,15 +228,18 @@ bool NESCPU::ReadOpArgValue(u8* outVal)
 		addr += reg_.Y;
 		break;
 
+
 	// Accumulator - read from the accumulator.
 	case NESCPUOpAddressingMode::ACCUMULATOR:
 		if (outVal != nullptr)
 			*outVal = reg_.A;
 		return true;
 
+
 	// Unknown address mode...
 	default:
 		return false;
+
 	}
 
 	// Assume reading from memory.
