@@ -1,6 +1,22 @@
 #include "NESCPU.h"
 
-#include "NESCPUOpConstants.h"
+#include <cassert>
+
+
+std::map<u8, NESCPUOpInfo> NESCPU::opInfos_;
+NESCPUStaticInit NESCPU::staticInit_;
+
+
+void NESCPU::RegisterOpMapping(u8 op, NESOpFuncPointer opFunc, NESCPUOpAddressingMode addrMode, int cycleCount)
+{
+	assert(opInfos_.emplace(op, NESCPUOpInfo(opFunc, addrMode, cycleCount)).second);
+}
+
+
+NESCPUStaticInit::NESCPUStaticInit()
+{
+	NESCPU::RegisterOpMapping(NES_OP_ADC_IMMEDIATE, &NESCPU::ExecuteOpADC, NESCPUOpAddressingMode::IMMEDIATE, 2);
+}
 
 
 NESCPU::NESCPU(NESMemory& memory) :
@@ -14,52 +30,13 @@ NESCPU::~NESCPU()
 }
 
 
-void NESCPU::SetOpUsedCycles(int cycleAmount)
-{
-	// TODO
-}
-
-
 NESCPUOpAddressingMode NESCPU::GetOpAddressingMode(u8 op)
 {
-	// TODO - fill with other opcodes.
-	switch (op)
-	{
-	// Immediate
-	case NES_OP_ADC_IMMEDIATE:
-		return NESCPUOpAddressingMode::IMMEDIATE;
+	const auto it = opInfos_.find(op);
+	if (it == opInfos_.end())
+		return NESCPUOpAddressingMode::UNKNOWN;
 
-	// Absolute
-	case NES_OP_ADC_ABSOLUTE:
-		return NESCPUOpAddressingMode::ABSOLUTE;
-
-	// Absolute, X
-	case NES_OP_ADC_ABSOLUTE_X:
-		return NESCPUOpAddressingMode::ABSOLUTE_X;
-
-	// Absolute, Y
-	case NES_OP_ADC_ABSOLUTE_Y:
-		return NESCPUOpAddressingMode::ABSOLUTE_Y;
-
-	// ZeroPage
-	case NES_OP_ADC_ZEROPAGE:
-		return NESCPUOpAddressingMode::ZEROPAGE;
-
-	// ZeroPage, X
-	case NES_OP_ADC_ZEROPAGE_X:
-		return NESCPUOpAddressingMode::ZEROPAGE_X;
-
-	// (Indirect, X)
-	case NES_OP_ADC_INDIRECT_X:
-		return NESCPUOpAddressingMode::INDIRECT_X;
-
-	// (Indirect), Y
-	case NES_OP_ADC_INDIRECT_Y:
-		return NESCPUOpAddressingMode::INDIRECT_Y;
-	}
-
-	// Unknown addressing type...
-	return NESCPUOpAddressingMode::UNKNOWN;
+	return it->second.addrMode;
 }
 
 
@@ -68,30 +45,19 @@ bool NESCPU::ExecuteNextOp()
 	// Get the next opcode.
 	u8 op;
 	if (!mem_.Read8(reg_.PC, &op))
-		return false;
+		return false; // Couldn't read next op from memory.
 
-	// Get addressing mode and execute the correct opcode.
-	const auto addrMode = GetOpAddressingMode(op);
-	switch (op)
-	{
-	// Add with Carry (ADC)
-	case NES_OP_ADC_ABSOLUTE:
-	case NES_OP_ADC_ABSOLUTE_X:
-	case NES_OP_ADC_ABSOLUTE_Y:
-	case NES_OP_ADC_IMMEDIATE:
-	case NES_OP_ADC_INDIRECT_X:
-	case NES_OP_ADC_INDIRECT_Y:
-	case NES_OP_ADC_ZEROPAGE:
-	case NES_OP_ADC_ZEROPAGE_X:
-		return ExecuteOpADC(addrMode);
+	// Locate the mapping for this opcode.
+	const auto it = opInfos_.find(op);
+	if (it == opInfos_.end())
+		return false; // Unknown opcode.
 
-	// TODO
-	}
-
-	return false;
+	// Execute the opcode func.
+	return (this->*it->second.opFunc)();
 }
 
 
-bool NESCPU::ExecuteOpADC(NESCPUOpAddressingMode addrMode)
+bool NESCPU::ExecuteOpADC()
 {
+	return false;
 }

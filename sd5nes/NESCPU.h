@@ -3,6 +3,10 @@
 #include "NESTypes.h"
 #include "NESMemory.h"
 
+#include "NESCPUOpConstants.h"
+
+#include <map>
+
 /**
 * Struct containing the registers used by the NES CPU.
 */
@@ -67,28 +71,65 @@ enum class NESCPUOpAddressingMode
 };
 
 /**
+* Allows static constructor mimic to register opcode mappings.
+*/
+struct NESCPUStaticInit
+{
+	NESCPUStaticInit();
+};
+
+// This needs to be forward-declared so that we can typedef NESOpFuncPointer.
+class NESCPU;
+
+// Typedef for a basic opcode executing function.
+typedef bool (NESCPU::*NESOpFuncPointer)();
+
+/**
+* Struct containing opcode function mapping info.
+*/
+struct NESCPUOpInfo
+{
+	NESOpFuncPointer opFunc;
+	NESCPUOpAddressingMode addrMode;
+	int cycleCount;
+
+	NESCPUOpInfo(NESOpFuncPointer opFunc, NESCPUOpAddressingMode addrMode, int cycleCount) :
+		opFunc(opFunc),
+		addrMode(addrMode),
+		cycleCount(cycleCount)
+	{ }
+};
+
+/**
 * Handles emulation of the 6502 CPU used in the NES.
 */
 class NESCPU
 {
+	friend struct NESCPUStaticInit;
+
 public:
 	NESCPU(NESMemory& memory);
 	~NESCPU();
 
 private:
-	NESCPURegisters reg_;
-	NESMemory& mem_;
+	// Allows init of static stuff such as registration of opcode mapp
+	static NESCPUStaticInit staticInit_;
+
+	// Contains mapped opcode info.
+	static std::map<u8, NESCPUOpInfo> opInfos_;
+
+	// Registers an opcode mapping.
+	static void RegisterOpMapping(u8 op, NESOpFuncPointer opFunc, NESCPUOpAddressingMode addrMode, int cycleCount);
 
 	// Gets the addressing mode of the specified opcode.
 	static NESCPUOpAddressingMode GetOpAddressingMode(u8 op);
 
-	// Used to set how many CPU cycles were used by an opcode's execution.
-	void SetOpUsedCycles(int cycleAmount);
+	NESCPURegisters reg_;
+	NESMemory& mem_;
 
 	// Executes the next opcode at the PC.
 	bool ExecuteNextOp();
 
 	// Execute Add with Carry (ADC).
-	bool ExecuteOpADC(NESCPUOpAddressingMode addrMode);
+	bool ExecuteOpADC();
 };
-

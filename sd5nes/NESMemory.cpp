@@ -10,3 +10,21 @@ NESMemory::NESMemory()
 NESMemory::~NESMemory()
 {
 }
+
+
+bool NESMemory::Write8(u16 addr, u8 val)
+{
+	return false;
+}
+
+
+bool NESMemory::Read8(u16 addr, u8* outVal) const
+{
+	return false;
+}
+
+
+bool NESMemory::Read16(u16 addr, u16* outVal) const
+{
+	return false;
+}

@@ -1,8 +1,0 @@
-Cpu Opcode Impl Plan
-====================
-
-CPU_REGISTER_OP(opFuncName, opcode, addrMode, cycleCount)
-{
-	a = pointer to func of opFuncName
-
-}
