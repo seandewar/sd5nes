@@ -135,9 +135,11 @@ private:
 	NESMemory& mem_;
 
 	u8 currentOp_;
+	int currentOpCycleCount_;
 
 	// Reads the value of the next op's immediate argument depending on its addressing mode.
-	bool ReadOpArgValue(u8* outVal);
+	// Also checks if a page boundary was crossed.
+	bool ReadOpArgValue(u8* outVal, bool* outCrossedPageBoundary);
 
 	// Writes an op's result to the intended piece of memory / register.
 	bool WriteOpResult(u8 result);

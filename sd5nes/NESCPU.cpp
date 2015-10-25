@@ -49,7 +49,8 @@ NESCPUStaticInit::NESCPUStaticInit()
 
 NESCPU::NESCPU(NESMemory& memory) :
 mem_(memory),
-currentOp_(NES_OP_INVALID)
+currentOp_(NES_OP_INVALID),
+currentOpCycleCount_(0)
 {
 }
 
@@ -139,13 +140,15 @@ bool NESCPU::ExecuteNextOp()
 }
 
 
-bool NESCPU::ReadOpArgValue(u8* outVal)
+bool NESCPU::ReadOpArgValue(u8* outVal, bool* outCrossedPageBoundary)
 {
 	const auto it = opInfos_.find(currentOp_);
 	if (it == opInfos_.end())
 		return false;
 
+	// @TODO : CHECK IF CROSSED PAGE BOUNDARY!!!!!11111111111
 	u16 addr = 0x0000;
+	bool crossedPageBoundary = false; // Assume false.
 	switch (it->second.addrMode)
 	{
 
@@ -177,14 +180,14 @@ bool NESCPU::ReadOpArgValue(u8* outVal)
 			return false;
 
 		addr += reg_.Y;
-		break;
+break;
 
 
-		// 8-bit representation of address used to read Zero Page and Indirect addressing types.
-		u8 addr8;
+// 8-bit representation of address used to read Zero Page and Indirect addressing types.
+u8 addr8;
 
 
-	// ZeroPage - read the next byte as an address (convert to 2 bytes where most-significant byte is 0).
+// ZeroPage - read the next byte as an address (convert to 2 bytes where most-significant byte is 0).
 	case NESCPUOpAddressingMode::ZEROPAGE:
 		if (!mem_.Read8(reg_.PC + 1, &addr8))
 			return false;
@@ -193,7 +196,7 @@ bool NESCPU::ReadOpArgValue(u8* outVal)
 		break;
 
 
-	// ZeroPage, X - read the next byte as an address (convert to 2 bytes where most-significant byte is 0) + X.
+		// ZeroPage, X - read the next byte as an address (convert to 2 bytes where most-significant byte is 0) + X.
 	case NESCPUOpAddressingMode::ZEROPAGE_X:
 		if (!mem_.Read8(reg_.PC + 1, &addr8))
 			return false;
@@ -203,7 +206,7 @@ bool NESCPU::ReadOpArgValue(u8* outVal)
 		break;
 
 
-	// (Indirect, X) - read the next byte as an address (convert to 2 bytes where most-significant byte is 0) + X.
+		// (Indirect, X) - read the next byte as an address (convert to 2 bytes where most-significant byte is 0) + X.
 	case NESCPUOpAddressingMode::INDIRECT_X:
 		if (!mem_.Read8(reg_.PC + 1, &addr8))
 			return false;
@@ -216,7 +219,7 @@ bool NESCPU::ReadOpArgValue(u8* outVal)
 		break;
 
 
-	// (Indirect), Y - read the next byte as an address (convert to 2 bytes where most-significant byte is 0). Add 
+		// (Indirect), Y - read the next byte as an address (convert to 2 bytes where most-significant byte is 0). Add 
 	case NESCPUOpAddressingMode::INDIRECT_Y:
 		if (!mem_.Read8(reg_.PC + 1, &addr8))
 			return false;
@@ -229,14 +232,17 @@ bool NESCPU::ReadOpArgValue(u8* outVal)
 		break;
 
 
-	// Accumulator - read from the accumulator.
+		// Accumulator - read from the accumulator.
 	case NESCPUOpAddressingMode::ACCUMULATOR:
 		if (outVal != nullptr)
 			*outVal = reg_.A;
+
+		if (outCrossedPageBoundary != nullptr)
+			*outCrossedPageBoundary = crossedPageBoundary;
 		return true;
 
 
-	// Unknown address mode...
+		// Unknown address mode...
 	default:
 		return false;
 
@@ -249,6 +255,11 @@ bool NESCPU::ReadOpArgValue(u8* outVal)
 		if (!mem_.Read8(addr, outVal))
 			return false; // Failed to read from address - program error.
 	}
+
+	// Write to crossedPageBoundary if not null.
+	if (outCrossedPageBoundary != nullptr)
+		*outCrossedPageBoundary = crossedPageBoundary;
+
 	return true;
 }
 
@@ -260,42 +271,49 @@ bool NESCPU::WriteOpResult(u8 result)
 
 bool NESCPU::ExecuteOpADC()
 {
-	// A + M + C -> A, C
 	u8 val;
-	if (!ReadOpArgValue(&val))
+	bool crossedPageBoundary;
+	if (!ReadOpArgValue(&val, &crossedPageBoundary))
 		return false;
 
-	uleast16 res = val + reg_.C;
-	// TODO set Z, N and O. Check if C is set correctly.
-	reg_.C = (res > 0xFF ? 1 : 0); // Set C bit.
-	reg_.A += static_cast<u8>(res);
+	// ADC takes 1 extra CPU cycle if a page boundary was crossed.
+	if (crossedPageBoundary)
+		++currentOpCycleCount_;
+
+	// A + M + C -> A, C
+	// NOTE: NES 6502 variant has no BCD mode.
+	const uleast16 res = reg_.A + val + reg_.C;
+
+	reg_.C = (res > 0xFF ? 1 : 0);
+	reg_.N = ((res >> 7) & 1); // Check if sign bit is 1.
+	reg_.V = (((~(reg_.A ^ val) & (reg_.A ^ res)) >> 7) & 1); // Check if the sign has changed due to overflow.
+	reg_.A = static_cast<u8>(res);
 	return true;
 }
 
 
 bool NESCPU::ExecuteOpAND()
 {
-	// A AND M -> A
 	u8 val;
-	if (!ReadOpArgValue(&val))
+	bool crossedPageBoundary;
+	if (!ReadOpArgValue(&val, &crossedPageBoundary))
 		return false;
 
-	reg_.A &= val;
+	// AND takes 1 extra CPU cycle if a page boundary was crossed.
+	if (crossedPageBoundary)
+		++currentOpCycleCount_;
+
+	// A AND M -> A
+	const u8 res = (reg_.A & val);
+
+	reg_.Z = (res == 0 ? 1 : 0);
+	reg_.N = ((res >> 7) & 1); // Check if sign bit is 1.
+	reg_.A = res;
 	return true;
 }
 
 
 bool NESCPU::ExecuteOpASL()
 {
-	// C <- [76543210] <- 0
-	u8 val;
-	if (!ReadOpArgValue(&val))
-		return false;
-
-	uleast16 res = (val << 1);
-	// TODO set C, Z, N and O.
-	if (!WriteOpResult(static_cast<u8>(res)))
-		return false;
-
-	return true;
+	// TODO
 }
