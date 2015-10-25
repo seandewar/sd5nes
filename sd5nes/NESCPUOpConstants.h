@@ -29,3 +29,16 @@
 #define NES_OP_ASL_ZEROPAGE_X 0x16
 #define NES_OP_ASL_ABSOLUTE 0x0E
 #define NES_OP_ASL_ABSOLUTE_X 0x1E
+
+/* BCC */
+#define NES_OP_BCC_RELATIVE 0x90
+
+/* BCS */
+#define NES_OP_BCS_RELATIVE 0xB0
+
+/* BEQ */
+#define NES_OP_BEQ_RELATIVE 0xF0
+
+/* BIT */
+#define NES_OP_BIT_ZEROPAGE 0x24
+#define NES_OP_BIT_ABSOLUTE 0x2C

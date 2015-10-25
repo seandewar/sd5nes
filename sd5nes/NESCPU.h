@@ -68,6 +68,7 @@ enum class NESCPUOpAddressingMode
 	INDIRECT_X,
 	INDIRECT_Y,
 	ACCUMULATOR,
+	RELATIVE,
 	UNKNOWN
 };
 
@@ -135,7 +136,14 @@ private:
 	NESMemory& mem_;
 
 	u8 currentOp_;
+	std::map<u8, NESCPUOpInfo>::const_iterator currentOpMappingIt_;
 	int currentOpCycleCount_;
+
+	// Updates the Z register. Sets to 1 if val is zero. Sets to 0 otherwise.
+	inline void UpdateRegZ(u8 val) { reg_.Z = (val == 0 ? 1 : 0); }
+
+	// Updates the N register. Sets to the value of val's 7th bit (sign bit).
+	inline void UpdateRegN(u8 val) { reg_.N = ((val >> 7) & 1); }
 
 	// Reads the value of the next op's immediate argument depending on its addressing mode.
 	// Also checks if a page boundary was crossed.
@@ -146,6 +154,10 @@ private:
 
 	// Executes the next opcode at the PC.
 	bool ExecuteNextOp();
+
+	// Executes the current op as a branch instruction if shouldBranch is true.
+	// Adds 1 to the current op's cycle count if branched to same page, 2 if branched to a different page.
+	bool ExecuteOpAsBranch(bool shouldBranch);
 
 	/****************************************/
 	/****** Instruction Implementation ******/
@@ -159,4 +171,16 @@ private:
 
 	// Execute Shift Left One Bit (Memory or Accumulator) (ASL).
 	bool ExecuteOpASL();
+
+	// Execute Branch on Carry Clear (BCC).
+	bool ExecuteOpBCC();
+
+	// Execute Branch on Carry Set (BCS).
+	bool ExecuteOpBCS();
+
+	// Execute Branch on Result Zero (BEQ).
+	bool ExecuteOpBEQ();
+
+	// Execute Test Bits in Memory with Accumulator (BIT).
+	bool ExecuteOpBIT();
 };
