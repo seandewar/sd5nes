@@ -42,3 +42,15 @@
 /* BIT */
 #define NES_OP_BIT_ZEROPAGE 0x24
 #define NES_OP_BIT_ABSOLUTE 0x2C
+
+/* BMI */
+#define NES_OP_BMI_RELATIVE 0x30
+
+/* BNE */
+#define NES_OP_BNE_RELATIVE 0xD0
+
+/* BPL */
+#define NES_OP_BPL_RELATIVE 0x10
+
+/* BRK */
+#define NES_OP_BRK_IMPLIED 0x00

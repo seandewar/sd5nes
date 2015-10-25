@@ -69,6 +69,7 @@ enum class NESCPUOpAddressingMode
 	INDIRECT_Y,
 	ACCUMULATOR,
 	RELATIVE,
+	IMPLIED,
 	UNKNOWN
 };
 
@@ -157,7 +158,7 @@ private:
 
 	// Executes the current op as a branch instruction if shouldBranch is true.
 	// Adds 1 to the current op's cycle count if branched to same page, 2 if branched to a different page.
-	bool ExecuteOpAsBranch(bool shouldBranch);
+	bool ExecuteOpAsBranch(bool shouldBranch, int branchSamePageCycleExtra, int branchDiffPageCycleExtra);
 
 	/****************************************/
 	/****** Instruction Implementation ******/
@@ -183,4 +184,16 @@ private:
 
 	// Execute Test Bits in Memory with Accumulator (BIT).
 	bool ExecuteOpBIT();
+
+	// Execute Branch on Result Minus (BMI).
+	bool ExecuteOpBMI();
+
+	// Execute Branch on Result Not Zero (BNE).
+	bool ExecuteOpBNE();
+
+	// Execute Branch on Result Plus (BPL).
+	bool ExecuteOpBPL();
+
+	// Execute Force Break (BRK).
+	bool ExecuteOpBRK();
 };

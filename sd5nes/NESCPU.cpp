@@ -57,6 +57,18 @@ NESCPUStaticInit::NESCPUStaticInit()
 	// BIT
 	NESCPU::RegisterOpMapping(NES_OP_BIT_ZEROPAGE, &NESCPU::ExecuteOpBIT, NESCPUOpAddressingMode::ZEROPAGE, 3);
 	NESCPU::RegisterOpMapping(NES_OP_BIT_ABSOLUTE, &NESCPU::ExecuteOpBIT, NESCPUOpAddressingMode::ABSOLUTE, 4);
+
+	// BMI
+	NESCPU::RegisterOpMapping(NES_OP_BMI_RELATIVE, &NESCPU::ExecuteOpBMI, NESCPUOpAddressingMode::RELATIVE, 2);
+
+	// BNE
+	NESCPU::RegisterOpMapping(NES_OP_BNE_RELATIVE, &NESCPU::ExecuteOpBNE, NESCPUOpAddressingMode::RELATIVE, 2);
+
+	// BPL
+	NESCPU::RegisterOpMapping(NES_OP_BPL_RELATIVE, &NESCPU::ExecuteOpBPL, NESCPUOpAddressingMode::RELATIVE, 2);
+
+	// BRK
+	NESCPU::RegisterOpMapping(NES_OP_BRK_IMPLIED, &NESCPU::ExecuteOpBRK, NESCPUOpAddressingMode::IMPLIED, 7);
 }
 
 
@@ -97,6 +109,7 @@ bool NESCPU::GetOpSizeFromAddressingMode(NESCPUOpAddressingMode addrMode, int* o
 	// 1 byte addressing modes.
 	case NESCPUOpAddressingMode::ACCUMULATOR:
 	case NESCPUOpAddressingMode::RELATIVE:
+	case NESCPUOpAddressingMode::IMPLIED:
 		opSize = 1;
 		break;
 
@@ -150,8 +163,10 @@ bool NESCPU::ExecuteNextOp()
 	if (!GetOpSizeFromAddressingMode(it->second.addrMode, &opSize))
 		return false;
 
-	// Go to the next instruction.
-	reg_.PC += opSize;
+	// Go to the next instruction if not a Relative addr mode (as these change the PC)
+	if (it->second.addrMode != NESCPUOpAddressingMode::RELATIVE)
+		reg_.PC += opSize;
+
 	return true;
 }
 
@@ -383,7 +398,7 @@ bool NESCPU::ExecuteOpASL()
 }
 
 
-bool NESCPU::ExecuteOpAsBranch(bool shouldBranch)
+bool NESCPU::ExecuteOpAsBranch(bool shouldBranch, int branchSamePageCycleExtra, int branchDiffPageCycleExtra)
 {
 	if (!shouldBranch)
 		return true;
@@ -396,9 +411,9 @@ bool NESCPU::ExecuteOpAsBranch(bool shouldBranch)
 
 	// Check if the branch will cross a page boundary.
 	if ((reg_.PC & 0xFF00) != (jumpPC & 0xFF00))
-		currentOpCycleCount_ += 2;
+		currentOpCycleCount_ += branchDiffPageCycleExtra;
 	else
-		currentOpCycleCount_ += 1;
+		currentOpCycleCount_ += branchSamePageCycleExtra;
 
 	reg_.PC = jumpPC;
 	return true;
@@ -408,21 +423,42 @@ bool NESCPU::ExecuteOpAsBranch(bool shouldBranch)
 bool NESCPU::ExecuteOpBCC()
 {
 	// Branch on C = 0
-	return ExecuteOpAsBranch((reg_.C == 0));
+	return ExecuteOpAsBranch((reg_.C == 0), 1, 2);
 }
 
 
 bool NESCPU::ExecuteOpBCS()
 {
 	// Branch on C = 1
-	return ExecuteOpAsBranch((reg_.C == 1));
+	return ExecuteOpAsBranch((reg_.C == 1), 1, 2);
 }
 
 
 bool NESCPU::ExecuteOpBEQ()
 {
 	// Branch on Z = 1
-	return ExecuteOpAsBranch((reg_.Z == 1));
+	return ExecuteOpAsBranch((reg_.Z == 1), 1, 2);
+}
+
+
+bool NESCPU::ExecuteOpBMI()
+{
+	// Branch on N = 1
+	return ExecuteOpAsBranch((reg_.N == 1), 1, 1);
+}
+
+
+bool NESCPU::ExecuteOpBNE()
+{
+	// Branch on Z = 0
+	return ExecuteOpAsBranch((reg_.Z == 0), 1, 2);
+}
+
+
+bool NESCPU::ExecuteOpBPL()
+{
+	// Branch on N = 0
+	return ExecuteOpAsBranch((reg_.N == 0), 1, 2);
 }
 
 
@@ -433,11 +469,15 @@ bool NESCPU::ExecuteOpBIT()
 		return false;
 
 	// A /\ M, M7 -> N, M6 -> V
-	const u8 res = (argVal << 1);
-	WriteOpResult(res);
-
-	reg_.C = ((argVal >> 7) & 1); // Set carry bit if bit 7 was originally 1.
-	UpdateRegZ(res);
-	UpdateRegN(res);
+	UpdateRegN(argVal);
+	UpdateRegZ((argVal & reg_.A));
+	reg_.V = ((argVal >> 6) & 1);
 	return true;
+}
+
+
+bool NESCPU::ExecuteOpBRK()
+{
+	// Forced Interrupt PC + 2 toS P toS 
+	// TODO
 }
