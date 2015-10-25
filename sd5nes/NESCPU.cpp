@@ -146,26 +146,26 @@ bool NESCPU::ReadOpArgValue(u8* outVal, bool* outCrossedPageBoundary)
 	if (it == opInfos_.end())
 		return false;
 
-	// @TODO : CHECK IF CROSSED PAGE BOUNDARY!!!!!11111111111
+	// TODO : CHECK IF CROSSED PAGE BOUNDARY!!!!!11111111111
 	u16 addr = 0x0000;
 	bool crossedPageBoundary = false; // Assume false.
 	switch (it->second.addrMode)
 	{
 
-	// Immediate - read the next byte as a value.
+		// Immediate - read the next byte as a value.
 	case NESCPUOpAddressingMode::IMMEDIATE:
 		addr = reg_.PC + 1;
 		break;
 
 
-	// Absolute - read the next 2 bytes as an address.
+		// Absolute - read the next 2 bytes as an address.
 	case NESCPUOpAddressingMode::ABSOLUTE:
 		if (!mem_.Read16(reg_.PC + 1, &addr))
 			return false;
 		break;
 
 
-	// Absolute, X - read the next 2 bytes as an address and offset by X.
+		// Absolute, X - read the next 2 bytes as an address and offset by X.
 	case NESCPUOpAddressingMode::ABSOLUTE_X:
 		if (!mem_.Read16(reg_.PC + 1, &addr))
 			return false;
@@ -174,20 +174,20 @@ bool NESCPU::ReadOpArgValue(u8* outVal, bool* outCrossedPageBoundary)
 		break;
 
 
-	// Absolute, Y - read the next 2 bytes as an address and offset by Y.
+		// Absolute, Y - read the next 2 bytes as an address and offset by Y.
 	case NESCPUOpAddressingMode::ABSOLUTE_Y:
 		if (!mem_.Read16(reg_.PC + 1, &addr))
 			return false;
 
 		addr += reg_.Y;
-break;
+		break;
 
 
-// 8-bit representation of address used to read Zero Page and Indirect addressing types.
-u8 addr8;
+		// 8-bit representation of address used to read Zero Page and Indirect addressing types.
+		u8 addr8;
 
 
-// ZeroPage - read the next byte as an address (convert to 2 bytes where most-significant byte is 0).
+		// ZeroPage - read the next byte as an address (convert to 2 bytes where most-significant byte is 0).
 	case NESCPUOpAddressingMode::ZEROPAGE:
 		if (!mem_.Read8(reg_.PC + 1, &addr8))
 			return false;
