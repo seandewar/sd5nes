@@ -69,6 +69,12 @@ NESCPUStaticInit::NESCPUStaticInit()
 
 	// BRK
 	NESCPU::RegisterOpMapping(NES_OP_BRK_IMPLIED, &NESCPU::ExecuteOpBRK, NESCPUOpAddressingMode::IMPLIED, 7);
+
+	// BVC
+	NESCPU::RegisterOpMapping(NES_OP_BVC_RELATIVE, &NESCPU::ExecuteOpBVC, NESCPUOpAddressingMode::RELATIVE, 2);
+
+	// BVS
+	NESCPU::RegisterOpMapping(NES_OP_BVS_RELATIVE, &NESCPU::ExecuteOpBVS, NESCPUOpAddressingMode::RELATIVE, 2);
 }
 
 
@@ -156,6 +162,7 @@ bool NESCPU::ExecuteNextOp()
 	// Execute the opcode func.
 	currentOpMappingIt_ = it;
 	currentOpCycleCount_ = it->second.cycleCount;
+	currentOpChangedPC_ = false;
 	if (!(this->*it->second.opFunc)())
 		return false; // Failed to execute opcode - program execution error.
 
@@ -163,10 +170,9 @@ bool NESCPU::ExecuteNextOp()
 	if (!GetOpSizeFromAddressingMode(it->second.addrMode, &opSize))
 		return false;
 
-	// Go to the next instruction if not a Relative addr mode (as these change the PC)
-	if (it->second.addrMode != NESCPUOpAddressingMode::RELATIVE)
+	// Go to the next instruction.
+	if (!currentOpChangedPC_)
 		reg_.PC += opSize;
-
 	return true;
 }
 
@@ -353,7 +359,7 @@ bool NESCPU::ExecuteOpADC()
 	const uleast16 res = reg_.A + argVal + reg_.C;
 
 	reg_.C = (res > 0xFF ? 1 : 0);
-	UpdateRegN(res);
+	UpdateRegN(static_cast<u8>(res));
 	reg_.V = (((~(reg_.A ^ argVal) & (reg_.A ^ res)) >> 7) & 1); // Check if the sign has changed due to overflow.
 	reg_.A = static_cast<u8>(res);
 	return true;
@@ -415,7 +421,7 @@ bool NESCPU::ExecuteOpAsBranch(bool shouldBranch, int branchSamePageCycleExtra, 
 	else
 		currentOpCycleCount_ += branchSamePageCycleExtra;
 
-	reg_.PC = jumpPC;
+	UpdateRegPC(jumpPC);
 	return true;
 }
 
@@ -444,7 +450,7 @@ bool NESCPU::ExecuteOpBEQ()
 bool NESCPU::ExecuteOpBMI()
 {
 	// Branch on N = 1
-	return ExecuteOpAsBranch((reg_.N == 1), 1, 1);
+	return ExecuteOpAsBranch((reg_.N == 1), 1, 2);
 }
 
 
@@ -462,6 +468,20 @@ bool NESCPU::ExecuteOpBPL()
 }
 
 
+bool NESCPU::ExecuteOpBVC()
+{
+	// Branch on V = 0
+	return ExecuteOpAsBranch((reg_.V == 0), 1, 2);
+}
+
+
+bool NESCPU::ExecuteOpBVS()
+{
+	// Branch on V = 1
+	return ExecuteOpAsBranch((reg_.V == 1), 1, 2);
+}
+
+
 bool NESCPU::ExecuteOpBIT()
 {
 	u8 argVal;
@@ -476,8 +496,94 @@ bool NESCPU::ExecuteOpBIT()
 }
 
 
+bool NESCPU::StackPush8(u8 val)
+{
+	// Check that the stack is not full.
+	if (reg_.SP > NES_CPU_STACK_START + NES_CPU_STACK_SIZE)
+		return false;
+
+	if (!mem_.Write8(reg_.SP++, val))
+		return false;
+
+	return true;
+}
+
+
+bool NESCPU::StackPush16(u16 val)
+{
+	// Push most-significant byte first.
+	if (!StackPush8((val & 0xFF00) >> 8))
+		return false;
+
+	if (!StackPush8((val & 0x00FF)))
+		return false;
+
+	return true;
+}
+
+
+bool NESCPU::StackPull8(u8* outVal)
+{
+	// Check that the stack is not empty.
+	if (reg_.SP <= NES_CPU_STACK_START)
+		return false;
+
+	// Will write to outVal if it's not null.
+	if (!mem_.Read8(--reg_.SP, outVal))
+		return false;
+
+	return true;
+}
+
+
+bool NESCPU::StackPull16(u16* outVal)
+{
+	u8 low, hi;
+
+	// Pull least-significant byte first.
+	if (!StackPull8(&low))
+		return false;
+
+	if (!StackPull8(&hi))
+		return false;
+
+	// Convert to 16-bit val.
+	if (outVal != nullptr)
+		*outVal = ((hi << 8) | low);
+	return true;
+}
+
+
+bool NESCPU::ExecuteInterrupt(NESCPUInterrupt interruptType)
+{
+	// TODO handle other interrupts.
+	switch (interruptType)
+	{
+	case NESCPUInterrupt::IRQBRK:
+		reg_.I = 1;
+
+		u16 val;
+		if (!mem_.Read16(NES_CPU_IRQBRK_VECTOR_START, &val))
+			return false;
+
+		UpdateRegPC(val);
+		break;
+
+	default:
+		return false;
+	}
+}
+
+
 bool NESCPU::ExecuteOpBRK()
 {
-	// Forced Interrupt PC + 2 toS P toS 
-	// TODO
+	// Forced Interrupt PC + 2 toS P toS
+	if (!StackPush16(reg_.PC + 1))
+		return false;
+
+	reg_.B = 1; // Set break flag before pushing P.
+	if (!StackPush16(reg_.P))
+		return false;
+
+	return ExecuteInterrupt(NESCPUInterrupt::IRQBRK);
 }

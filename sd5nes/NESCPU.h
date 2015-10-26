@@ -139,12 +139,16 @@ private:
 	u8 currentOp_;
 	std::map<u8, NESCPUOpInfo>::const_iterator currentOpMappingIt_;
 	int currentOpCycleCount_;
+	bool currentOpChangedPC_;
 
 	// Updates the Z register. Sets to 1 if val is zero. Sets to 0 otherwise.
 	inline void UpdateRegZ(u8 val) { reg_.Z = (val == 0 ? 1 : 0); }
 
 	// Updates the N register. Sets to the value of val's 7th bit (sign bit).
 	inline void UpdateRegN(u8 val) { reg_.N = ((val >> 7) & 1); }
+
+	// Updates the PC register. Sets PC to val. currentOpChangedPC_ is set to true so PC is not automatically changed afterwards.
+	inline void UpdateRegPC(u16 val) { reg_.PC = val; currentOpChangedPC_ = true; }
 
 	// Reads the value of the next op's immediate argument depending on its addressing mode.
 	// Also checks if a page boundary was crossed.
@@ -156,9 +160,24 @@ private:
 	// Executes the next opcode at the PC.
 	bool ExecuteNextOp();
 
+	// Push 8-bit value onto the stack.
+	bool StackPush8(u8 val);
+
+	// Push 16-bit value onto the stack.
+	bool StackPush16(u16 val);
+
+	// Pull 8-bit value from the stack.
+	bool StackPull8(u8* outVal);
+
+	// Pull 16-bit value from the stack.
+	bool StackPull16(u16* outVal);
+
 	// Executes the current op as a branch instruction if shouldBranch is true.
 	// Adds 1 to the current op's cycle count if branched to same page, 2 if branched to a different page.
 	bool ExecuteOpAsBranch(bool shouldBranch, int branchSamePageCycleExtra, int branchDiffPageCycleExtra);
+
+	// Executes an interrupt of the specified type.
+	bool ExecuteInterrupt(NESCPUInterrupt interruptType);
 
 	/****************************************/
 	/****** Instruction Implementation ******/
@@ -196,4 +215,10 @@ private:
 
 	// Execute Force Break (BRK).
 	bool ExecuteOpBRK();
+
+	// Execute Branch on Overflow Clear (BVC).
+	bool ExecuteOpBVC();
+
+	// Execute Branch on Overflow Set (BVS).
+	bool ExecuteOpBVS();
 };

@@ -1,9 +1,5 @@
 #pragma once
 
-/* Area of mem holding the Stack. */
-#define NES_MEMORY_STACK_START 0x0100
-#define NES_MEMORY_STACK_END 0x01FF
-
 /* Area of mem holding Expansion ROM mappings. */
 #define NES_MEMORY_EXPANSION_ROM_START 0x4020
 #define NES_MEMORY_EXPANSION_ROM_END 0x5FFF

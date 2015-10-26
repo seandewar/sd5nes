@@ -54,3 +54,9 @@
 
 /* BRK */
 #define NES_OP_BRK_IMPLIED 0x00
+
+/* BVC */
+#define NES_OP_BVC_RELATIVE 0x50
+
+/* BVS */
+#define NES_OP_BVS_RELATIVE 0x70
