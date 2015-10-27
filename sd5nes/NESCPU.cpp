@@ -722,6 +722,8 @@ bool NESCPU::ExecuteInterrupt(NESCPUInterrupt interruptType)
 	default:
 		return false;
 	}
+
+	return true;
 }
 
 
@@ -783,7 +785,7 @@ bool NESCPU::ExecuteOpCMP()
 	const uleast16 res = reg_.A - argVal;
 
 	reg_.C = (res < 0x100 ? 1 : 0);
-	UpdateRegN(res);
+	UpdateRegN(static_cast<u8>(res));
 	UpdateRegZ((res & 0xFF)); // Check first 8-bits.
 	return true;
 }
@@ -797,7 +799,7 @@ bool NESCPU::ExecuteOpCPX()
 	const uleast16 res = reg_.X - argVal;
 
 	reg_.C = (res < 0x100 ? 1 : 0);
-	UpdateRegN(res);
+	UpdateRegN(static_cast<u8>(res));
 	UpdateRegZ((res & 0xFF)); // Check first 8-bits.
 	return true;
 }
@@ -811,7 +813,7 @@ bool NESCPU::ExecuteOpCPY()
 	const uleast16 res = reg_.Y - argVal;
 
 	reg_.C = (res < 0x100 ? 1 : 0);
-	UpdateRegN(res);
+	UpdateRegN(static_cast<u8>(res));
 	UpdateRegZ((res & 0xFF)); // Check first 8-bits.
 	return true;
 }
