@@ -62,9 +62,11 @@ enum class NESCPUOpAddressingMode
 	IMMEDIATE,
 	ZEROPAGE,
 	ZEROPAGE_X,
+	ZEROPAGE_Y,
 	ABSOLUTE,
 	ABSOLUTE_X,
 	ABSOLUTE_Y,
+	INDIRECT,
 	INDIRECT_X,
 	INDIRECT_Y,
 	ACCUMULATOR,
@@ -252,9 +254,45 @@ private:
 	// Execute Decrement Index Y by One (DEY).
 	bool ExecuteOpDEY();
 
-	// Execute Exclusive-Or Memory with Accumulator (EOR).
+	// Execute "Exclusive-Or" Memory with Accumulator (EOR).
 	bool ExecuteOpEOR();
 
 	// Execute Increment Memory by One (INC).
 	bool ExecuteOpINC();
+
+	// Execute Increment Index X by One (INX).
+	bool ExecuteOpINX();
+
+	// Execute Increment Index Y by One (INY).
+	bool ExecuteOpINY();
+
+	// Execute Jump to New Location (JMP).
+	bool ExecuteOpJMP();
+
+	// Execute Jump to New Location Saving Return Address (JSR).
+	bool ExecuteOpJSR();
+
+	// Execute Load Accumulator with Memory (LDA).
+	bool ExecuteOpLDA();
+
+	// Execute Load Index X with Memory (LDX).
+	bool ExecuteOpLDX();
+
+	// Execute Load Index Y with Memory (LDY).
+	bool ExecuteOpLDY();
+
+	// Execute Shift Right One Bit (Memory or Accumulator) (LSR).
+	bool ExecuteOpLSR();
+
+	// Execute No Operation (Do Nothing) (NOP).
+	bool ExecuteOpNOP();
+
+	// Execute "Or" Memory with Accumulator (ORA).
+	bool ExecuteOpORA();
+
+	// Execute Push Accumulator to Stack (PHA).
+	bool ExecuteOpPHA();
+
+	// Execute Push Processor Status to Stack (PHP).
+	bool ExecuteOpPHP();
 };
