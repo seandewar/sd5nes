@@ -32,7 +32,7 @@ struct NESCPURegisters
 		u8 I : 1; /* Interrupt Disable (I) */
 		u8 D : 1; /* Decimal Mode (D) */
 		u8 B : 1; /* Break Command (B) */
-		u8 PUnused : 1; /* Unused bit */
+		u8 PUnused : 1; /* Unused bit - should always be 1. */
 		u8 V : 1; /* Overflow Flag (V) */
 		u8 N : 1; /* Negative Flag (N) */
 	};
@@ -221,4 +221,40 @@ private:
 
 	// Execute Branch on Overflow Set (BVS).
 	bool ExecuteOpBVS();
+
+	// Execute Clear Carry Flag (CLC).
+	bool ExecuteOpCLC();
+
+	// Execute Clear Decimal Mode (CLD).
+	bool ExecuteOpCLD();
+
+	// Execute Clear Interrupt Disable Bit (CLI).
+	bool ExecuteOpCLI();
+
+	// Execute Clear Overflow Flag (CLV).
+	bool ExecuteOpCLV();
+
+	// Execute Compare Memory and Accumulator (CMP).
+	bool ExecuteOpCMP();
+
+	// Execute Compare Memory and Index X (CPX).
+	bool ExecuteOpCPX();
+
+	// Execute Compare Memory and Index Y (CPY).
+	bool ExecuteOpCPY();
+
+	// Execute Decrement Memory by One (DEC).
+	bool ExecuteOpDEC();
+
+	// Execute Decrement Index X by One (DEX).
+	bool ExecuteOpDEX();
+
+	// Execute Decrement Index Y by One (DEY).
+	bool ExecuteOpDEY();
+
+	// Execute Exclusive-Or Memory with Accumulator (EOR).
+	bool ExecuteOpEOR();
+
+	// Execute Increment Memory by One (INC).
+	bool ExecuteOpINC();
 };
