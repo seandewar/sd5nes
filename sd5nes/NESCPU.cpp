@@ -1163,11 +1163,11 @@ bool NESCPU::ExecuteOpROL()
 
 	// C <- [7654321] <- C
 	uleast16 res = (argVal << 1);
-	if (!WriteOpResult(static_cast<u8>(res)))
-		return false;
-
 	if (reg_.C == 1)
 		res |= 1;
+
+	if (!WriteOpResult(static_cast<u8>(res)))
+		return false;
 
 	reg_.C = (res > 0xFF ? 1 : 0);
 	UpdateRegZ(static_cast<u8>(res));
@@ -1182,14 +1182,15 @@ bool NESCPU::ExecuteOpROR()
 
 	// C -> [7654321] -> C
 	uleast16 res = argVal;
-	if (!WriteOpResult(static_cast<u8>(res)))
-		return false;
-
 	if (reg_.C == 1)
 		res |= 0x100;
 
 	reg_.C = (res & 1);
+
 	res >>= 1;
+	if (!WriteOpResult(static_cast<u8>(res)))
+		return false;
+
 	UpdateRegZ(static_cast<u8>(res));
 	UpdateRegN(static_cast<u8>(res));
 	return true;
