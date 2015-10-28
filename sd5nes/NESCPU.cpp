@@ -11,7 +11,8 @@ NESCPUStaticInit NESCPU::staticInit_;
 
 void NESCPU::RegisterOpMapping(u8 op, NESOpFuncPointer opFunc, NESCPUOpAddressingMode addrMode, int cycleCount)
 {
-	assert((opInfos_.emplace(op, NESCPUOpInfo(opFunc, addrMode, cycleCount)).second)
+	assert("Duplicate op mapping entry or unknown addressing mode!" 
+		&& (opInfos_.emplace(op, NESCPUOpInfo(opFunc, addrMode, cycleCount)).second)
 		&& (addrMode != NESCPUOpAddressingMode::UNKNOWN));
 }
 
