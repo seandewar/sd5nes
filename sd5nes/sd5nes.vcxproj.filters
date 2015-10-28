@@ -21,9 +21,6 @@
     <ClCompile Include="NESCPU.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="NESMemory.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
     <ClCompile Include="NESMemoryBus.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>

@@ -72,7 +72,6 @@
   <ItemGroup>
     <ClCompile Include="main.cpp" />
     <ClCompile Include="NESCPU.cpp" />
-    <ClCompile Include="NESMemory.cpp" />
     <ClCompile Include="NESMemoryBus.cpp" />
   </ItemGroup>
   <ItemGroup>
