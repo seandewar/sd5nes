@@ -228,3 +228,41 @@
 
 /* SEI */
 #define NES_OP_SEI_IMPLIED 0x78
+
+/* STA */
+#define NES_OP_STA_ZEROPAGE 0x85
+#define NES_OP_STA_ZEROPAGE_X 0x95
+#define NES_OP_STA_ABSOLUTE 0x80
+#define NES_OP_STA_ABSOLUTE_X 0x90
+#define NES_OP_STA_ABSOLUTE_Y 0x99
+#define NES_OP_STA_INDIRECT_X 0x81
+#define NES_OP_STA_INDIRECT_Y 0x91
+
+/* STX */
+#define NES_OP_STX_ZEROPAGE 0x86
+#define NES_OP_STX_ZEROPAGE_Y 0x96
+#define NES_OP_STX_ABSOLUTE 0x8E
+
+/* STY */
+#define NES_OP_STY_ZEROPAGE 0x84
+#define NES_OP_STY_ZEROPAGE_X 0x94
+#define NES_OP_STY_ABSOLUTE 0x8C
+
+/* TAX */
+#define NES_OP_TAX_IMPLIED 0xAA
+
+/* TAY */
+#define NES_OP_TAY_IMPLIED 0xA8
+
+/* TSX */
+#define NES_OP_TSX_IMPLIED 0xBA
+
+/* TXA */
+#define NES_OP_TXA_IMPLIED 0x8A
+
+/* TXS */
+#define NES_OP_TXS_IMPLIED 0x9A
+
+/* TYA */
+#define NES_OP_TYA_IMPLIED 0x98
+

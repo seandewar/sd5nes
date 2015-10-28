@@ -247,6 +247,43 @@ NESCPUStaticInit::NESCPUStaticInit()
 
 	// SEI
 	NESCPU::RegisterOpMapping(NES_OP_SEI_IMPLIED, &NESCPU::ExecuteOpSEI, NESCPUOpAddressingMode::IMPLIED, 2);
+
+	// STA
+	NESCPU::RegisterOpMapping(NES_OP_STA_ABSOLUTE, &NESCPU::ExecuteOpSTA, NESCPUOpAddressingMode::ABSOLUTE, 4);
+	NESCPU::RegisterOpMapping(NES_OP_STA_ABSOLUTE_X, &NESCPU::ExecuteOpSTA, NESCPUOpAddressingMode::ABSOLUTE_X, 5);
+	NESCPU::RegisterOpMapping(NES_OP_STA_ABSOLUTE_Y, &NESCPU::ExecuteOpSTA, NESCPUOpAddressingMode::ABSOLUTE_Y, 5);
+	NESCPU::RegisterOpMapping(NES_OP_STA_ZEROPAGE, &NESCPU::ExecuteOpSTA, NESCPUOpAddressingMode::ZEROPAGE, 3);
+	NESCPU::RegisterOpMapping(NES_OP_STA_ZEROPAGE_X, &NESCPU::ExecuteOpSTA, NESCPUOpAddressingMode::ZEROPAGE_X, 4);
+	NESCPU::RegisterOpMapping(NES_OP_STA_INDIRECT_X, &NESCPU::ExecuteOpSTA, NESCPUOpAddressingMode::INDIRECT_X, 6);
+	NESCPU::RegisterOpMapping(NES_OP_STA_INDIRECT_Y, &NESCPU::ExecuteOpSTA, NESCPUOpAddressingMode::INDIRECT_Y, 6);
+
+	// STX
+	NESCPU::RegisterOpMapping(NES_OP_STX_ZEROPAGE, &NESCPU::ExecuteOpSTX, NESCPUOpAddressingMode::ZEROPAGE, 3);
+	NESCPU::RegisterOpMapping(NES_OP_STX_ZEROPAGE_Y, &NESCPU::ExecuteOpSTX, NESCPUOpAddressingMode::ZEROPAGE_Y, 4);
+	NESCPU::RegisterOpMapping(NES_OP_STX_ABSOLUTE, &NESCPU::ExecuteOpSTX, NESCPUOpAddressingMode::ABSOLUTE, 4);
+
+	// STY
+	NESCPU::RegisterOpMapping(NES_OP_STY_ZEROPAGE, &NESCPU::ExecuteOpSTY, NESCPUOpAddressingMode::ZEROPAGE, 3);
+	NESCPU::RegisterOpMapping(NES_OP_STY_ZEROPAGE_X, &NESCPU::ExecuteOpSTY, NESCPUOpAddressingMode::ZEROPAGE_X, 4);
+	NESCPU::RegisterOpMapping(NES_OP_STY_ABSOLUTE, &NESCPU::ExecuteOpSTY, NESCPUOpAddressingMode::ABSOLUTE, 4);
+
+	// TAX
+	NESCPU::RegisterOpMapping(NES_OP_TAX_IMPLIED, &NESCPU::ExecuteOpTAX, NESCPUOpAddressingMode::IMPLIED, 2);
+
+	// TAY
+	NESCPU::RegisterOpMapping(NES_OP_TAY_IMPLIED, &NESCPU::ExecuteOpTAY, NESCPUOpAddressingMode::IMPLIED, 2);
+
+	// TSX
+	NESCPU::RegisterOpMapping(NES_OP_TSX_IMPLIED, &NESCPU::ExecuteOpTSX, NESCPUOpAddressingMode::IMPLIED, 2);
+
+	// TXA
+	NESCPU::RegisterOpMapping(NES_OP_TXA_IMPLIED, &NESCPU::ExecuteOpTXA, NESCPUOpAddressingMode::IMPLIED, 2);
+
+	// TXS
+	NESCPU::RegisterOpMapping(NES_OP_TXS_IMPLIED, &NESCPU::ExecuteOpTXS, NESCPUOpAddressingMode::IMPLIED, 2);
+
+	// TYA
+	NESCPU::RegisterOpMapping(NES_OP_TYA_IMPLIED, &NESCPU::ExecuteOpTYA, NESCPUOpAddressingMode::IMPLIED, 2);
 }
 
 
@@ -1122,8 +1159,8 @@ bool NESCPU::ExecuteOpROL()
 		res |= 1;
 
 	reg_.C = (res > 0xFF ? 1 : 0);
-	UpdateRegZ(res);
-	UpdateRegN(res);
+	UpdateRegZ(static_cast<u8>(res));
+	UpdateRegN(static_cast<u8>(res));
 	return true;
 }
 
@@ -1142,8 +1179,8 @@ bool NESCPU::ExecuteOpROR()
 
 	reg_.C = (res & 1);
 	res >>= 1;
-	UpdateRegZ(res);
-	UpdateRegN(res);
+	UpdateRegZ(static_cast<u8>(res));
+	UpdateRegN(static_cast<u8>(res));
 	return true;
 }
 
@@ -1179,9 +1216,21 @@ bool NESCPU::ExecuteOpRTS()
 
 bool NESCPU::ExecuteOpSBC()
 {
+	OP_HANDLE_READ_ARG(argVal, crossedPageBoundary);
+
+	// SBC takes 1 extra CPU cycle if a page boundary was crossed.
+	if (crossedPageBoundary)
+		++currentOpCycleCount_;
+
 	// A - M - C -> A
-	// todo
-	return false;
+	const uleast16 res = reg_.A - argVal - (1 - reg_.C);
+
+	reg_.C = (res < 0x100 ? 1 : 0);
+	UpdateRegN(static_cast<u8>(res));
+	UpdateRegZ(static_cast<u8>(res));
+	reg_.V = (((~(reg_.A ^ argVal) & (reg_.A ^ res)) >> 7) & 1); // Check if the sign has changed due to overflow.
+	reg_.A = static_cast<u8>(res);
+	return true;
 }
 
 
@@ -1205,5 +1254,80 @@ bool NESCPU::ExecuteOpSEI()
 {
 	// 1 -> I
 	reg_.I = 1;
+	return true;
+}
+
+
+bool NESCPU::ExecuteOpSTA()
+{
+	OP_HANDLE_READ_ARG_SIMPLE(argVal);
+
+	// A -> M
+	return mem_.Write8(argVal, reg_.A);
+}
+
+
+bool NESCPU::ExecuteOpSTX()
+{
+	OP_HANDLE_READ_ARG_SIMPLE(argVal);
+
+	// X -> M
+	return mem_.Write8(argVal, reg_.X);
+}
+
+
+bool NESCPU::ExecuteOpSTY()
+{
+	OP_HANDLE_READ_ARG_SIMPLE(argVal);
+
+	// Y -> M
+	return mem_.Write8(argVal, reg_.Y);
+}
+
+
+bool NESCPU::ExecuteOpTAX()
+{
+	// A -> X
+	reg_.X = reg_.A;
+	return true;
+}
+
+
+bool NESCPU::ExecuteOpTAY()
+{
+	// A -> Y
+	reg_.Y = reg_.A;
+	return true;
+}
+
+
+bool NESCPU::ExecuteOpTSX()
+{
+	// S -> X
+	reg_.X = reg_.SP;
+	return true;
+}
+
+
+bool NESCPU::ExecuteOpTXA()
+{
+	// X -> A
+	reg_.A = reg_.X;
+	return true;
+}
+
+
+bool NESCPU::ExecuteOpTXS()
+{
+	// X -> S
+	reg_.SP = reg_.X;
+	return true;
+}
+
+
+bool NESCPU::ExecuteOpTYA()
+{
+	// Y -> A
+	reg_.A = reg_.Y;
 	return true;
 }

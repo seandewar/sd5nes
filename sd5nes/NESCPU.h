@@ -325,4 +325,31 @@ private:
 
 	// Execute Set Interrupt Disable Status (SEI).
 	bool ExecuteOpSEI();
+
+	// Execute Store Accumulator in Memory (STA).
+	bool ExecuteOpSTA();
+
+	// Execute Store Index X in Memory (STX).
+	bool ExecuteOpSTX();
+
+	// Execute Store Index Y in Memory (STY).
+	bool ExecuteOpSTY();
+
+	// Execute Transfer Accumulator to Index Y (TAY).
+	bool ExecuteOpTAY();
+
+	// Execute Transfer Accumulator to Index X (TAX).
+	bool ExecuteOpTAX();
+
+	// Execute Transfer Stack Pointer to Index X (TSX).
+	bool ExecuteOpTSX();
+
+	// Execute Transfer Index X to Accumulator (TXA).
+	bool ExecuteOpTXA();
+
+	// Execute Transfer Index X to Stack Pointer (TXS).
+	bool ExecuteOpTXS();
+
+	// Execute Transfer Index Y to Accumulator (TYA).
+	bool ExecuteOpTYA();
 };
