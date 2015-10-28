@@ -47,5 +47,8 @@
     <ClInclude Include="NESCPUOpConstants.h">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="NESHelper.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
   </ItemGroup>
 </Project>

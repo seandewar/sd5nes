@@ -10,7 +10,7 @@
 class NESMemory
 {
 public:
-	NESMemory();
+	NESMemory(uleast32 size);
 	~NESMemory();
 
 	/**
@@ -34,7 +34,11 @@ public:
 	*/
 	bool Read16(u16 addr, u16* outVal) const;
 
+	// Get the allocated size of this memory.
+	uleast32 GetSize() const;
+
 private:
 	std::unique_ptr<u8[]> data_;
+	uleast32 size_;
 };
 

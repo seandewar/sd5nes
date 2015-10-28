@@ -1,6 +1,7 @@
 #include "NESCPU.h"
 
 #include "NESCPUConstants.h"
+#include "NESHelper.h"
 
 #include <cassert>
 
@@ -413,9 +414,9 @@ bool NESCPU::ExecuteNextOp()
 
 bool NESCPU::ReadOpArgValue(u8* outVal, bool* outCrossedPageBoundary)
 {
-	// TODO : CHECK IF CROSSED PAGE BOUNDARY!!!!!11111111111
 	u16 addr;
-	bool crossedPageBoundary = false; // Assume false.
+	bool crossedPageBoundary;
+
 	switch (currentOpMappingIt_->second.addrMode)
 	{
 	case NESCPUOpAddressingMode::ACCUMULATOR:
@@ -430,12 +431,14 @@ bool NESCPU::ReadOpArgValue(u8* outVal, bool* outCrossedPageBoundary)
 
 	case NESCPUOpAddressingMode::IMMEDIATE:
 	case NESCPUOpAddressingMode::RELATIVE:
+		crossedPageBoundary = false;
 		addr = reg_.PC + 1;
 		break;
 
 
 	case NESCPUOpAddressingMode::ABSOLUTE:
 	case NESCPUOpAddressingMode::INDIRECT:
+		crossedPageBoundary = false;
 		if (!mem_.Read16(reg_.PC + 1, &addr))
 			return false;
 		break;
@@ -445,6 +448,7 @@ bool NESCPU::ReadOpArgValue(u8* outVal, bool* outCrossedPageBoundary)
 		if (!mem_.Read16(reg_.PC + 1, &addr))
 			return false;
 
+		crossedPageBoundary = !NESHelper::IsInSamePage(addr, addr + reg_.X);
 		addr += reg_.X;
 		break;
 
@@ -453,6 +457,7 @@ bool NESCPU::ReadOpArgValue(u8* outVal, bool* outCrossedPageBoundary)
 		if (!mem_.Read16(reg_.PC + 1, &addr))
 			return false;
 
+		crossedPageBoundary = !NESHelper::IsInSamePage(addr, addr + reg_.Y);
 		addr += reg_.Y;
 		break;
 
@@ -465,6 +470,7 @@ bool NESCPU::ReadOpArgValue(u8* outVal, bool* outCrossedPageBoundary)
 		if (!mem_.Read8(reg_.PC + 1, &addr8))
 			return false;
 
+		crossedPageBoundary = false;
 		addr = addr8;
 		break;
 
@@ -473,6 +479,7 @@ bool NESCPU::ReadOpArgValue(u8* outVal, bool* outCrossedPageBoundary)
 		if (!mem_.Read8(reg_.PC + 1, &addr8))
 			return false;
 
+		crossedPageBoundary = false;
 		addr8 += reg_.X; // Will wrap around if X is too big.
 		addr = addr8;
 		break;
@@ -482,6 +489,7 @@ bool NESCPU::ReadOpArgValue(u8* outVal, bool* outCrossedPageBoundary)
 		if (!mem_.Read8(reg_.PC + 1, &addr8))
 			return false;
 
+		crossedPageBoundary = false;
 		addr8 += reg_.Y; // Will wrap around if X is too big.
 		addr = addr8;
 		break;
@@ -491,6 +499,7 @@ bool NESCPU::ReadOpArgValue(u8* outVal, bool* outCrossedPageBoundary)
 		if (!mem_.Read8(reg_.PC + 1, &addr8))
 			return false;
 
+		crossedPageBoundary = false;
 		addr8 += reg_.X; // Will wrap around if X is too big.
 
 		// Read address from memory at addr8 into addr.
@@ -507,6 +516,7 @@ bool NESCPU::ReadOpArgValue(u8* outVal, bool* outCrossedPageBoundary)
 		if (!mem_.Read16(addr8, &addr))
 			return false;
 
+		crossedPageBoundary = !NESHelper::IsInSamePage(addr, addr + reg_.Y);
 		addr += reg_.Y;
 		break;
 
@@ -651,7 +661,7 @@ bool NESCPU::ExecuteOpAsBranch(bool shouldBranch, int branchSamePageCycleExtra, 
 	const u16 jumpPC = reg_.PC + argVal;
 
 	// Check if the branch will cross a page boundary.
-	if ((reg_.PC & 0xFF00) != (jumpPC & 0xFF00))
+	if (!NESHelper::IsInSamePage(reg_.PC, jumpPC))
 		currentOpCycleCount_ += branchDiffPageCycleExtra;
 	else
 		currentOpCycleCount_ += branchSamePageCycleExtra;

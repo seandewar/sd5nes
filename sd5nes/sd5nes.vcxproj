@@ -79,6 +79,7 @@
     <ClInclude Include="NESCPUConstants.h" />
     <ClInclude Include="NESCPUOpConstants.h" />
     <ClInclude Include="NESEmulationConstants.h" />
+    <ClInclude Include="NESHelper.h" />
     <ClInclude Include="NESMemoryConstants.h" />
     <ClInclude Include="NESMemory.h" />
     <ClInclude Include="NESTypes.h" />
