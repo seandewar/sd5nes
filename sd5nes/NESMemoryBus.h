@@ -39,6 +39,6 @@ private:
 	const NESMemory<NES_MEMORY_PRGROM_SIZE>& prgRom_;
 
 	// Handles the mirroring of a write if necessary.
-	bool HandleWriteMirror(u16 addr, u8 val);
+	bool HandleWriteMirrors(u16 addr, u8 val);
 };
 
