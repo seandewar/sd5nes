@@ -1,9 +1,10 @@
 #pragma once
 
 #include "NESTypes.h"
-#include "NESMemory.h"
+#include "NESMemoryBus.h"
 
 #include "NESCPUOpConstants.h"
+#include "NESMemoryConstants.h"
 
 #include <map>
 
@@ -32,7 +33,7 @@ struct NESCPURegisters
 		u8 I : 1; /* Interrupt Disable (I) */
 		u8 D : 1; /* Decimal Mode (D) */
 		u8 B : 1; /* Break Command (B) */
-		u8 PUnused : 1; /* Unused bit - should always be 1. */
+		u8 PUnused : 1; /* Unused bit - should typically always be 1. */
 		u8 V : 1; /* Overflow Flag (V) */
 		u8 N : 1; /* Negative Flag (N) */
 	};
@@ -40,7 +41,7 @@ struct NESCPURegisters
 
 /**
 * Enum containing the different interrupts used by the NES CPU.
-* Sorted by interrupt priority (0 = highest, 2 = lowest).
+* Sorted by interrupt priority (0 = highest, 1 = medium, 2 = lowest).
 */
 enum class NESCPUInterrupt : u8
 {
@@ -113,9 +114,13 @@ class NESCPU
 	friend struct NESCPUStaticInit;
 
 public:
-	NESCPU(NESMemory& memory);
+	NESCPU(NESMemoryBus& memoryBus);
 	~NESCPU();
 
+	// Resets the CPU.
+	void Reset();
+
+	// Gets the current opcode being executed.
 	u8 GetCurrentOpcode() const;
 
 private:
@@ -136,12 +141,16 @@ private:
 	static bool GetOpSizeFromAddressingMode(NESCPUOpAddressingMode addrMode, int* outOpSize);
 
 	NESCPURegisters reg_;
-	NESMemory& mem_;
+	NESMemoryBus& mem_;
+	NESMemory<NES_MEMORY_RAM_SIZE> cpuRam_;
 
 	u8 currentOp_;
 	std::map<u8, NESCPUOpInfo>::const_iterator currentOpMappingIt_;
 	int currentOpCycleCount_;
 	bool currentOpChangedPC_;
+
+	// (Re-)Initializes the CPU.
+	void Initialize();
 
 	// Updates the Z register. Sets to 1 if val is zero. Sets to 0 otherwise.
 	inline void UpdateRegZ(u8 val) { reg_.Z = (val == 0 ? 1 : 0); }

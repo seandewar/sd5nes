@@ -1,16 +1,25 @@
 #pragma once
 
-/* Area of mem holding Expansion ROM mappings. */
+/* RAM */
+#define NES_MEMORY_RAM_START 0x0200
+#define NES_MEMORY_RAM_END 0x07FF
+#define NES_MEMORY_RAM_SIZE 0x0800
+
+/* I/O Registers */
+#define NES_MEMORY_IO_REGISTERS_START 0x2000
+#define NES_MEMORY_IO_REGISTERS_END 0x2007
+
+/* Expansion ROM */
 #define NES_MEMORY_EXPANSION_ROM_START 0x4020
 #define NES_MEMORY_EXPANSION_ROM_END 0x5FFF
 
-/* Area of mem mapping PPU registers */
-#define NES_MEMORY_PPU_REGISTER_START 0x2000
-#define NES_MEMORY_PPU_REGISTER_END 0x2007
-
-/* Area of mem holding SRAM. */
+/* SRAM */
 #define NES_MEMORY_SRAM_START 0x6000
 #define NES_MEMORY_SRAM_END 0x7FFF
 
-/* Area of mem containing Game Pak data. */
-#define NES_MEMORY_GAME_PAK_START 0x8000
+/* PRG-ROM */
+#define NES_MEMORY_PRGROM_START 0x8000
+#define NES_MEMORY_PRGROM_END 0xFFFF
+#define NES_MEMORY_PRGROM_SIZE 0x8000
+#define NES_MEMORY_PRGROM_UPPER_BANK_START 0xC000
+#define NES_MEMORY_PRGROM_LOWER_BANK_END 0xBFFF

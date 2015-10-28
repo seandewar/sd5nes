@@ -291,7 +291,7 @@ NESCPUStaticInit::NESCPUStaticInit()
 
 // Defines variables argValVarName and crossedPageBoundaryVarName
 // and auto returns false from the host op function if failed read.
-// NOTE: It is OK to use a semi-colon after using this macro function.
+// @NOTE: It is OK to use a semi-colon after using this macro function.
 #define OP_HANDLE_READ_ARG(argValVarName, crossedPageBoundaryVarName) \
 		u8 argValVarName; \
 		bool crossedPageBoundaryVarName; \
@@ -302,7 +302,7 @@ NESCPUStaticInit::NESCPUStaticInit()
 
 // Defines variable argValVarName
 // and auto returns false from the host op function if failed read.
-// NOTE: It is OK to use a semi-colon after using this macro function.
+// @NOTE: It is OK to use a semi-colon after using this macro function.
 #define OP_HANDLE_READ_ARG_SIMPLE(argValVarName) \
 		u8 argValVarName; \
 		if (!ReadOpArgValue(&argValVarName, nullptr)) { \
@@ -310,16 +310,35 @@ NESCPUStaticInit::NESCPUStaticInit()
 		} \
 
 
-NESCPU::NESCPU(NESMemory& memory) :
-mem_(memory),
+NESCPU::NESCPU(NESMemoryBus& memoryBus) :
+mem_(memoryBus),
 currentOp_(NES_OP_INVALID),
-currentOpCycleCount_(0)
+currentOpCycleCount_(0),
+currentOpChangedPC_(false)
 {
 }
 
 
 NESCPU::~NESCPU()
 {
+}
+
+
+void NESCPU::Reset()
+{
+	// @TODO
+	Initialize();
+}
+
+
+void NESCPU::Initialize()
+{
+	currentOp_ = NES_OP_INVALID;
+
+	// Init registers
+	reg_.PC = 0x0000;
+	reg_.A = reg_.B = reg_.C = reg_.D = reg_.I = reg_.N = reg_.P = 0;
+	reg_.PUnused = 1; // Unused bit should always be set to 1.
 }
 
 
@@ -606,7 +625,7 @@ bool NESCPU::ExecuteOpADC()
 		++currentOpCycleCount_;
 
 	// A + M + C -> A, C
-	// NOTE: NES 6502 variant has no BCD mode.
+	// @NOTE: NES 6502 variant has no BCD mode.
 	const uleast16 res = reg_.A + argVal + reg_.C;
 
 	reg_.C = (res > 0xFF ? 1 : 0);
@@ -741,11 +760,10 @@ bool NESCPU::ExecuteOpBIT()
 
 bool NESCPU::StackPush8(u8 val)
 {
-	// Check that the stack is not full.
-	if (reg_.SP > NES_CPU_STACK_START + NES_CPU_STACK_SIZE)
-		return false;
+	// @NOTE: Some games purposely overflow the stack
+	// So there is no need to do any bounds checks.
 
-	if (!mem_.Write8(reg_.SP++, val))
+	if (!mem_.Write8(NES_CPU_STACK_START + reg_.SP++, val))
 		return false;
 
 	return true;
@@ -767,12 +785,11 @@ bool NESCPU::StackPush16(u16 val)
 
 bool NESCPU::StackPull8(u8* outVal)
 {
-	// Check that the stack is not empty.
-	if (reg_.SP <= NES_CPU_STACK_START)
-		return false;
+	// @NOTE: Some games purposely underflow the stack
+	// So there is no need to do any bounds checks.
 
 	// Will write to outVal if it's not null.
-	if (!mem_.Read8(--reg_.SP, outVal))
+	if (!mem_.Read8(NES_CPU_STACK_START + --reg_.SP, outVal))
 		return false;
 
 	return true;
@@ -800,7 +817,7 @@ bool NESCPU::StackPull16(u16* outVal)
 
 bool NESCPU::ExecuteInterrupt(NESCPUInterrupt interruptType)
 {
-	// TODO handle other interrupts.
+	// @TODO handle other interrupts.
 	switch (interruptType)
 	{
 	case NESCPUInterrupt::IRQBRK:

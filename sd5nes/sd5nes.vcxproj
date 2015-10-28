@@ -73,6 +73,7 @@
     <ClCompile Include="main.cpp" />
     <ClCompile Include="NESCPU.cpp" />
     <ClCompile Include="NESMemory.cpp" />
+    <ClCompile Include="NESMemoryBus.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="NESCPU.h" />
@@ -80,6 +81,7 @@
     <ClInclude Include="NESCPUOpConstants.h" />
     <ClInclude Include="NESEmulationConstants.h" />
     <ClInclude Include="NESHelper.h" />
+    <ClInclude Include="NESMemoryBus.h" />
     <ClInclude Include="NESMemoryConstants.h" />
     <ClInclude Include="NESMemory.h" />
     <ClInclude Include="NESTypes.h" />

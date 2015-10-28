@@ -1,9 +1,7 @@
 #include "NESMemory.h"
 
-#include <cassert>
-
-
-NESMemory::NESMemory(uleast32 size) :
+/*
+NESMemory::NESMemory() :
 size_(size)
 {
 	data_ = std::unique_ptr<u8[]>(new u8[size_]);
@@ -12,6 +10,12 @@ size_(size)
 
 NESMemory::~NESMemory()
 {
+}
+
+
+void NESMemory::ZeroMemory()
+{
+	std::fill_n(data_.get(), size_, 0);
 }
 
 
@@ -60,3 +64,4 @@ uleast32 NESMemory::GetSize() const
 {
 	return size_;
 }
+*/
