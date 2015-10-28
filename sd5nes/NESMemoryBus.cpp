@@ -57,6 +57,8 @@ bool NESMemoryBus::Read8(u16 addr, u8* outVal) const
 		// @TODO Implement bus fully.
 		return false;
 	}
+
+	return true;
 }
 
 
@@ -81,6 +83,8 @@ bool NESMemoryBus::Read16(u16 addr, u16* outVal) const
 		// @TODO Implement bus fully.
 		return false;
 	}
+
+	return true;
 }
 
 

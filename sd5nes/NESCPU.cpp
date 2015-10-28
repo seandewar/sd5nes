@@ -576,6 +576,8 @@ bool NESCPU::WriteOpResult(u8 result)
 		if (!mem_.Read16(reg_.PC + 1, &addr))
 			return false;
 
+		break;
+
 
 	case NESCPUOpAddressingMode::ABSOLUTE_X:
 		if (!mem_.Read16(reg_.PC + 1, &addr))
