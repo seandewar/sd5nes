@@ -295,4 +295,34 @@ private:
 
 	// Execute Push Processor Status to Stack (PHP).
 	bool ExecuteOpPHP();
+
+	// Execute Pull Accumulator from Stack (PLA).
+	bool ExecuteOpPLA();
+
+	// Execute Pull Processor Status from Stack (PLP).
+	bool ExecuteOpPLP();
+
+	// Execute Rotate One Bit Left (ROL).
+	bool ExecuteOpROL();
+
+	// Execute Rotate One Bit Right (ROR).
+	bool ExecuteOpROR();
+
+	// Execute Return from Interrupt (RTI).
+	bool ExecuteOpRTI();
+
+	// Execute Return from Subroutine (RTS).
+	bool ExecuteOpRTS();
+
+	// Execute Subtract Memory from Accumulator with Borrow (SBC).
+	bool ExecuteOpSBC();
+
+	// Execute Set Carry Flag (SEC).
+	bool ExecuteOpSEC();
+
+	// Execute Set Decimal Mode (SED).
+	bool ExecuteOpSED();
+
+	// Execute Set Interrupt Disable Status (SEI).
+	bool ExecuteOpSEI();
 };

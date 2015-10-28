@@ -202,6 +202,51 @@ NESCPUStaticInit::NESCPUStaticInit()
 
 	// PHP
 	NESCPU::RegisterOpMapping(NES_OP_PHP_IMPLIED, &NESCPU::ExecuteOpPHP, NESCPUOpAddressingMode::IMPLIED, 3);
+
+	// PLA
+	NESCPU::RegisterOpMapping(NES_OP_PLA_IMPLIED, &NESCPU::ExecuteOpPLA, NESCPUOpAddressingMode::IMPLIED, 4);
+
+	// PLP
+	NESCPU::RegisterOpMapping(NES_OP_PLP_IMPLIED, &NESCPU::ExecuteOpPLP, NESCPUOpAddressingMode::IMPLIED, 4);
+
+	// ROL
+	NESCPU::RegisterOpMapping(NES_OP_ROL_ACCUMULATOR, &NESCPU::ExecuteOpROL, NESCPUOpAddressingMode::ACCUMULATOR, 2);
+	NESCPU::RegisterOpMapping(NES_OP_ROL_ZEROPAGE, &NESCPU::ExecuteOpROL, NESCPUOpAddressingMode::ZEROPAGE, 5);
+	NESCPU::RegisterOpMapping(NES_OP_ROL_ZEROPAGE_X, &NESCPU::ExecuteOpROL, NESCPUOpAddressingMode::ZEROPAGE_X, 6);
+	NESCPU::RegisterOpMapping(NES_OP_ROL_ABSOLUTE, &NESCPU::ExecuteOpROL, NESCPUOpAddressingMode::ABSOLUTE, 6);
+	NESCPU::RegisterOpMapping(NES_OP_ROL_ABSOLUTE_X, &NESCPU::ExecuteOpROL, NESCPUOpAddressingMode::ABSOLUTE_X, 7);
+
+	// ROR
+	NESCPU::RegisterOpMapping(NES_OP_ROR_ACCUMULATOR, &NESCPU::ExecuteOpROR, NESCPUOpAddressingMode::ACCUMULATOR, 2);
+	NESCPU::RegisterOpMapping(NES_OP_ROR_ZEROPAGE, &NESCPU::ExecuteOpROR, NESCPUOpAddressingMode::ZEROPAGE, 5);
+	NESCPU::RegisterOpMapping(NES_OP_ROR_ZEROPAGE_X, &NESCPU::ExecuteOpROR, NESCPUOpAddressingMode::ZEROPAGE_X, 6);
+	NESCPU::RegisterOpMapping(NES_OP_ROR_ABSOLUTE, &NESCPU::ExecuteOpROR, NESCPUOpAddressingMode::ABSOLUTE, 6);
+	NESCPU::RegisterOpMapping(NES_OP_ROR_ABSOLUTE_X, &NESCPU::ExecuteOpROR, NESCPUOpAddressingMode::ABSOLUTE_X, 7);
+
+	// RTI
+	NESCPU::RegisterOpMapping(NES_OP_RTI_IMPLIED, &NESCPU::ExecuteOpRTI, NESCPUOpAddressingMode::IMPLIED, 6);
+
+	// RTS
+	NESCPU::RegisterOpMapping(NES_OP_RTS_IMPLIED, &NESCPU::ExecuteOpRTS, NESCPUOpAddressingMode::IMPLIED, 6);
+
+	// SBC
+	NESCPU::RegisterOpMapping(NES_OP_SBC_IMMEDIATE, &NESCPU::ExecuteOpSBC, NESCPUOpAddressingMode::IMMEDIATE, 2);
+	NESCPU::RegisterOpMapping(NES_OP_SBC_ABSOLUTE, &NESCPU::ExecuteOpSBC, NESCPUOpAddressingMode::ABSOLUTE, 4);
+	NESCPU::RegisterOpMapping(NES_OP_SBC_ABSOLUTE_X, &NESCPU::ExecuteOpSBC, NESCPUOpAddressingMode::ABSOLUTE_X, 4);
+	NESCPU::RegisterOpMapping(NES_OP_SBC_ABSOLUTE_Y, &NESCPU::ExecuteOpSBC, NESCPUOpAddressingMode::ABSOLUTE_Y, 4);
+	NESCPU::RegisterOpMapping(NES_OP_SBC_ZEROPAGE, &NESCPU::ExecuteOpSBC, NESCPUOpAddressingMode::ZEROPAGE, 3);
+	NESCPU::RegisterOpMapping(NES_OP_SBC_ZEROPAGE_X, &NESCPU::ExecuteOpSBC, NESCPUOpAddressingMode::ZEROPAGE_X, 4);
+	NESCPU::RegisterOpMapping(NES_OP_SBC_INDIRECT_X, &NESCPU::ExecuteOpSBC, NESCPUOpAddressingMode::INDIRECT_X, 6);
+	NESCPU::RegisterOpMapping(NES_OP_SBC_INDIRECT_Y, &NESCPU::ExecuteOpSBC, NESCPUOpAddressingMode::INDIRECT_Y, 5);
+
+	// SEC
+	NESCPU::RegisterOpMapping(NES_OP_SEC_IMPLIED, &NESCPU::ExecuteOpSEC, NESCPUOpAddressingMode::IMPLIED, 2);
+
+	// SED
+	NESCPU::RegisterOpMapping(NES_OP_SED_IMPLIED, &NESCPU::ExecuteOpSED, NESCPUOpAddressingMode::IMPLIED, 2);
+
+	// SEI
+	NESCPU::RegisterOpMapping(NES_OP_SEI_IMPLIED, &NESCPU::ExecuteOpSEI, NESCPUOpAddressingMode::IMPLIED, 2);
 }
 
 
@@ -700,6 +745,7 @@ bool NESCPU::StackPull16(u16* outVal)
 	// Convert to 16-bit val.
 	if (outVal != nullptr)
 		*outVal = ((hi << 8) | low);
+
 	return true;
 }
 
@@ -1032,4 +1078,132 @@ bool NESCPU::ExecuteOpPHP()
 {
 	// P toS
 	return StackPush8(reg_.P);
+}
+
+
+bool NESCPU::ExecuteOpPLA()
+{
+	// A fromS.
+	u8 val;
+	if (!StackPull8(&val))
+		return false;
+
+	UpdateRegZ(val);
+	UpdateRegN(val);
+	reg_.A = val;
+	return true;
+}
+
+
+bool NESCPU::ExecuteOpPLP()
+{
+	// P fromS.
+	u8 val;
+	if (!StackPull8(&val))
+		return false;
+
+	UpdateRegZ(val);
+	UpdateRegN(val);
+	reg_.P = val;
+	return true;
+}
+
+
+bool NESCPU::ExecuteOpROL()
+{
+	OP_HANDLE_READ_ARG_SIMPLE(argVal);
+
+	// C <- [7654321] <- C
+	uleast16 res = (argVal << 1);
+	if (!WriteOpResult(static_cast<u8>(res)))
+		return false;
+
+	if (reg_.C == 1)
+		res |= 1;
+
+	reg_.C = (res > 0xFF ? 1 : 0);
+	UpdateRegZ(res);
+	UpdateRegN(res);
+	return true;
+}
+
+
+bool NESCPU::ExecuteOpROR()
+{
+	OP_HANDLE_READ_ARG_SIMPLE(argVal);
+
+	// C -> [7654321] -> C
+	uleast16 res = argVal;
+	if (!WriteOpResult(static_cast<u8>(res)))
+		return false;
+
+	if (reg_.C == 1)
+		res |= 0x100;
+
+	reg_.C = (res & 1);
+	res >>= 1;
+	UpdateRegZ(res);
+	UpdateRegN(res);
+	return true;
+}
+
+
+bool NESCPU::ExecuteOpRTI()
+{
+	// P fromS PC fromS
+	u8 valP;
+	if (!StackPull8(&valP))
+		return false;
+
+	u16 newAddr;
+	if (!StackPull16(&newAddr))
+		return false;
+
+	reg_.P = valP;
+	UpdateRegPC(newAddr);
+	return true;
+}
+
+
+bool NESCPU::ExecuteOpRTS()
+{
+	// PC fromS, PC + 1 -> PC
+	u16 newAddr;
+	if (!StackPull16(&newAddr))
+		return false;
+
+	UpdateRegPC(newAddr + 1);
+	return true;
+}
+
+
+bool NESCPU::ExecuteOpSBC()
+{
+	// A - M - C -> A
+	// todo
+	return false;
+}
+
+
+bool NESCPU::ExecuteOpSEC()
+{
+	// 1 -> C
+	reg_.C = 1;
+	return true;
+}
+
+
+bool NESCPU::ExecuteOpSED()
+{
+	// 1 -> D
+	reg_.D = 1;
+	return true;
+}
+
+
+bool NESCPU::ExecuteOpSEI()
+{
+	// 1 -> I
+	reg_.I = 1;
+	return true;
 }
