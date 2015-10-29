@@ -1,7 +1,7 @@
 #include "NESMemoryBus.h"
 
 
-NESMemoryBus::NESMemoryBus(NESMemory<NES_MEMORY_RAM_SIZE>& ram, const NESMemory<NES_MEMORY_PRGROM_SIZE>& prgRom) :
+NESMemoryBus::NESMemoryBus(NESMemoryRAM& ram, const NESMemoryPRGROM& prgRom) :
 ram_(ram),
 prgRom_(prgRom)
 {

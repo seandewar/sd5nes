@@ -142,7 +142,7 @@ private:
 
 	NESCPURegisters reg_;
 	NESMemoryBus& mem_;
-	NESMemory<NES_MEMORY_RAM_SIZE> cpuRam_;
+	NESMemoryRAM cpuRam_;
 
 	u8 currentOp_;
 	std::map<u8, NESCPUOpInfo>::const_iterator currentOpMappingIt_;
