@@ -509,7 +509,7 @@ bool NESCPU::ReadOpArgValue(u8* outVal, bool* outCrossedPageBoundary)
 			return false;
 
 		crossedPageBoundary = false;
-		addr8 += reg_.Y; // Will wrap around if X is too big.
+		addr8 += reg_.Y; // Will wrap around if Y is too big.
 		addr = addr8;
 		break;
 
