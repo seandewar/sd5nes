@@ -765,7 +765,7 @@ bool NESCPU::StackPush8(u8 val)
 	// @NOTE: Some games purposely overflow the stack
 	// So there is no need to do any bounds checks.
 
-	if (!mem_.Write8(NES_CPU_STACK_START + reg_.SP++, val))
+	if (!mem_.Write8(NES_CPU_STACK_START + (reg_.SP++), val))
 		return false;
 
 	return true;
@@ -791,7 +791,7 @@ bool NESCPU::StackPull8(u8* outVal)
 	// So there is no need to do any bounds checks.
 
 	// Will write to outVal if it's not null.
-	if (!mem_.Read8(NES_CPU_STACK_START + --reg_.SP, outVal))
+	if (!mem_.Read8(NES_CPU_STACK_START + (--reg_.SP), outVal))
 		return false;
 
 	return true;
