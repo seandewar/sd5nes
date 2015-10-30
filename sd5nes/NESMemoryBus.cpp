@@ -92,7 +92,7 @@ bool NESMemoryBus::HandleWriteMirrors(u16 addr, u8 val)
 {
 	if (addr <= 0x07FF)
 	{
-		// Mirror 0x0000 to 0x07FF to 0x0800 3 times.
+		// Mirror 0x0000 to 0x07FF into 0x0800 3 times.
 		for (int i = 1; i <= 3; ++i)
 		{
 			if (!Write8(addr + (i * 0x0800), val))
@@ -101,8 +101,8 @@ bool NESMemoryBus::HandleWriteMirrors(u16 addr, u8 val)
 	}
 	else if (addr >= 0x2000 && addr <= 0x2007)
 	{
-		// Mirror 0x2000 to 0x2007 to 0x2008 to 0x4020
-		for (int i = 1; i <= 0x402; ++i)
+		// Mirror 0x2000 to 0x2007 into 0x2008 1023 (0x3FF) times.
+		for (int i = 1; i <= 0x3FF; ++i)
 		{
 			if (!Write8(addr + (i * 8), val))
 				return false;

@@ -5,8 +5,10 @@
 #include "NESTypes.h"
 #include "NESMemoryConstants.h"
 
+/* Different typedefs for the different memory types used by the NES. */
 typedef NESMemory<NES_MEMORY_RAM_SIZE> NESMemoryRAM;
 typedef NESMemory<NES_MEMORY_PRGROM_SIZE> NESMemoryPRGROM;
+typedef NESMemory<NES_MEMORY_CHRROM_SIZE> NESMemoryCHRROM;
 
 /**
 * Represents the memory used by a hardware component of the NES system.

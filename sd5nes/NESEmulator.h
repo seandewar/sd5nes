@@ -3,6 +3,7 @@
 #include <SFML\Graphics\RenderTarget.hpp>
 
 #include "NESCPU.h"
+#include "NESGamePak.h"
 
 /**
 * Class that handles emulation for an instance of the NES system.
@@ -12,6 +13,9 @@ class NESEmulator
 public:
 	NESEmulator(sf::RenderTarget& target);
 	~NESEmulator();
+
+	// Loads a ROM into PRGROM memory.
+	bool LoadROM(const std::string& fileName);
 
 	// Runs a frame of emulation.
 	bool RunFrame();
@@ -24,5 +28,7 @@ private:
 	NESMemoryRAM ram_;
 	NESMemoryPRGROM prgRom_;
 	NESMemoryBus memBus_;
+
+	NESGamePak cart_;
 };
 
