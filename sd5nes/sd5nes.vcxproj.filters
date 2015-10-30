@@ -30,6 +30,12 @@
     <ClCompile Include="NESGamePak.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="NESReadBuffer.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="NESMemory.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="NESCPU.h">
@@ -63,6 +69,9 @@
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="NESGamePak.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="NESReadBuffer.h">
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>

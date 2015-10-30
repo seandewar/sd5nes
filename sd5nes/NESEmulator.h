@@ -25,10 +25,8 @@ private:
 
 	NESCPU cpu_;
 
-	NESMemoryRAM ram_;
-	NESMemoryPRGROM prgRom_;
-	NESMemoryBus memBus_;
-
 	NESGamePak cart_;
+	NESMemory ram_;
+	NESMemoryBus memBus_;
 };
 

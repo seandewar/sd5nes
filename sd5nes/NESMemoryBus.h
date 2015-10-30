@@ -10,7 +10,7 @@
 class NESMemoryBus
 {
 public:
-	NESMemoryBus(NESMemoryRAM& ram, const NESMemoryPRGROM& prgRom);
+	NESMemoryBus(NESMemory& ram, const NESMemory& prgRom);
 	~NESMemoryBus();
 
 	/**
@@ -35,8 +35,8 @@ public:
 	bool Read16(u16 addr, u16* outVal) const;
 
 private:
-	NESMemoryRAM& ram_;
-	const NESMemoryPRGROM& prgRom_;
+	NESMemory& ram_;
+	const NESMemory& prgRom_;
 
 	// Handles the mirroring of a write if necessary.
 	bool HandleWriteMirrors(u16 addr, u8 val);

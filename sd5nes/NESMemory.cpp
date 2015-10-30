@@ -1,10 +1,10 @@
 #include "NESMemory.h"
 
-/*
-NESMemory::NESMemory() :
-size_(size)
+
+NESMemory::NESMemory(uleast16 size) :
+data_(size)
 {
-	data_ = std::unique_ptr<u8[]>(new u8[size_]);
+	ZeroMemory();
 }
 
 
@@ -15,13 +15,13 @@ NESMemory::~NESMemory()
 
 void NESMemory::ZeroMemory()
 {
-	std::fill_n(data_.get(), size_, 0);
+	std::fill_n(data_, data_.size(), 0);
 }
 
 
 bool NESMemory::Write8(u16 addr, u8 val)
 {
-	if (addr >= size_)
+	if (addr >= data_.size())
 		return false;
 
 	data_[addr] = val;
@@ -31,7 +31,7 @@ bool NESMemory::Write8(u16 addr, u8 val)
 
 bool NESMemory::Read8(u16 addr, u8* outVal) const
 {
-	if (addr >= size_)
+	if (addr >= data_.size())
 		return false;
 
 	if (outVal != nullptr)
@@ -62,6 +62,5 @@ bool NESMemory::Read16(u16 addr, u16* outVal) const
 
 uleast32 NESMemory::GetSize() const
 {
-	return size_;
+	return data_.size();
 }
-*/

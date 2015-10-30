@@ -74,7 +74,9 @@
     <ClCompile Include="NESCPU.cpp" />
     <ClCompile Include="NESEmulator.cpp" />
     <ClCompile Include="NESGamePak.cpp" />
+    <ClCompile Include="NESMemory.cpp" />
     <ClCompile Include="NESMemoryBus.cpp" />
+    <ClCompile Include="NESReadBuffer.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="NESCPU.h" />
@@ -87,6 +89,7 @@
     <ClInclude Include="NESMemoryBus.h" />
     <ClInclude Include="NESMemoryConstants.h" />
     <ClInclude Include="NESMemory.h" />
+    <ClInclude Include="NESReadBuffer.h" />
     <ClInclude Include="NESTypes.h" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />

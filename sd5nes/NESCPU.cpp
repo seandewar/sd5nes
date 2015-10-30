@@ -336,7 +336,7 @@ void NESCPU::Initialize()
 	currentOp_ = NES_OP_INVALID;
 
 	// Init registers
-	reg_.PC = 0x0000;
+	reg_.PC = 0;
 	reg_.A = reg_.B = reg_.C = reg_.D = reg_.I = reg_.N = reg_.P = 0;
 	reg_.PUnused = 1; // Unused bit should always be set to 1.
 }
