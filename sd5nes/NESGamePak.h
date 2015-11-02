@@ -69,6 +69,7 @@ private:
 	bool hasBatteryPackedRam_;
 	bool hasTrainer_;
 
+	/* PRG-ROM and CHR-ROM of the cart. */
 	NESMemory prgRom_;
 	NESMemory chrRom_;
 

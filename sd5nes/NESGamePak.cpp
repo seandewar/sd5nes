@@ -56,6 +56,9 @@ bool NESGamePak::ParseROMFileData()
 	if (!isRomLoaded_)
 		return false;
 
+	// @TODO Whole function might need some optimizations if too much
+	// stuff is being copied all around the place... ?
+
 	NESReadBuffer buf(romFileData_);
 
 	// Read file type.
@@ -102,6 +105,22 @@ bool NESGamePak::ParseROMFileData()
 		return false;
 	}
 
+	// If there is a trainer, ignore it.
+	// @TODO Do something with trainer in future?
+	if (hasTrainer_)
+	{
+		if (!buf.ReadNext(512, nullptr))
+			return false;
+	}
+
+	// Read ROM image data. Starts with PRG-ROM and then CHR-ROM.
+	std::vector<u8> romPrgRom, romChrRom;
+	if (!buf.ReadNext(0x4000 * romInfo[INES_PRGROM_BANKS_INDEX], &romPrgRom) ||
+		!buf.ReadNext(0x2000 * romInfo[INES_CHRROM_BANKS_INDEX], &romChrRom))
+		return false;
+
+	prgRom_ = NESMemory(romPrgRom);
+	chrRom_ = NESMemory(romChrRom);
 	return true;
 }
 

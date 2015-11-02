@@ -12,6 +12,7 @@ class NESMemory
 {
 public:
 	NESMemory(uleast16 size = 0);
+	NESMemory(const std::vector<u8>& data);
 	~NESMemory();
 
 	/**

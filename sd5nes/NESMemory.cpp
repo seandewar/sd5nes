@@ -8,6 +8,12 @@ data_(size)
 }
 
 
+NESMemory::NESMemory(const std::vector<u8>& data) :
+data_(data)
+{
+}
+
+
 NESMemory::~NESMemory()
 {
 }
