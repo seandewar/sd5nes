@@ -5,7 +5,7 @@
 
 NESEmulator::NESEmulator(sf::RenderTarget& target) :
 target_(target),
-memBus_(ram_, prgRom_),
+memBus_(ram_, cart_.GetProgramROM()),
 cpu_(memBus_)
 {
 }

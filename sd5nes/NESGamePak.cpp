@@ -115,8 +115,8 @@ bool NESGamePak::ParseROMFileData()
 
 	// Read ROM image data. Starts with PRG-ROM and then CHR-ROM.
 	std::vector<u8> romPrgRom, romChrRom;
-	if (!buf.ReadNext(0x4000 * romInfo[INES_PRGROM_BANKS_INDEX], &romPrgRom) ||
-		!buf.ReadNext(0x2000 * romInfo[INES_CHRROM_BANKS_INDEX], &romChrRom))
+	if (!buf.ReadNext(NES_MEMORY_PRGROM_BANK_SIZE * romInfo[INES_PRGROM_BANKS_INDEX], &romPrgRom) ||
+		!buf.ReadNext(NES_MEMORY_CHRROM_BANK_SIZE * romInfo[INES_CHRROM_BANKS_INDEX], &romChrRom))
 		return false;
 
 	prgRom_ = NESMemory(romPrgRom);
