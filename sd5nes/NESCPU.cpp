@@ -310,7 +310,7 @@ NESCPUStaticInit::NESCPUStaticInit()
 		} \
 
 
-NESCPU::NESCPU(NESMemoryBus& memoryBus) :
+NESCPU::NESCPU(NESCPUMemoryBus& memoryBus) :
 mem_(memoryBus),
 currentOp_(NES_OP_INVALID),
 currentOpCycleCount_(0),

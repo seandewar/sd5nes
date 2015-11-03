@@ -1,19 +1,19 @@
-#include "NESMemoryBus.h"
+#include "NESCPUMemoryBus.h"
 
 
-NESMemoryBus::NESMemoryBus(NESMemory& ram, const NESMemory& prgRom) :
+NESCPUMemoryBus::NESCPUMemoryBus(NESMemory& ram, const NESMemory& prgRom) :
 ram_(ram),
 prgRom_(prgRom)
 {
 }
 
 
-NESMemoryBus::~NESMemoryBus()
+NESCPUMemoryBus::~NESCPUMemoryBus()
 {
 }
 
 
-bool NESMemoryBus::Write8(u16 addr, u8 val)
+bool NESCPUMemoryBus::Write8(u16 addr, u8 val)
 {
 	// Handle mirroring if necessary.
 	if (!HandleWriteMirrors(addr, val))
@@ -36,7 +36,7 @@ bool NESMemoryBus::Write8(u16 addr, u8 val)
 }
 
 
-bool NESMemoryBus::Read8(u16 addr, u8* outVal) const
+bool NESCPUMemoryBus::Read8(u16 addr, u8* outVal) const
 {
 	if (addr >= NES_MEMORY_RAM_START &&
 		addr <= NES_MEMORY_RAM_END)
@@ -62,7 +62,7 @@ bool NESMemoryBus::Read8(u16 addr, u8* outVal) const
 }
 
 
-bool NESMemoryBus::Read16(u16 addr, u16* outVal) const
+bool NESCPUMemoryBus::Read16(u16 addr, u16* outVal) const
 {
 	if (addr >= NES_MEMORY_RAM_START &&
 		addr <= NES_MEMORY_RAM_END)
@@ -88,18 +88,9 @@ bool NESMemoryBus::Read16(u16 addr, u16* outVal) const
 }
 
 
-bool NESMemoryBus::HandleWriteMirrors(u16 addr, u8 val)
+bool NESCPUMemoryBus::HandleWriteMirrors(u16 addr, u8 val)
 {
-	if (addr <= 0x07FF)
-	{
-		// Mirror 0x0000 to 0x07FF into 0x0800 3 times.
-		for (int i = 1; i <= 3; ++i)
-		{
-			if (!Write8(addr + (i * 0x0800), val))
-				return false;
-		}
-	}
-	else if (addr >= 0x2000 && addr <= 0x2007)
+	if (addr >= 0x2000 && addr <= 0x2007)
 	{
 		// Mirror 0x2000 to 0x2007 into 0x2008 1023 (0x3FF) times.
 		for (int i = 1; i <= 0x3FF; ++i)
@@ -107,6 +98,15 @@ bool NESMemoryBus::HandleWriteMirrors(u16 addr, u8 val)
 			if (!Write8(addr + (i * 8), val))
 				return false;
 		}
+	}
+
+	// Memory from 0x0 to 0x07FF needs to be mirrored to 0x0800, 0x1000 and 0x1800.
+	if (addr <= 0x07FF)
+	{
+		if (!Write8(addr + 0x0800, val) ||
+			!Write8(addr + 0x1000, val) ||
+			!Write8(addr + 0x1800, val))
+			return false;
 	}
 
 	return true;

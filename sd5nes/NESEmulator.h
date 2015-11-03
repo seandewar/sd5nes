@@ -27,6 +27,6 @@ private:
 
 	NESGamePak cart_;
 	NESMemory ram_;
-	NESMemoryBus memBus_;
+	NESCPUMemoryBus memBus_;
 };
 

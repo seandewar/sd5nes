@@ -6,14 +6,26 @@
 #include "NESMemoryConstants.h"
 
 /**
+* Represents an interface for writing and reading from a memory buffer.
+*/
+class INESMemoryInterface
+{
+public:
+	virtual bool Write8(u16 addr, u8 val) = 0;
+
+	virtual bool Read8(u16 addr, u8* outVal) const = 0;
+	virtual bool Read16(u16 addr, u16* outVal) const = 0;
+};
+
+/**
 * Represents the memory used by a hardware component of the NES system.
 */
-class NESMemory
+class NESMemory : public INESMemoryInterface
 {
 public:
 	NESMemory(uleast16 size = 0);
 	NESMemory(const std::vector<u8>& data);
-	~NESMemory();
+	virtual ~NESMemory();
 
 	/**
 	* Sets all the allocated memory to zero.
@@ -24,19 +36,19 @@ public:
 	* Writes 8-bits to the memory at a specified location with the specified value.
 	* Returns true on success, false on failure.
 	*/
-	bool Write8(u16 addr, u8 val);
+	bool Write8(u16 addr, u8 val) override;
 
 	/**
 	* Reads 8-bits from the memory at a specified location and modifies outVal (if not null).
 	* Returns true on success, false on failure. If failure, outVal is not modified.
 	*/
-	bool Read8(u16 addr, u8* outVal) const;
+	bool Read8(u16 addr, u8* outVal) const override;
 
 	/**
 	* Reads 16-bits from the memory at a specified location and modifies outVal (if not null).
 	* Returns true on success, false on failure. If failure, outVal is not modified.
 	*/
-	bool Read16(u16 addr, u16* outVal) const;
+	bool Read16(u16 addr, u16* outVal) const override;
 
 	// Get the allocated size of this memory.
 	uleast32 GetSize() const;

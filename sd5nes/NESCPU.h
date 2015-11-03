@@ -1,7 +1,7 @@
 #pragma once
 
 #include "NESTypes.h"
-#include "NESMemoryBus.h"
+#include "NESCPUMemoryBus.h"
 
 #include "NESCPUOpConstants.h"
 #include "NESMemoryConstants.h"
@@ -114,7 +114,7 @@ class NESCPU
 	friend struct NESCPUStaticInit;
 
 public:
-	NESCPU(NESMemoryBus& memoryBus);
+	NESCPU(NESCPUMemoryBus& memoryBus);
 	~NESCPU();
 
 	// Resets the CPU.
@@ -141,7 +141,7 @@ private:
 	static bool GetOpSizeFromAddressingMode(NESCPUOpAddressingMode addrMode, int* outOpSize);
 
 	NESCPURegisters reg_;
-	NESMemoryBus& mem_;
+	NESCPUMemoryBus& mem_;
 
 	u8 currentOp_;
 	std::map<u8, NESCPUOpInfo>::const_iterator currentOpMappingIt_;
