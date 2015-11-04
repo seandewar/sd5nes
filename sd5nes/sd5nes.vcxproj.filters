@@ -86,8 +86,5 @@
     <ClInclude Include="NESPPU.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="NESPPUColor.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
   </ItemGroup>
 </Project>

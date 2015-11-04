@@ -92,7 +92,6 @@
     <ClInclude Include="NESMemoryConstants.h" />
     <ClInclude Include="NESMemory.h" />
     <ClInclude Include="NESPPU.h" />
-    <ClInclude Include="NESPPUColor.h" />
     <ClInclude Include="NESPPUMemoryBus.h" />
     <ClInclude Include="NESReadBuffer.h" />
     <ClInclude Include="NESTypes.h" />
