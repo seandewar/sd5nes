@@ -25,5 +25,6 @@ bool NESEmulator::LoadROM(const std::string& fileName)
 
 bool NESEmulator::RunFrame()
 {
-
+	// @TODO
+	return false;
 }

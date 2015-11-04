@@ -21,7 +21,7 @@ NESMemory::~NESMemory()
 
 void NESMemory::ZeroMemory()
 {
-	std::fill_n(data_, data_.size(), 0);
+	std::fill(data_.begin(), data_.end(), 0);
 }
 
 

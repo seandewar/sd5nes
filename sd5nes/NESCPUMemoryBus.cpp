@@ -1,7 +1,8 @@
 #include "NESCPUMemoryBus.h"
 
 
-NESCPUMemoryBus::NESCPUMemoryBus(NESMemory& ram, const NESMemory& prgRom) :
+NESCPUMemoryBus::NESCPUMemoryBus(NESPPU& ppu, NESMemory& ram, const NESMemory& prgRom) :
+ppu_(ppu),
 ram_(ram),
 prgRom_(prgRom)
 {

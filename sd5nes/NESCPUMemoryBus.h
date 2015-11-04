@@ -1,6 +1,7 @@
 #pragma once
 
 #include "NESMemory.h"
+#include "NESPPU.h"
 
 #include "NESMemoryConstants.h"
 
@@ -10,7 +11,7 @@
 class NESCPUMemoryBus : public INESMemoryInterface
 {
 public:
-	NESCPUMemoryBus(NESMemory& ram, const NESMemory& prgRom);
+	NESCPUMemoryBus(NESPPU& ppu, NESMemory& ram, const NESMemory& prgRom);
 	virtual ~NESCPUMemoryBus();
 
 	/**
@@ -35,6 +36,7 @@ public:
 	bool Read16(u16 addr, u16* outVal) const override;
 
 private:
+	NESPPU& ppu_;
 	NESMemory& ram_;
 	const NESMemory& prgRom_;
 
