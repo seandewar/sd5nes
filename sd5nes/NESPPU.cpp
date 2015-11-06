@@ -1,8 +1,8 @@
 #include "NESPPU.h"
 
 
-NESPPU::NESPPU(NESPPUMemoryBus& memBus) :
-memBus_(memBus)
+NESPPU::NESPPU(NESMemory& mem) :
+mem_(mem)
 {
 }
 
@@ -10,3 +10,5 @@ memBus_(memBus)
 NESPPU::~NESPPU()
 {
 }
+
+

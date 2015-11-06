@@ -36,9 +36,6 @@
     <ClCompile Include="NESCPUMemoryBus.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="NESPPUMemoryBus.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
     <ClCompile Include="NESPPU.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
@@ -75,12 +72,6 @@
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="NESReadBuffer.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="NESCPUMemoryBus.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="NESPPUMemoryBus.h">
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="NESPPU.h">

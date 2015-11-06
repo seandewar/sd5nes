@@ -4,8 +4,8 @@
 
 #include <SFML\Graphics\Color.hpp>
 
-#include "NESPPUMemoryBus.h"
 #include "NESTypes.h"
+#include "NESMemory.h"
 
 /**
 * Struct for PPU Color values.
@@ -53,7 +53,7 @@ struct NESPPURegisters
 	union
 	{
 		/* PPU Control Register 1 */
-		u8 control1;
+		u8 PPUCTRL0;
 
 		u8 nameTableNum : 2; /* Name table number. */
 		u8 incVramAddr : 1; /* Increments VRAM address by 1 if this is 0, otherwise by 32 if this is 1. */
@@ -67,7 +67,7 @@ struct NESPPURegisters
 	union
 	{
 		/* PPU Control Register 2 */
-		u8 control2;
+		u8 PPUCTRL1;
 
 		u8 colorMode : 1; /* Indicates colour (0) or monochrome mode (1). */
 		u8 clipBg : 1; /* Whether or not to clip the background (AKA hide the background in the left 8 pixels on the screen). */
@@ -81,7 +81,7 @@ struct NESPPURegisters
 	{
 		/* Status Register */
 		/* (Should be read only) */
-		u8 status;
+		u8 PPUSTAT;
 
 		u8 statusUnused : 4; /* Unused bits. */
 		u8 ignoreVramWrites : 1; /* If set to 1, writes to VRAM will be ignored. */
@@ -103,10 +103,10 @@ struct NESPPURegisters
 class NESPPU
 {
 public:
-	NESPPU(NESPPUMemoryBus& memBus);
+	NESPPU(NESMemory& mem);
 	~NESPPU();
 
 private:
-	NESPPUMemoryBus& memBus_;
+	NESMemory& mem_;
 };
 

@@ -6,7 +6,7 @@
 #include <cassert>
 
 
-std::map<u8, NESCPUOpInfo> NESCPU::opInfos_;
+std::unordered_map<u8, NESCPUOpInfo> NESCPU::opInfos_;
 NESCPUStaticInit NESCPU::staticInit_;
 
 
@@ -310,8 +310,8 @@ NESCPUStaticInit::NESCPUStaticInit()
 		} \
 
 
-NESCPU::NESCPU(NESCPUMemoryBus& memoryBus) :
-mem_(memoryBus),
+NESCPU::NESCPU(NESMemory& mem) :
+mem_(mem),
 currentOp_(NES_OP_INVALID),
 currentOpCycleCount_(0),
 currentOpChangedPC_(false)

@@ -3,6 +3,7 @@
 /**********************/
 /***** CPU Memory *****/
 /**********************/
+#define NES_MEMORY_CPU_SIZE 0xFFFF
 
 /* RAM */
 #define NES_MEMORY_RAM_START 0x0200

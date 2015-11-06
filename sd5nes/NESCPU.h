@@ -1,12 +1,12 @@
 #pragma once
 
 #include "NESTypes.h"
-#include "NESCPUMemoryBus.h"
 
 #include "NESCPUOpConstants.h"
 #include "NESMemoryConstants.h"
+#include "NESMemory.h"
 
-#include <map>
+#include <unordered_map>
 
 /**
 * Struct containing the registers used by the NES CPU.
@@ -107,14 +107,14 @@ struct NESCPUOpInfo
 };
 
 /**
-* Handles emulation of the 6502 CPU used in the NES.
+* Handles emulation of the 6502 2A03 CPU used in the NES.
 */
 class NESCPU
 {
 	friend struct NESCPUStaticInit;
 
 public:
-	NESCPU(NESCPUMemoryBus& memoryBus);
+	NESCPU(NESMemory& mem);
 	~NESCPU();
 
 	// Resets the CPU.
@@ -128,7 +128,7 @@ private:
 	static NESCPUStaticInit staticInit_;
 
 	// Contains mapped opcode info.
-	static std::map<u8, NESCPUOpInfo> opInfos_;
+	static std::unordered_map<u8, NESCPUOpInfo> opInfos_;
 
 	// Registers an opcode mapping.
 	static void RegisterOpMapping(u8 op, NESOpFuncPointer opFunc, NESCPUOpAddressingMode addrMode, int cycleCount);
@@ -141,10 +141,10 @@ private:
 	static bool GetOpSizeFromAddressingMode(NESCPUOpAddressingMode addrMode, int* outOpSize);
 
 	NESCPURegisters reg_;
-	NESCPUMemoryBus& mem_;
+	NESMemory& mem_;
 
 	u8 currentOp_;
-	std::map<u8, NESCPUOpInfo>::const_iterator currentOpMappingIt_;
+	std::unordered_map<u8, NESCPUOpInfo>::const_iterator currentOpMappingIt_;
 	int currentOpCycleCount_;
 	bool currentOpChangedPC_;
 
