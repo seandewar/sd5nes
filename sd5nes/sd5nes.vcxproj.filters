@@ -33,9 +33,6 @@
     <ClCompile Include="NESMemory.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="NESCPUMemoryBus.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
     <ClCompile Include="NESPPU.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>

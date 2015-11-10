@@ -5,6 +5,7 @@
 #include "NESCPUOpConstants.h"
 #include "NESMemoryConstants.h"
 #include "NESMemory.h"
+#include "NESPPU.h"
 
 #include <unordered_map>
 
@@ -107,6 +108,22 @@ struct NESCPUOpInfo
 };
 
 /**
+* Handles emulation of the NES's CPU memory + mirroring.
+*/
+class NESCPUMemory : public NESMemory
+{
+public:
+	NESCPUMemory(NESPPURegisters& ppuReg);
+	~NESCPUMemory();
+
+	bool Write8(u16 addr, u8 val) override;
+	bool Read8(u16 addr, u8* outVal) const override;
+
+private:
+	NESPPURegisters& ppuReg_;
+};
+
+/**
 * Handles emulation of the 6502 2A03 CPU used in the NES.
 */
 class NESCPU
@@ -114,7 +131,7 @@ class NESCPU
 	friend struct NESCPUStaticInit;
 
 public:
-	NESCPU(NESMemory& mem);
+	NESCPU(NESCPUMemory& mem);
 	~NESCPU();
 
 	// Resets the CPU.
@@ -141,7 +158,7 @@ private:
 	static bool GetOpSizeFromAddressingMode(NESCPUOpAddressingMode addrMode, int* outOpSize);
 
 	NESCPURegisters reg_;
-	NESMemory& mem_;
+	NESCPUMemory& mem_;
 
 	u8 currentOp_;
 	std::unordered_map<u8, NESCPUOpInfo>::const_iterator currentOpMappingIt_;

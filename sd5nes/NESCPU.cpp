@@ -6,6 +6,29 @@
 #include <cassert>
 
 
+NESCPUMemory::NESCPUMemory(NESPPURegisters& ppuReg) :
+ppuReg_(ppuReg)
+{
+}
+
+
+NESCPUMemory::~NESCPUMemory()
+{
+}
+
+
+bool NESCPUMemory::Write8(u16 addr, u8 val)
+{
+	return NESMemory::Write8(addr, val);
+}
+
+
+bool NESCPUMemory::Read8(u16 addr, u8* outVal) const
+{
+	return NESMemory::Read8(addr, outVal);
+}
+
+
 std::unordered_map<u8, NESCPUOpInfo> NESCPU::opInfos_;
 NESCPUStaticInit NESCPU::staticInit_;
 
@@ -310,7 +333,7 @@ NESCPUStaticInit::NESCPUStaticInit()
 		} \
 
 
-NESCPU::NESCPU(NESMemory& mem) :
+NESCPU::NESCPU(NESCPUMemory& mem) :
 mem_(mem),
 currentOp_(NES_OP_INVALID),
 currentOpCycleCount_(0),
