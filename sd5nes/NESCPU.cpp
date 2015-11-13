@@ -4,29 +4,7 @@
 #include "NESHelper.h"
 
 #include <cassert>
-
-
-NESCPUMemory::NESCPUMemory(NESPPURegisters& ppuReg) :
-ppuReg_(ppuReg)
-{
-}
-
-
-NESCPUMemory::~NESCPUMemory()
-{
-}
-
-
-bool NESCPUMemory::Write8(u16 addr, u8 val)
-{
-	return NESMemory::Write8(addr, val);
-}
-
-
-bool NESCPUMemory::Read8(u16 addr, u8* outVal) const
-{
-	return NESMemory::Read8(addr, outVal);
-}
+#include <sstream>
 
 
 std::unordered_map<u8, NESCPUOpInfo> NESCPU::opInfos_;
@@ -312,28 +290,14 @@ NESCPUStaticInit::NESCPUStaticInit()
 }
 
 
-// Defines variables argValVarName and crossedPageBoundaryVarName
-// and auto returns false from the host op function if failed read.
-// @NOTE: It is OK to use a semi-colon after using this macro function.
-#define OP_HANDLE_READ_ARG(argValVarName, crossedPageBoundaryVarName) \
-		u8 argValVarName; \
-		bool crossedPageBoundaryVarName; \
-		if (!ReadOpArgValue(&argValVarName, &crossedPageBoundaryVarName)) { \
-			return false; \
-		} \
+// Defines variables argVal and crossedPageBoundary.
+#define OP_READ_ARG() \
+		const auto valPair = ReadOpArgValue(); \
+		const u8& argVal = valPair.first; \
+		const bool crossedPageBoundary = valPair.second; \
 
 
-// Defines variable argValVarName
-// and auto returns false from the host op function if failed read.
-// @NOTE: It is OK to use a semi-colon after using this macro function.
-#define OP_HANDLE_READ_ARG_SIMPLE(argValVarName) \
-		u8 argValVarName; \
-		if (!ReadOpArgValue(&argValVarName, nullptr)) { \
-			return false; \
-		} \
-
-
-NESCPU::NESCPU(NESCPUMemory& mem) :
+NESCPU::NESCPU(NESMemory& mem) :
 mem_(mem),
 currentOp_(NES_OP_INVALID),
 currentOpCycleCount_(0),
@@ -381,17 +345,15 @@ NESCPUOpAddressingMode NESCPU::GetOpAddressingMode(u8 op)
 }
 
 
-bool NESCPU::GetOpSizeFromAddressingMode(NESCPUOpAddressingMode addrMode, int* outOpSize)
+int NESCPU::GetOpSizeFromAddressingMode(NESCPUOpAddressingMode addrMode)
 {
-	int opSize;
 	switch (addrMode)
 	{
 	// 1 byte addressing modes.
 	case NESCPUOpAddressingMode::ACCUMULATOR:
 	case NESCPUOpAddressingMode::RELATIVE:
 	case NESCPUOpAddressingMode::IMPLIED:
-		opSize = 1;
-		break;
+		return 1;
 
 	// 2 byte addressing modes.
 	case NESCPUOpAddressingMode::IMMEDIATE:
@@ -400,61 +362,55 @@ bool NESCPU::GetOpSizeFromAddressingMode(NESCPUOpAddressingMode addrMode, int* o
 	case NESCPUOpAddressingMode::ZEROPAGE_Y:
 	case NESCPUOpAddressingMode::INDIRECT_X:
 	case NESCPUOpAddressingMode::INDIRECT_Y:
-		opSize = 2;
-		break;
+		return 2;
 
 	// 3 byte addressing modes.
 	case NESCPUOpAddressingMode::ABSOLUTE:
 	case NESCPUOpAddressingMode::ABSOLUTE_X:
 	case NESCPUOpAddressingMode::ABSOLUTE_Y:
 	case NESCPUOpAddressingMode::INDIRECT:
-		opSize = 3;
-		break;
-
-	// Unknown addressing mode.
-	default:
-		return false;
+		return 3;
 	}
 
-	// Write to outOpSize if not null.
-	if (outOpSize != nullptr)
-		*outOpSize = opSize;
-
-	return true;
+	// Unknown addressing mode.
+	assert("Unknown addressing mode supplied!" && false);
+	return 0;
 }
 
 
-bool NESCPU::ExecuteNextOp()
+void NESCPU::ExecuteNextOp()
 {
 	// Get the next opcode.
-	if (!mem_.Read8(reg_.PC, &currentOp_))
-		return false;
+	try
+	{
+		currentOp_ = mem_.Read8(reg_.PC);
+	}
+	catch (const NESMemoryException&)
+	{
+		throw NESCPUExecutionException("Could not read the next opcode for program execution.", reg_);
+	}
 
 	// Locate the mapping for this opcode.
 	const auto it = opInfos_.find(currentOp_);
 	if (it == opInfos_.end())
-		return false; // Unknown opcode.
+	{
+		std::ostringstream oss;
+		oss << "Unknown opcode: 0x" << std::hex << +currentOp_;
+		throw NESCPUExecutionException(oss.str(), reg_);
+	}
 
-	// Execute the opcode func.
 	currentOpMappingIt_ = it;
 	currentOpCycleCount_ = it->second.cycleCount;
 	currentOpChangedPC_ = false;
-	if (!(this->*it->second.opFunc)())
-		return false; // Failed to execute opcode - program execution error.
-
-	int opSize;
-	if (!GetOpSizeFromAddressingMode(it->second.addrMode, &opSize))
-		return false;
+	(this->*it->second.opFunc)(); // Execute opcode func.
 
 	// Go to the next instruction.
 	if (!currentOpChangedPC_)
-		reg_.PC += opSize;
-
-	return true;
+		reg_.PC += GetOpSizeFromAddressingMode(it->second.addrMode);
 }
 
 
-bool NESCPU::ReadOpArgValue(u8* outVal, bool* outCrossedPageBoundary)
+std::pair<u8, bool> NESCPU::ReadOpArgValue()
 {
 	u16 addr;
 	bool crossedPageBoundary;
@@ -462,14 +418,7 @@ bool NESCPU::ReadOpArgValue(u8* outVal, bool* outCrossedPageBoundary)
 	switch (currentOpMappingIt_->second.addrMode)
 	{
 	case NESCPUOpAddressingMode::ACCUMULATOR:
-		// Read from accumulator instead.
-		if (outVal != nullptr)
-			*outVal = reg_.A;
-
-		if (outCrossedPageBoundary != nullptr)
-			*outCrossedPageBoundary = false;
-		return true;
-
+		return std::make_pair(reg_.A, false); // Read from accumulator instead.
 
 	case NESCPUOpAddressingMode::IMMEDIATE:
 	case NESCPUOpAddressingMode::RELATIVE:
@@ -477,173 +426,109 @@ bool NESCPU::ReadOpArgValue(u8* outVal, bool* outCrossedPageBoundary)
 		addr = reg_.PC + 1;
 		break;
 
-
 	case NESCPUOpAddressingMode::ABSOLUTE:
 	case NESCPUOpAddressingMode::INDIRECT:
 		crossedPageBoundary = false;
-		if (!mem_.Read16(reg_.PC + 1, &addr))
-			return false;
+		addr = mem_.Read16(reg_.PC + 1);
 		break;
 
-
 	case NESCPUOpAddressingMode::ABSOLUTE_X:
-		if (!mem_.Read16(reg_.PC + 1, &addr))
-			return false;
-
+		addr = mem_.Read16(reg_.PC + 1);
 		crossedPageBoundary = !NESHelper::IsInSamePage(addr, addr + reg_.X);
 		addr += reg_.X;
 		break;
 
-
 	case NESCPUOpAddressingMode::ABSOLUTE_Y:
-		if (!mem_.Read16(reg_.PC + 1, &addr))
-			return false;
-
+		addr = mem_.Read16(reg_.PC + 1);
 		crossedPageBoundary = !NESHelper::IsInSamePage(addr, addr + reg_.Y);
 		addr += reg_.Y;
 		break;
 
-
-		// 8-bit representation of address used to read Zero Page and Indirect addressing types.
-		u8 addr8;
-
-
 	case NESCPUOpAddressingMode::ZEROPAGE:
-		if (!mem_.Read8(reg_.PC + 1, &addr8))
-			return false;
-
+		addr = mem_.Read8(reg_.PC + 1);
 		crossedPageBoundary = false;
-		addr = addr8;
 		break;
 
-
 	case NESCPUOpAddressingMode::ZEROPAGE_X:
-		if (!mem_.Read8(reg_.PC + 1, &addr8))
-			return false;
-
+		u8 addr8 = mem_.Read8(reg_.PC + 1);
 		crossedPageBoundary = false;
 		addr8 += reg_.X; // Will wrap around if X is too big.
 		addr = addr8;
 		break;
 
-
 	case NESCPUOpAddressingMode::ZEROPAGE_Y:
-		if (!mem_.Read8(reg_.PC + 1, &addr8))
-			return false;
-
+		u8 addr8 = mem_.Read8(reg_.PC + 1);
 		crossedPageBoundary = false;
 		addr8 += reg_.Y; // Will wrap around if Y is too big.
 		addr = addr8;
 		break;
 
-
 	case NESCPUOpAddressingMode::INDIRECT_X:
-		if (!mem_.Read8(reg_.PC + 1, &addr8))
-			return false;
-
+		u8 addr8 = mem_.Read8(reg_.PC + 1);
 		crossedPageBoundary = false;
 		addr8 += reg_.X; // Will wrap around if X is too big.
-
-		// Read address from memory at addr8 into addr.
-		if (!mem_.Read16(addr8, &addr))
-			return false;
+		addr = mem_.Read16(addr8); // Read address from memory at addr8 into addr.
 		break;
 
-
 	case NESCPUOpAddressingMode::INDIRECT_Y:
-		if (!mem_.Read8(reg_.PC + 1, &addr8))
-			return false;
-
-		// Read address from memory at addr8 into addr.
-		if (!mem_.Read16(addr8, &addr))
-			return false;
-
+		u8 addr8 = mem_.Read8(reg_.PC + 1);
+		addr = mem_.Read16(addr8); // Read address from memory at addr8 into addr.
 		crossedPageBoundary = !NESHelper::IsInSamePage(addr, addr + reg_.Y);
 		addr += reg_.Y;
 		break;
 
-
-		// Unhandled addressing mode!
 	default:
-		return false;
+		// Unhandled addressing mode!
+		assert("Unknown addressing mode supplied!" && false);
+		return std::make_pair(0, false);
 	}
 
 	// Assume reading from main memory.
-	// Write to outVal if not null.
-	if (outVal != nullptr)
-	{
-		if (!mem_.Read8(addr, outVal))
-			return false; // Failed to read from address - program error.
-	}
-
-	// Write to crossedPageBoundary if not null.
-	if (outCrossedPageBoundary != nullptr)
-		*outCrossedPageBoundary = crossedPageBoundary;
-
-	return true;
+	return std::make_pair(mem_.Read8(addr), crossedPageBoundary);
 }
 
 
-bool NESCPU::WriteOpResult(u8 result)
+void NESCPU::WriteOpResult(u8 result)
 {
 	u16 addr;
 	switch (currentOpMappingIt_->second.addrMode)
 	{
 	case NESCPUOpAddressingMode::ACCUMULATOR:
-		// Write to accumulator instead.
-		reg_.A = result;
-		return true;
-
+		reg_.A = result; // Write to accumulator instead.
+		return;
 
 	case NESCPUOpAddressingMode::ABSOLUTE:
-		if (!mem_.Read16(reg_.PC + 1, &addr))
-			return false;
-
+		addr = mem_.Read16(reg_.PC + 1);
 		break;
-
 
 	case NESCPUOpAddressingMode::ABSOLUTE_X:
-		if (!mem_.Read16(reg_.PC + 1, &addr))
-			return false;
-
-		addr += reg_.X;
+		addr = mem_.Read16(reg_.PC + 1) + reg_.X;
 		break;
-
-
-		// 8-bit representation of address used to read Zero Page and Indirect addressing types.
-		u8 addr8;
-
 
 	case NESCPUOpAddressingMode::ZEROPAGE:
-		if (!mem_.Read8(reg_.PC + 1, &addr8))
-			return false;
-
-		addr = addr8;
+		addr = mem_.Read8(reg_.PC + 1);
 		break;
 
-
 	case NESCPUOpAddressingMode::ZEROPAGE_X:
-		if (!mem_.Read8(reg_.PC + 1, &addr8))
-			return false;
-
+		u8 addr8 = mem_.Read8(reg_.PC + 1);
 		addr8 += reg_.X; // Will wrap around if X is too big.
 		addr = addr8;
 		break;
 
-
-		// Unhandled addressing mode!
 	default:
-		return false;
+		// Unhandled addressing mode!
+		assert("Unknown addressing mode supplied!" && false);
+		return;
 	}
 
 	// Assume writing to main memory at addr.
-	return mem_.Write8(addr, result);
+	mem_.Write8(addr, result);
 }
 
 
-bool NESCPU::ExecuteOpADC()
+void NESCPU::ExecuteOpADC()
 {
-	OP_HANDLE_READ_ARG(argVal, crossedPageBoundary);
+	OP_READ_ARG();
 
 	// ADC takes 1 extra CPU cycle if a page boundary was crossed.
 	if (crossedPageBoundary)
@@ -657,13 +542,12 @@ bool NESCPU::ExecuteOpADC()
 	UpdateRegN(static_cast<u8>(res));
 	reg_.V = (((~(reg_.A ^ argVal) & (reg_.A ^ res)) >> 7) & 1); // Check if the sign has changed due to overflow.
 	reg_.A = static_cast<u8>(res);
-	return true;
 }
 
 
-bool NESCPU::ExecuteOpAND()
+void NESCPU::ExecuteOpAND()
 {
-	OP_HANDLE_READ_ARG(argVal, crossedPageBoundary);
+	OP_READ_ARG();
 
 	// AND takes 1 extra CPU cycle if a page boundary was crossed.
 	if (crossedPageBoundary)
@@ -675,32 +559,29 @@ bool NESCPU::ExecuteOpAND()
 	UpdateRegZ(res);
 	UpdateRegN(res);
 	reg_.A = res;
-	return true;
 }
 
 
-bool NESCPU::ExecuteOpASL()
+void NESCPU::ExecuteOpASL()
 {
-	OP_HANDLE_READ_ARG_SIMPLE(argVal);
+	OP_READ_ARG();
 
 	// C <- [76543210] <- 0
 	const u8 res = (argVal << 1);
-	if (!WriteOpResult(res))
-		return false;
+	WriteOpResult(res);
 
 	reg_.C = ((argVal >> 7) & 1); // Set carry bit if bit 7 was originally 1.
 	UpdateRegZ(res);
 	UpdateRegN(res);
-	return true;
 }
 
 
-bool NESCPU::ExecuteOpAsBranch(bool shouldBranch, int branchSamePageCycleExtra, int branchDiffPageCycleExtra)
+void NESCPU::ExecuteOpAsBranch(bool shouldBranch, int branchSamePageCycleExtra, int branchDiffPageCycleExtra)
 {
 	if (!shouldBranch)
-		return true;
+		return;
 
-	OP_HANDLE_READ_ARG_SIMPLE(argVal);
+	OP_READ_ARG(argVal);
 
 	const u16 jumpPC = reg_.PC + argVal;
 
@@ -711,207 +592,141 @@ bool NESCPU::ExecuteOpAsBranch(bool shouldBranch, int branchSamePageCycleExtra, 
 		currentOpCycleCount_ += branchSamePageCycleExtra;
 
 	UpdateRegPC(jumpPC);
-	return true;
 }
 
 
-bool NESCPU::ExecuteOpBCC()
+void NESCPU::ExecuteOpBCC()
 {
 	// Branch on C = 0
-	return ExecuteOpAsBranch((reg_.C == 0), 1, 2);
+	ExecuteOpAsBranch((reg_.C == 0), 1, 2);
 }
 
 
-bool NESCPU::ExecuteOpBCS()
+void NESCPU::ExecuteOpBCS()
 {
 	// Branch on C = 1
-	return ExecuteOpAsBranch((reg_.C == 1), 1, 2);
+	ExecuteOpAsBranch((reg_.C == 1), 1, 2);
 }
 
 
-bool NESCPU::ExecuteOpBEQ()
+void NESCPU::ExecuteOpBEQ()
 {
 	// Branch on Z = 1
-	return ExecuteOpAsBranch((reg_.Z == 1), 1, 2);
+	ExecuteOpAsBranch((reg_.Z == 1), 1, 2);
 }
 
 
-bool NESCPU::ExecuteOpBMI()
+void NESCPU::ExecuteOpBMI()
 {
 	// Branch on N = 1
-	return ExecuteOpAsBranch((reg_.N == 1), 1, 2);
+	ExecuteOpAsBranch((reg_.N == 1), 1, 2);
 }
 
 
-bool NESCPU::ExecuteOpBNE()
+void NESCPU::ExecuteOpBNE()
 {
 	// Branch on Z = 0
-	return ExecuteOpAsBranch((reg_.Z == 0), 1, 2);
+	ExecuteOpAsBranch((reg_.Z == 0), 1, 2);
 }
 
 
-bool NESCPU::ExecuteOpBPL()
+void NESCPU::ExecuteOpBPL()
 {
 	// Branch on N = 0
-	return ExecuteOpAsBranch((reg_.N == 0), 1, 2);
+	ExecuteOpAsBranch((reg_.N == 0), 1, 2);
 }
 
 
-bool NESCPU::ExecuteOpBVC()
+void NESCPU::ExecuteOpBVC()
 {
 	// Branch on V = 0
-	return ExecuteOpAsBranch((reg_.V == 0), 1, 2);
+	ExecuteOpAsBranch((reg_.V == 0), 1, 2);
 }
 
 
-bool NESCPU::ExecuteOpBVS()
+void NESCPU::ExecuteOpBVS()
 {
 	// Branch on V = 1
-	return ExecuteOpAsBranch((reg_.V == 1), 1, 2);
+	ExecuteOpAsBranch((reg_.V == 1), 1, 2);
 }
 
 
-bool NESCPU::ExecuteOpBIT()
+void NESCPU::ExecuteOpBIT()
 {
-	OP_HANDLE_READ_ARG_SIMPLE(argVal);
+	OP_READ_ARG();
 
 	// A /\ M, M7 -> N, M6 -> V
 	UpdateRegN(argVal);
 	UpdateRegZ((argVal & reg_.A));
 	reg_.V = ((argVal >> 6) & 1);
-	return true;
 }
 
 
-bool NESCPU::StackPush8(u8 val)
+void NESCPU::StackPush8(u8 val)
 {
 	// @NOTE: Some games purposely overflow the stack
 	// So there is no need to do any bounds checks.
-
-	if (!mem_.Write8(NES_CPU_STACK_START + (reg_.SP++), val))
-		return false;
-
-	return true;
+	mem_.Write8(NES_CPU_STACK_START + (reg_.SP++), val);
 }
 
 
-bool NESCPU::StackPush16(u16 val)
+void NESCPU::StackPush16(u16 val)
 {
-	// Push most-significant byte first.
-	if (!StackPush8((val & 0xFF00) >> 8))
-		return false;
-
-	if (!StackPush8((val & 0x00FF)))
-		return false;
-
-	return true;
+	// Push most-significant byte first, then the least.
+	StackPush8((val & 0xFF00) >> 8);
+	StackPush8((val & 0x00FF));
 }
 
 
-bool NESCPU::StackPull8(u8* outVal)
+u8 NESCPU::StackPull8()
 {
 	// @NOTE: Some games purposely underflow the stack
 	// So there is no need to do any bounds checks.
-
-	// Will write to outVal if it's not null.
-	if (!mem_.Read8(NES_CPU_STACK_START + (--reg_.SP), outVal))
-		return false;
-
-	return true;
+	return mem_.Read8(NES_CPU_STACK_START + (--reg_.SP));
 }
 
 
-bool NESCPU::StackPull16(u16* outVal)
+u16 NESCPU::StackPull16()
 {
-	u8 low, hi;
-
-	// Pull least-significant byte first.
-	if (!StackPull8(&low))
-		return false;
-
-	if (!StackPull8(&hi))
-		return false;
+	// Pull least-significant byte first, then the most.
+	const u8 low = StackPull8();
+	const u8 hi = StackPull8();
 
 	// Convert to 16-bit val.
-	if (outVal != nullptr)
-		*outVal = ((hi << 8) | low);
-
-	return true;
+	return ((hi << 8) | low);
 }
 
 
-bool NESCPU::ExecuteInterrupt(NESCPUInterrupt interruptType)
+void NESCPU::ExecuteInterrupt(NESCPUInterrupt interruptType)
 {
 	// @TODO handle other interrupts.
 	switch (interruptType)
 	{
 	case NESCPUInterrupt::IRQBRK:
 		reg_.I = 1;
-
-		u16 val;
-		if (!mem_.Read16(NES_CPU_IRQBRK_VECTOR_START, &val))
-			return false;
-
-		UpdateRegPC(val);
+		UpdateRegPC(mem_.Read16(NES_CPU_IRQBRK_VECTOR_START));
 		break;
 
 	default:
-		return false;
+		assert("Unknown interrupt type encountered!" && false);
+		return;
 	}
-
-	return true;
 }
 
 
-bool NESCPU::ExecuteOpBRK()
+void NESCPU::ExecuteOpBRK()
 {
 	// Forced Interrupt PC + 2 toS P toS
-	if (!StackPush16(reg_.PC + 1))
-		return false;
-
+	StackPush16(reg_.PC + 1);
 	reg_.B = 1; // Set break flag before pushing P.
-	if (!StackPush16(reg_.P))
-		return false;
-
-	return ExecuteInterrupt(NESCPUInterrupt::IRQBRK);
+	StackPush16(reg_.P);
+	ExecuteInterrupt(NESCPUInterrupt::IRQBRK);
 }
 
 
-bool NESCPU::ExecuteOpCLC()
+void NESCPU::ExecuteOpCMP()
 {
-	// 0 -> C
-	reg_.C = 0;
-	return true;
-}
-
-
-bool NESCPU::ExecuteOpCLD()
-{
-	// 0 -> D
-	reg_.D = 0;
-	return true;
-}
-
-
-bool NESCPU::ExecuteOpCLI()
-{
-	// 0 -> I
-	reg_.I = 0;
-	return true;
-}
-
-
-bool NESCPU::ExecuteOpCLV()
-{
-	// 0 -> V
-	reg_.V = 0;
-	return true;
-}
-
-
-bool NESCPU::ExecuteOpCMP()
-{
-	OP_HANDLE_READ_ARG(argVal, crossedPageBoundary);
+	OP_READ_ARG();
 
 	// CMP takes 1 extra CPU cycle if a page boundary was crossed.
 	if (crossedPageBoundary)
@@ -923,13 +738,12 @@ bool NESCPU::ExecuteOpCMP()
 	reg_.C = (res < 0x100 ? 1 : 0);
 	UpdateRegN(static_cast<u8>(res));
 	UpdateRegZ((res & 0xFF)); // Check first 8-bits.
-	return true;
 }
 
 
-bool NESCPU::ExecuteOpCPX()
+void NESCPU::ExecuteOpCPX()
 {
-	OP_HANDLE_READ_ARG_SIMPLE(argVal);
+	OP_READ_ARG();
 
 	// X - M
 	const uleast16 res = reg_.X - argVal;
@@ -937,13 +751,12 @@ bool NESCPU::ExecuteOpCPX()
 	reg_.C = (res < 0x100 ? 1 : 0);
 	UpdateRegN(static_cast<u8>(res));
 	UpdateRegZ((res & 0xFF)); // Check first 8-bits.
-	return true;
 }
 
 
-bool NESCPU::ExecuteOpCPY()
+void NESCPU::ExecuteOpCPY()
 {
-	OP_HANDLE_READ_ARG_SIMPLE(argVal);
+	OP_READ_ARG(argVal);
 
 	// Y - M
 	const uleast16 res = reg_.Y - argVal;
@@ -951,48 +764,43 @@ bool NESCPU::ExecuteOpCPY()
 	reg_.C = (res < 0x100 ? 1 : 0);
 	UpdateRegN(static_cast<u8>(res));
 	UpdateRegZ((res & 0xFF)); // Check first 8-bits.
-	return true;
 }
 
 
-bool NESCPU::ExecuteOpDEC()
+void NESCPU::ExecuteOpDEC()
 {
-	OP_HANDLE_READ_ARG_SIMPLE(argVal);
+	OP_READ_ARG();
 
 	// M - 1 -> M
 	const u8 res = argVal - 1;
-	if (!WriteOpResult(res))
-		return false;
+	WriteOpResult(res);
 
 	UpdateRegN(res);
 	UpdateRegZ(res);
-	return true;
 }
 
 
-bool NESCPU::ExecuteOpDEX()
+void NESCPU::ExecuteOpDEX()
 {
 	// X - 1 -> X
 	--reg_.X;
 	UpdateRegN(reg_.X);
 	UpdateRegZ(reg_.X);
-	return true;
 }
 
 
-bool NESCPU::ExecuteOpDEY()
+void NESCPU::ExecuteOpDEY()
 {
 	// Y - 1 -> Y
 	--reg_.Y;
 	UpdateRegN(reg_.Y);
 	UpdateRegZ(reg_.Y);
-	return true;
 }
 
 
-bool NESCPU::ExecuteOpEOR()
+void NESCPU::ExecuteOpEOR()
 {
-	OP_HANDLE_READ_ARG(argVal, crossedPageBoundary);
+	OP_READ_ARG();
 
 	// EOR takes 1 extra CPU cycle if a page boundary was crossed.
 	if (crossedPageBoundary)
@@ -1004,73 +812,64 @@ bool NESCPU::ExecuteOpEOR()
 	UpdateRegN(res);
 	UpdateRegZ(res);
 	reg_.A = res;
-	return true;
 }
 
 
-bool NESCPU::ExecuteOpINC()
+void NESCPU::ExecuteOpINC()
 {
-	OP_HANDLE_READ_ARG_SIMPLE(argVal);
+	OP_READ_ARG();
 	
 	// M + 1 -> M
 	const u8 res = argVal + 1;
-	if (!WriteOpResult(res))
-		return false;
+	WriteOpResult(res);
 
 	UpdateRegN(res);
 	UpdateRegZ(res);
-	return true;
 }
 
 
-bool NESCPU::ExecuteOpINX()
+void NESCPU::ExecuteOpINX()
 {
 	// X + 1 -> X
 	++reg_.X;
 	UpdateRegN(reg_.X);
 	UpdateRegZ(reg_.X);
-	return true;
 }
 
 
-bool NESCPU::ExecuteOpINY()
+void NESCPU::ExecuteOpINY()
 {
 	// Y + 1 -> Y
 	++reg_.Y;
 	UpdateRegN(reg_.Y);
 	UpdateRegZ(reg_.Y);
-	return true;
 }
 
 
-bool NESCPU::ExecuteOpJMP()
+void NESCPU::ExecuteOpJMP()
 {
-	OP_HANDLE_READ_ARG_SIMPLE(argVal);
+	OP_READ_ARG();
 
 	// (PC + 1) -> PCL
 	// (PC + 2) -> PCH
 	UpdateRegPC(argVal);
-	return true;
 }
 
 
-bool NESCPU::ExecuteOpJSR()
+void NESCPU::ExecuteOpJSR()
 {
-	OP_HANDLE_READ_ARG_SIMPLE(argVal);
+	OP_READ_ARG();
 
 	// PC + 2 toS, (PC + 1) -> PCL
 	//             (PC + 2) -> PCH
-	if (!StackPush16(reg_.PC - 1))
-		return false;
-
+	StackPush16(reg_.PC - 1);
 	UpdateRegPC(argVal);
-	return true;
 }
 
 
-bool NESCPU::ExecuteOpLDA()
+void NESCPU::ExecuteOpLDA()
 {
-	OP_HANDLE_READ_ARG(argVal, crossedPageBoundary);
+	OP_READ_ARG();
 
 	// LDA takes 1 extra CPU cycle if a page boundary was crossed.
 	if (crossedPageBoundary)
@@ -1080,13 +879,12 @@ bool NESCPU::ExecuteOpLDA()
 	UpdateRegN(argVal);
 	UpdateRegZ(argVal);
 	reg_.A = argVal;
-	return true;
 }
 
 
-bool NESCPU::ExecuteOpLDX()
+void NESCPU::ExecuteOpLDX()
 {
-	OP_HANDLE_READ_ARG(argVal, crossedPageBoundary);
+	OP_READ_ARG();
 
 	// LDX takes 1 extra CPU cycle if a page boundary was crossed.
 	if (crossedPageBoundary)
@@ -1096,13 +894,12 @@ bool NESCPU::ExecuteOpLDX()
 	UpdateRegN(argVal);
 	UpdateRegZ(argVal);
 	reg_.X = argVal;
-	return true;
 }
 
 
-bool NESCPU::ExecuteOpLDY()
+void NESCPU::ExecuteOpLDY()
 {
-	OP_HANDLE_READ_ARG(argVal, crossedPageBoundary);
+	OP_READ_ARG();
 
 	// LDY takes 1 extra CPU cycle if a page boundary was crossed.
 	if (crossedPageBoundary)
@@ -1112,36 +909,26 @@ bool NESCPU::ExecuteOpLDY()
 	UpdateRegN(argVal);
 	UpdateRegZ(argVal);
 	reg_.Y = argVal;
-	return true;
 }
 
 
-bool NESCPU::ExecuteOpLSR()
+void NESCPU::ExecuteOpLSR()
 {
-	OP_HANDLE_READ_ARG_SIMPLE(argVal);
+	OP_READ_ARG();
 
 	// 0 -> [76543210] -> C
 	const u8 res = (argVal >> 1);
-	if (!WriteOpResult(res))
-		return false;
+	WriteOpResult(res);
 
 	reg_.C = ((argVal & 1)); // Set carry bit if bit 0 was originally 1.
 	UpdateRegZ(res);
 	UpdateRegN(res);
-	return true;
 }
 
 
-bool NESCPU::ExecuteOpNOP()
+void NESCPU::ExecuteOpORA()
 {
-	// Do nothing.
-	return true;
-}
-
-
-bool NESCPU::ExecuteOpORA()
-{
-	OP_HANDLE_READ_ARG(argVal, crossedPageBoundary);
+	OP_READ_ARG();
 
 	// ORA takes 1 extra CPU cycle if a page boundary was crossed.
 	if (crossedPageBoundary)
@@ -1153,74 +940,51 @@ bool NESCPU::ExecuteOpORA()
 	UpdateRegZ(res);
 	UpdateRegN(res);
 	reg_.A = res;
-	return true;
 }
 
 
-bool NESCPU::ExecuteOpPHA()
-{
-	// A toS
-	return StackPush8(reg_.A);
-}
-
-
-bool NESCPU::ExecuteOpPHP()
-{
-	// P toS
-	return StackPush8(reg_.P);
-}
-
-
-bool NESCPU::ExecuteOpPLA()
+void NESCPU::ExecuteOpPLA()
 {
 	// A fromS.
-	u8 val;
-	if (!StackPull8(&val))
-		return false;
+	const u8 val = StackPull8();
 
 	UpdateRegZ(val);
 	UpdateRegN(val);
 	reg_.A = val;
-	return true;
 }
 
 
-bool NESCPU::ExecuteOpPLP()
+void NESCPU::ExecuteOpPLP()
 {
 	// P fromS.
-	u8 val;
-	if (!StackPull8(&val))
-		return false;
+	const u8 val = StackPull8();
 
 	UpdateRegZ(val);
 	UpdateRegN(val);
 	reg_.P = val;
-	return true;
 }
 
 
-bool NESCPU::ExecuteOpROL()
+void NESCPU::ExecuteOpROL()
 {
-	OP_HANDLE_READ_ARG_SIMPLE(argVal);
+	OP_READ_ARG();
 
 	// C <- [7654321] <- C
 	uleast16 res = (argVal << 1);
 	if (reg_.C == 1)
 		res |= 1;
 
-	if (!WriteOpResult(static_cast<u8>(res)))
-		return false;
+	WriteOpResult(static_cast<u8>(res));
 
 	reg_.C = (res > 0xFF ? 1 : 0);
 	UpdateRegZ(static_cast<u8>(res));
 	UpdateRegN(static_cast<u8>(res));
-	return true;
 }
 
 
-bool NESCPU::ExecuteOpROR()
+void NESCPU::ExecuteOpROR()
 {
-	OP_HANDLE_READ_ARG_SIMPLE(argVal);
+	OP_READ_ARG();
 
 	// C -> [7654321] -> C
 	uleast16 res = argVal;
@@ -1230,47 +994,31 @@ bool NESCPU::ExecuteOpROR()
 	reg_.C = (res & 1);
 
 	res >>= 1;
-	if (!WriteOpResult(static_cast<u8>(res)))
-		return false;
+	WriteOpResult(static_cast<u8>(res));
 
 	UpdateRegZ(static_cast<u8>(res));
 	UpdateRegN(static_cast<u8>(res));
-	return true;
 }
 
 
-bool NESCPU::ExecuteOpRTI()
+void NESCPU::ExecuteOpRTI()
 {
 	// P fromS PC fromS
-	u8 valP;
-	if (!StackPull8(&valP))
-		return false;
-
-	u16 newAddr;
-	if (!StackPull16(&newAddr))
-		return false;
-
-	reg_.P = valP;
-	UpdateRegPC(newAddr);
-	return true;
+	reg_.P = StackPull8();
+	UpdateRegPC(StackPull16());
 }
 
 
-bool NESCPU::ExecuteOpRTS()
+void NESCPU::ExecuteOpRTS()
 {
 	// PC fromS, PC + 1 -> PC
-	u16 newAddr;
-	if (!StackPull16(&newAddr))
-		return false;
-
-	UpdateRegPC(newAddr + 1);
-	return true;
+	UpdateRegPC(StackPull16() + 1);
 }
 
 
-bool NESCPU::ExecuteOpSBC()
+void NESCPU::ExecuteOpSBC()
 {
-	OP_HANDLE_READ_ARG(argVal, crossedPageBoundary);
+	OP_READ_ARG();
 
 	// SBC takes 1 extra CPU cycle if a page boundary was crossed.
 	if (crossedPageBoundary)
@@ -1284,104 +1032,52 @@ bool NESCPU::ExecuteOpSBC()
 	UpdateRegZ(static_cast<u8>(res));
 	reg_.V = (((~(reg_.A ^ argVal) & (reg_.A ^ res)) >> 7) & 1); // Check if the sign has changed due to overflow.
 	reg_.A = static_cast<u8>(res);
-	return true;
 }
 
 
-bool NESCPU::ExecuteOpSEC()
+void NESCPU::ExecuteOpSEC()
 {
 	// 1 -> C
 	reg_.C = 1;
-	return true;
 }
 
 
-bool NESCPU::ExecuteOpSED()
+void NESCPU::ExecuteOpSED()
 {
 	// 1 -> D
 	reg_.D = 1;
-	return true;
 }
 
 
-bool NESCPU::ExecuteOpSEI()
+void NESCPU::ExecuteOpSEI()
 {
 	// 1 -> I
 	reg_.I = 1;
-	return true;
 }
 
 
-bool NESCPU::ExecuteOpSTA()
+void NESCPU::ExecuteOpSTA()
 {
-	OP_HANDLE_READ_ARG_SIMPLE(argVal);
+	OP_READ_ARG();
 
 	// A -> M
-	return mem_.Write8(argVal, reg_.A);
+	mem_.Write8(argVal, reg_.A);
 }
 
 
-bool NESCPU::ExecuteOpSTX()
+void NESCPU::ExecuteOpSTX()
 {
-	OP_HANDLE_READ_ARG_SIMPLE(argVal);
+	OP_READ_ARG();
 
 	// X -> M
-	return mem_.Write8(argVal, reg_.X);
+	mem_.Write8(argVal, reg_.X);
 }
 
 
-bool NESCPU::ExecuteOpSTY()
+void NESCPU::ExecuteOpSTY()
 {
-	OP_HANDLE_READ_ARG_SIMPLE(argVal);
+	OP_READ_ARG();
 
 	// Y -> M
-	return mem_.Write8(argVal, reg_.Y);
-}
-
-
-bool NESCPU::ExecuteOpTAX()
-{
-	// A -> X
-	reg_.X = reg_.A;
-	return true;
-}
-
-
-bool NESCPU::ExecuteOpTAY()
-{
-	// A -> Y
-	reg_.Y = reg_.A;
-	return true;
-}
-
-
-bool NESCPU::ExecuteOpTSX()
-{
-	// S -> X
-	reg_.X = reg_.SP;
-	return true;
-}
-
-
-bool NESCPU::ExecuteOpTXA()
-{
-	// X -> A
-	reg_.A = reg_.X;
-	return true;
-}
-
-
-bool NESCPU::ExecuteOpTXS()
-{
-	// X -> S
-	reg_.SP = reg_.X;
-	return true;
-}
-
-
-bool NESCPU::ExecuteOpTYA()
-{
-	// Y -> A
-	reg_.A = reg_.Y;
-	return true;
+	mem_.Write8(argVal, reg_.Y);
 }

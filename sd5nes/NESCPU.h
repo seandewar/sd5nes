@@ -1,13 +1,38 @@
 #pragma once
 
-#include "NESTypes.h"
+#include <unordered_map>
+#include <stdexcept>
 
+#include "NESTypes.h"
 #include "NESCPUOpConstants.h"
 #include "NESMemoryConstants.h"
 #include "NESMemory.h"
 #include "NESPPU.h"
 
-#include <unordered_map>
+/**
+* Exception relating to the execution of CPU instructions.
+*/
+class NESCPUExecutionException : public std::runtime_error
+{
+public:
+	explicit NESCPUExecutionException(const char* msg, NESCPURegisters reg) :
+		std::runtime_error(msg),
+		reg_(reg)
+	{ }
+
+	explicit NESCPUExecutionException(const std::string& msg, NESCPURegisters reg) :
+		std::runtime_error(msg),
+		reg_(reg)
+	{ }
+
+	virtual ~NESCPUExecutionException()
+	{ }
+
+	inline const NESCPURegisters& GetCPURegisters() const { return reg_; }
+
+private:
+	NESCPURegisters reg_;
+};
 
 /**
 * Struct containing the registers used by the NES CPU.
@@ -89,38 +114,22 @@ struct NESCPUStaticInit
 class NESCPU;
 
 // Typedef for a basic opcode executing function.
-typedef bool (NESCPU::*NESOpFuncPointer)();
+typedef void (NESCPU::*NESOpFuncPointer)();
 
 /**
 * Struct containing opcode function mapping info.
 */
 struct NESCPUOpInfo
 {
-	NESOpFuncPointer opFunc;
-	NESCPUOpAddressingMode addrMode;
-	int cycleCount;
+	const NESOpFuncPointer opFunc;
+	const NESCPUOpAddressingMode addrMode;
+	const int cycleCount;
 
 	NESCPUOpInfo(NESOpFuncPointer opFunc, NESCPUOpAddressingMode addrMode, int cycleCount) :
 		opFunc(opFunc),
 		addrMode(addrMode),
 		cycleCount(cycleCount)
 	{ }
-};
-
-/**
-* Handles emulation of the NES's CPU memory + mirroring.
-*/
-class NESCPUMemory : public NESMemory
-{
-public:
-	NESCPUMemory(NESPPURegisters& ppuReg);
-	~NESCPUMemory();
-
-	bool Write8(u16 addr, u8 val) override;
-	bool Read8(u16 addr, u8* outVal) const override;
-
-private:
-	NESPPURegisters& ppuReg_;
 };
 
 /**
@@ -131,7 +140,7 @@ class NESCPU
 	friend struct NESCPUStaticInit;
 
 public:
-	NESCPU(NESCPUMemory& mem);
+	explicit NESCPU(NESMemory& mem);
 	~NESCPU();
 
 	// Resets the CPU.
@@ -153,12 +162,11 @@ private:
 	// Gets the addressing mode of the specified opcode.
 	static NESCPUOpAddressingMode GetOpAddressingMode(u8 op);
 
-	// Edits outOpSize with the size of the opcode. Returns true on success and false on failure.
-	// If false, or outOpSize is null, outOpSize is not modified.
-	static bool GetOpSizeFromAddressingMode(NESCPUOpAddressingMode addrMode, int* outOpSize);
+	// Returns the size of the opcode's addressing mode in bytes.
+	static int GetOpSizeFromAddressingMode(NESCPUOpAddressingMode addrMode);
 
 	NESCPURegisters reg_;
-	NESCPUMemory& mem_;
+	NESMemory& mem_;
 
 	u8 currentOp_;
 	std::unordered_map<u8, NESCPUOpInfo>::const_iterator currentOpMappingIt_;
@@ -177,204 +185,209 @@ private:
 	// Updates the PC register. Sets PC to val. currentOpChangedPC_ is set to true so PC is not automatically changed afterwards.
 	inline void UpdateRegPC(u16 val) { reg_.PC = val; currentOpChangedPC_ = true; }
 
-	// Reads the value of the next op's immediate argument depending on its addressing mode.
-	// Also checks if a page boundary was crossed.
-	bool ReadOpArgValue(u8* outVal, bool* outCrossedPageBoundary);
+	/**
+	* Reads the value of the next op's immediate argument depending on its addressing mode.
+	* Also checks if a page boundary was crossed.
+	* Returns the value of the arg as the first member of the pair, and whether or not a page
+	* boundary was crossed as second.
+	*/
+	std::pair<u8, bool> ReadOpArgValue();
 
 	// Writes an op's result to the intended piece of memory / register.
-	bool WriteOpResult(u8 result);
+	void WriteOpResult(u8 result);
 
 	// Executes the next opcode at the PC.
-	bool ExecuteNextOp();
+	// Can throw NESCPUExecutionException.
+	void ExecuteNextOp();
 
 	// Push 8-bit value onto the stack.
-	bool StackPush8(u8 val);
+	void StackPush8(u8 val);
 
 	// Push 16-bit value onto the stack.
-	bool StackPush16(u16 val);
+	void StackPush16(u16 val);
 
 	// Pull 8-bit value from the stack.
-	bool StackPull8(u8* outVal);
+	u8 StackPull8();
 
 	// Pull 16-bit value from the stack.
-	bool StackPull16(u16* outVal);
+	u16 StackPull16();
 
 	// Executes the current op as a branch instruction if shouldBranch is true.
 	// Adds 1 to the current op's cycle count if branched to same page, 2 if branched to a different page.
-	bool ExecuteOpAsBranch(bool shouldBranch, int branchSamePageCycleExtra, int branchDiffPageCycleExtra);
+	void ExecuteOpAsBranch(bool shouldBranch, int branchSamePageCycleExtra, int branchDiffPageCycleExtra);
 
 	// Executes an interrupt of the specified type.
-	bool ExecuteInterrupt(NESCPUInterrupt interruptType);
+	void ExecuteInterrupt(NESCPUInterrupt interruptType);
 
 	/****************************************/
 	/****** Instruction Implementation ******/
 	/****************************************/
 
 	// Execute Add with Carry (ADC).
-	bool ExecuteOpADC();
+	void ExecuteOpADC();
 
 	// Execute AND with Accumulator (AND).
-	bool ExecuteOpAND();
+	void ExecuteOpAND();
 
 	// Execute Shift Left One Bit (Memory or Accumulator) (ASL).
-	bool ExecuteOpASL();
+	void ExecuteOpASL();
 
 	// Execute Branch on Carry Clear (BCC).
-	bool ExecuteOpBCC();
+	void ExecuteOpBCC();
 
 	// Execute Branch on Carry Set (BCS).
-	bool ExecuteOpBCS();
+	void ExecuteOpBCS();
 
 	// Execute Branch on Result Zero (BEQ).
-	bool ExecuteOpBEQ();
+	void ExecuteOpBEQ();
 
 	// Execute Test Bits in Memory with Accumulator (BIT).
-	bool ExecuteOpBIT();
+	void ExecuteOpBIT();
 
 	// Execute Branch on Result Minus (BMI).
-	bool ExecuteOpBMI();
+	void ExecuteOpBMI();
 
 	// Execute Branch on Result Not Zero (BNE).
-	bool ExecuteOpBNE();
+	void ExecuteOpBNE();
 
 	// Execute Branch on Result Plus (BPL).
-	bool ExecuteOpBPL();
+	void ExecuteOpBPL();
 
 	// Execute Force Break (BRK).
-	bool ExecuteOpBRK();
+	void ExecuteOpBRK();
 
 	// Execute Branch on Overflow Clear (BVC).
-	bool ExecuteOpBVC();
+	void ExecuteOpBVC();
 
 	// Execute Branch on Overflow Set (BVS).
-	bool ExecuteOpBVS();
+	void ExecuteOpBVS();
 
 	// Execute Clear Carry Flag (CLC).
-	bool ExecuteOpCLC();
+	inline void ExecuteOpCLC() { /* 0 -> C */ reg_.C = 0; }
 
 	// Execute Clear Decimal Mode (CLD).
-	bool ExecuteOpCLD();
+	inline void ExecuteOpCLD() { /* 0 -> D */ reg_.D = 0; }
 
 	// Execute Clear Interrupt Disable Bit (CLI).
-	bool ExecuteOpCLI();
+	inline void ExecuteOpCLI() { /* 0 -> I */ reg_.I = 0; }
 
 	// Execute Clear Overflow Flag (CLV).
-	bool ExecuteOpCLV();
+	inline void ExecuteOpCLV() { /* 0 -> V */ reg_.V = 0; }
 
 	// Execute Compare Memory and Accumulator (CMP).
-	bool ExecuteOpCMP();
+	void ExecuteOpCMP();
 
 	// Execute Compare Memory and Index X (CPX).
-	bool ExecuteOpCPX();
+	void ExecuteOpCPX();
 
 	// Execute Compare Memory and Index Y (CPY).
-	bool ExecuteOpCPY();
+	void ExecuteOpCPY();
 
 	// Execute Decrement Memory by One (DEC).
-	bool ExecuteOpDEC();
+	void ExecuteOpDEC();
 
 	// Execute Decrement Index X by One (DEX).
-	bool ExecuteOpDEX();
+	void ExecuteOpDEX();
 
 	// Execute Decrement Index Y by One (DEY).
-	bool ExecuteOpDEY();
+	void ExecuteOpDEY();
 
 	// Execute "Exclusive-Or" Memory with Accumulator (EOR).
-	bool ExecuteOpEOR();
+	void ExecuteOpEOR();
 
 	// Execute Increment Memory by One (INC).
-	bool ExecuteOpINC();
+	void ExecuteOpINC();
 
 	// Execute Increment Index X by One (INX).
-	bool ExecuteOpINX();
+	void ExecuteOpINX();
 
 	// Execute Increment Index Y by One (INY).
-	bool ExecuteOpINY();
+	void ExecuteOpINY();
 
 	// Execute Jump to New Location (JMP).
-	bool ExecuteOpJMP();
+	void ExecuteOpJMP();
 
 	// Execute Jump to New Location Saving Return Address (JSR).
-	bool ExecuteOpJSR();
+	void ExecuteOpJSR();
 
 	// Execute Load Accumulator with Memory (LDA).
-	bool ExecuteOpLDA();
+	void ExecuteOpLDA();
 
 	// Execute Load Index X with Memory (LDX).
-	bool ExecuteOpLDX();
+	void ExecuteOpLDX();
 
 	// Execute Load Index Y with Memory (LDY).
-	bool ExecuteOpLDY();
+	void ExecuteOpLDY();
 
 	// Execute Shift Right One Bit (Memory or Accumulator) (LSR).
-	bool ExecuteOpLSR();
+	void ExecuteOpLSR();
 
 	// Execute No Operation (Do Nothing) (NOP).
-	bool ExecuteOpNOP();
+	inline void ExecuteOpNOP() { /* Do nothing. */ }
 
 	// Execute "Or" Memory with Accumulator (ORA).
-	bool ExecuteOpORA();
+	void ExecuteOpORA();
 
 	// Execute Push Accumulator to Stack (PHA).
-	bool ExecuteOpPHA();
+	inline void ExecuteOpPHA() { /* A toS */ StackPush8(reg_.A); }
 
 	// Execute Push Processor Status to Stack (PHP).
-	bool ExecuteOpPHP();
+	inline void ExecuteOpPHP() { /* P toS */ StackPush8(reg_.P); }
 
 	// Execute Pull Accumulator from Stack (PLA).
-	bool ExecuteOpPLA();
+	void ExecuteOpPLA();
 
 	// Execute Pull Processor Status from Stack (PLP).
-	bool ExecuteOpPLP();
+	void ExecuteOpPLP();
 
 	// Execute Rotate One Bit Left (ROL).
-	bool ExecuteOpROL();
+	void ExecuteOpROL();
 
 	// Execute Rotate One Bit Right (ROR).
-	bool ExecuteOpROR();
+	void ExecuteOpROR();
 
 	// Execute Return from Interrupt (RTI).
-	bool ExecuteOpRTI();
+	void ExecuteOpRTI();
 
 	// Execute Return from Subroutine (RTS).
-	bool ExecuteOpRTS();
+	void ExecuteOpRTS();
 
 	// Execute Subtract Memory from Accumulator with Borrow (SBC).
-	bool ExecuteOpSBC();
+	void ExecuteOpSBC();
 
 	// Execute Set Carry Flag (SEC).
-	bool ExecuteOpSEC();
+	void ExecuteOpSEC();
 
 	// Execute Set Decimal Mode (SED).
-	bool ExecuteOpSED();
+	void ExecuteOpSED();
 
 	// Execute Set Interrupt Disable Status (SEI).
-	bool ExecuteOpSEI();
+	void ExecuteOpSEI();
 
 	// Execute Store Accumulator in Memory (STA).
-	bool ExecuteOpSTA();
+	void ExecuteOpSTA();
 
 	// Execute Store Index X in Memory (STX).
-	bool ExecuteOpSTX();
+	void ExecuteOpSTX();
 
 	// Execute Store Index Y in Memory (STY).
-	bool ExecuteOpSTY();
+	void ExecuteOpSTY();
 
 	// Execute Transfer Accumulator to Index Y (TAY).
-	bool ExecuteOpTAY();
+	inline void ExecuteOpTAY() { /* A -> X */ reg_.X = reg_.A; }
 
 	// Execute Transfer Accumulator to Index X (TAX).
-	bool ExecuteOpTAX();
+	inline void ExecuteOpTAX() { /* A -> Y */ reg_.Y = reg_.A; }
 
 	// Execute Transfer Stack Pointer to Index X (TSX).
-	bool ExecuteOpTSX();
+	inline void ExecuteOpTSX() { /* S -> X */ reg_.X = reg_.SP; }
 
 	// Execute Transfer Index X to Accumulator (TXA).
-	bool ExecuteOpTXA();
+	inline void ExecuteOpTXA() { /* X -> A */ reg_.A = reg_.X; }
 
 	// Execute Transfer Index X to Stack Pointer (TXS).
-	bool ExecuteOpTXS();
+	inline void ExecuteOpTXS() { /* X -> S */ reg_.SP = reg_.X; }
 
 	// Execute Transfer Index Y to Accumulator (TYA).
-	bool ExecuteOpTYA();
+	inline void ExecuteOpTYA() { /* Y -> A */ reg_.A = reg_.Y; }
 };
