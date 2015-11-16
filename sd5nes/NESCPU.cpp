@@ -689,11 +689,11 @@ u8 NESCPU::StackPull8()
 u16 NESCPU::StackPull16()
 {
 	// Pull least-significant byte first, then the most.
-	const u8 low = StackPull8();
+	const u8 lo = StackPull8();
 	const u8 hi = StackPull8();
 
 	// Convert to 16-bit val.
-	return ((hi << 8) | low);
+	return NESHelper::ConvertTo16(hi, lo);
 }
 
 

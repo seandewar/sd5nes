@@ -1,6 +1,9 @@
 #include "NESMemory.h"
 
 #include <cassert>
+#include <sstream>
+
+#include "NESHelper.h"
 
 
 NESMemoryMap::NESMemoryMap()
@@ -18,7 +21,8 @@ void NESMemoryMap::AddMemoryMapping(NESMemory& memory, u16 startAddr)
 	const auto info = NESMemoryMappingInfo(startAddr, memory);
 
 	// Ensure no duplicate entries.
-	assert(std::find(mappings_.begin(), mappings_.end(), info) == mappings_.end());
+	assert("Duplicate entry!" && 
+		std::find(mappings_.begin(), mappings_.end(), info) == mappings_.end());
 
 	mappings_.emplace_back(info);
 }
@@ -29,9 +33,27 @@ void NESMemoryMap::AddMemoryMirror(u16 startAddr, u16 mirrorToAddr, u16 size)
 	const auto info = NESMemoryMirroringInfo(startAddr, mirrorToAddr, size);
 
 	// Ensure no duplicate entries.
-	assert(std::find(mirrors_.begin(), mirrors_.end(), info) == mirrors_.end());
+	assert("Duplicate entry!" && 
+		std::find(mirrors_.begin(), mirrors_.end(), info) == mirrors_.end());
 
 	mirrors_.emplace_back(info);
+}
+
+
+std::pair<NESMemory&, u16> NESMemoryMap::LookupMapping(u16 addr)
+{
+	for (const auto& mapInfo : mappings_)
+	{
+		if (addr >= mapInfo.startAddr &&
+			addr <= mapInfo.startAddr + mapInfo.memory.GetSize())
+			return std::make_pair(mapInfo.memory, addr - mapInfo.startAddr);
+	}
+
+	// No valid mapping for address!
+	assert("Failed to lookup mapping - address not mapped!" && false);
+	std::ostringstream oss;
+	oss << "No mapping found for address 0x" << std::hex << addr;
+	throw NESMemoryException(oss.str());
 }
 
 
@@ -97,6 +119,5 @@ u8 NESMemory::Read8(u16 addr) const
 
 u16 NESMemory::Read16(u16 addr) const
 {
-	// Convert to 16-bit val.
-	return ((Read8(addr + 1) << 8) | Read8(addr));
+	return NESHelper::ConvertTo16(Read8(addr + 1), Read8(addr));
 }

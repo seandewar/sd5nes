@@ -119,7 +119,7 @@ private:
 	std::vector<NESMemoryMappingInfo> mappings_;
 	std::vector<NESMemoryMirroringInfo> mirrors_;
 
-	void GetRealAddress(u16 addr);
+	std::pair<NESMemory&, u16> LookupMapping(u16 addr);
 };
 
 /**

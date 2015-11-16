@@ -91,7 +91,6 @@ bool NESGamePak::ParseROMFileData()
 	hasTrainer_ = ((romInfo[INES_ROM_CONTROL_1_INDEX] & 4) == 4);
 
 	// Get the mapper number using bits 4-7 from ROM Control Byte 1 and 2.
-	// Convert mapper num to enum.
 	const u8 mapperNum = ((romInfo[INES_ROM_CONTROL_2_INDEX] & 0xF0) | (romInfo[INES_ROM_CONTROL_1_INDEX] >> 4));
 	switch (mapperNum)
 	{
