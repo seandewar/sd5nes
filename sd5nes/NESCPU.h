@@ -4,6 +4,7 @@
 #include <stdexcept>
 
 #include "NESTypes.h"
+#include "NESCPUConstants.h"
 #include "NESCPUOpConstants.h"
 #include "NESMemoryConstants.h"
 #include "NESMemory.h"
@@ -32,6 +33,22 @@ public:
 
 private:
 	NESCPURegisters reg_;
+};
+
+/**
+* Memory module that maps CPU memory.
+*/
+class NESCPUMemoryMap : public NESMemoryMap
+{
+public:
+	NESCPUMemoryMap(NESMemory& cpuMem);
+	virtual ~NESCPUMemoryMap();
+
+	void Write8(u16 addr, u8 val) override;
+	u8 Read8(u16 addr) const override;
+
+private:
+	NESMemory& cpuMem_;
 };
 
 /**
@@ -201,20 +218,43 @@ private:
 	void ExecuteNextOp();
 
 	// Push 8-bit value onto the stack.
-	void StackPush8(u8 val);
+	inline void StackPush8(u8 val) 
+	{
+		// @NOTE: Some games purposely overflow the stack
+		// So there is no need to do any bounds checks.
+		mem_.Write8(NES_CPU_STACK_START + (reg_.SP++), val);
+	}
 
 	// Push 16-bit value onto the stack.
-	void StackPush16(u16 val);
+	inline void StackPush16(u16 val)
+	{
+		// Push most-significant byte first, then the least.
+		StackPush8((val & 0xFF00) >> 8);
+		StackPush8((val & 0x00FF));
+	}
 
 	// Pull 8-bit value from the stack.
-	u8 StackPull8();
+	inline u8 StackPull8()
+	{
+		// @NOTE: Some games purposely underflow the stack
+		// So there is no need to do any bounds checks.
+		return mem_.Read8(NES_CPU_STACK_START + (--reg_.SP));
+	}
 
 	// Pull 16-bit value from the stack.
-	u16 StackPull16();
+	inline u16 StackPull16()
+	{
+		// Pull least-significant byte first, then the most.
+		const u8 lo = StackPull8();
+		const u8 hi = StackPull8();
+
+		// Convert to 16-bit val.
+		return NESHelper::ConvertTo16(hi, lo);
+	}
 
 	// Executes the current op as a branch instruction if shouldBranch is true.
 	// Adds 1 to the current op's cycle count if branched to same page, 2 if branched to a different page.
-	void ExecuteOpAsBranch(bool shouldBranch, int branchSamePageCycleExtra, int branchDiffPageCycleExtra);
+	void ExecuteOpAsBranch(bool shouldBranch, int branchSamePageCycleExtra = 1, int branchDiffPageCycleExtra = 2);
 
 	// Executes an interrupt of the specified type.
 	void ExecuteInterrupt(NESCPUInterrupt interruptType);
@@ -233,34 +273,34 @@ private:
 	void ExecuteOpASL();
 
 	// Execute Branch on Carry Clear (BCC).
-	void ExecuteOpBCC();
+	inline void ExecuteOpBCC() { /* Branch on C = 0 */ ExecuteOpAsBranch((reg_.C == 0)); }
 
 	// Execute Branch on Carry Set (BCS).
-	void ExecuteOpBCS();
+	inline void ExecuteOpBCS() { /* Branch on C = 1 */ ExecuteOpAsBranch((reg_.C == 1)); }
 
 	// Execute Branch on Result Zero (BEQ).
-	void ExecuteOpBEQ();
+	inline void ExecuteOpBEQ() { /* Branch on Z = 1 */ ExecuteOpAsBranch((reg_.Z == 1)); }
 
 	// Execute Test Bits in Memory with Accumulator (BIT).
 	void ExecuteOpBIT();
 
 	// Execute Branch on Result Minus (BMI).
-	void ExecuteOpBMI();
+	inline void ExecuteOpBMI() { /* Branch on N = 1 */ ExecuteOpAsBranch((reg_.N == 1)); }
 
 	// Execute Branch on Result Not Zero (BNE).
-	void ExecuteOpBNE();
+	inline void ExecuteOpBNE() { /* Branch on Z = 0 */ ExecuteOpAsBranch((reg_.Z == 0)); }
 
 	// Execute Branch on Result Plus (BPL).
-	void ExecuteOpBPL();
+	inline void ExecuteOpBPL() { /* Branch on N = 0 */ ExecuteOpAsBranch((reg_.N == 0)); }
 
 	// Execute Force Break (BRK).
 	void ExecuteOpBRK();
 
 	// Execute Branch on Overflow Clear (BVC).
-	void ExecuteOpBVC();
+	inline void ExecuteOpBVC() { /* Branch on V = 0 */ ExecuteOpAsBranch((reg_.V == 0)); }
 
 	// Execute Branch on Overflow Set (BVS).
-	void ExecuteOpBVS();
+	inline void ExecuteOpBVS() { /* Branch on V = 1 */ ExecuteOpAsBranch((reg_.V == 1)); }
 
 	// Execute Clear Carry Flag (CLC).
 	inline void ExecuteOpCLC() { /* 0 -> C */ reg_.C = 0; }
@@ -350,19 +390,19 @@ private:
 	void ExecuteOpRTI();
 
 	// Execute Return from Subroutine (RTS).
-	void ExecuteOpRTS();
+	inline void ExecuteOpRTS() { /* PC fromS, PC + 1 -> PC */ UpdateRegPC(StackPull16() + 1); }
 
 	// Execute Subtract Memory from Accumulator with Borrow (SBC).
 	void ExecuteOpSBC();
 
 	// Execute Set Carry Flag (SEC).
-	void ExecuteOpSEC();
+	inline void ExecuteOpSEC() { /* 1 -> C */ reg_.C = 1; }
 
 	// Execute Set Decimal Mode (SED).
-	void ExecuteOpSED();
+	inline void ExecuteOpSED() { /* 1 -> D */ reg_.D = 1; }
 
 	// Execute Set Interrupt Disable Status (SEI).
-	void ExecuteOpSEI();
+	inline void ExecuteOpSEI() { /* 1 -> I */ reg_.I = 1; }
 
 	// Execute Store Accumulator in Memory (STA).
 	void ExecuteOpSTA();

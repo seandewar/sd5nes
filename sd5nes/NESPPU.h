@@ -18,13 +18,10 @@ struct NESPPUColor
 	inline sf::Color getAsSFMLColor() const { return sf::Color(r, g, b); }
 };
 
-// The amount of defined PPU palette colours.
-#define NES_PPU_PALETTE_COLORS 0x40
-
 /**
-* Read-only array containing the PPU Palette colour values indexed approperiately.
+* Read-only array containing the 64 NES PPU Palette colours indexed approperiately.
 */
-const std::array<NESPPUColor, NES_PPU_PALETTE_COLORS> NES_PPU_PALETTE_COLOR_ARRAY = {
+const std::array<NESPPUColor, 0x40> NES_PPU_PALETTE_COLORS = {
 	{
 		{ 0x75, 0x75, 0x75 }, { 0x27, 0x1B, 0x8F }, { 0x00, 0x00, 0xAB }, { 0x47, 0x00, 0x9F },
 		{ 0x8F, 0x00, 0x77 }, { 0xAB, 0x00, 0x13 }, { 0xA7, 0x00, 0x00 }, { 0x7F, 0x0B, 0x00 },
@@ -52,7 +49,7 @@ struct NESPPURegisters
 {
 	union
 	{
-		/* PPU Control Register 1 */
+		/* PPU Control Register 1 (PPUCTRL0) */
 		u8 PPUCTRL0;
 
 		u8 nameTableNum : 2; /* Name table number. */
@@ -60,13 +57,13 @@ struct NESPPURegisters
 		u8 spritePatternTableNum : 1; /* Number of the Pattern table that the sprites are stored in. */
 		u8 bgPatternTableNum : 1; /* Number of the Pattern table that the background is stored in. */
 		u8 spritePixelSize : 1; /* Size of the sprites in pixels - 8x8 if this is 0, otherwise 8x16 if this is 1. */
-		u8 control1Unused : 1; /* Unused bit. */
+		u8 PPUCTRL0Unused : 1; /* Unused bit. */
 		u8 vBlankTriggerNMI : 1; /* Whether or not an NMI should be triggered upon a V-Blank. */
 	};
 
 	union
 	{
-		/* PPU Control Register 2 */
+		/* PPU Control Register 2 (PPUCTRL1) */
 		u8 PPUCTRL1;
 
 		u8 colorMode : 1; /* Indicates colour (0) or monochrome mode (1). */
@@ -79,8 +76,8 @@ struct NESPPURegisters
 
 	union
 	{
-		/* Status Register */
-		/* (Should be read only) */
+		/* Status Register (PPUSTAT)               */
+		/* (Should be read only from program code) */
 		u8 PPUSTAT;
 
 		u8 statusUnused : 4; /* Unused bits. */

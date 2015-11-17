@@ -1,10 +1,38 @@
 #include "NESCPU.h"
 
-#include "NESCPUConstants.h"
-#include "NESHelper.h"
-
 #include <cassert>
 #include <sstream>
+
+#include "NESHelper.h"
+
+
+NESCPUMemoryMap::NESCPUMemoryMap(NESMemory& cpuMem) :
+cpuMem_(cpuMem)
+{
+	AddMemoryMapping(cpuMem, 0x0000, 0x0800); 
+	AddMemoryMirrorRange(0x0000, 0x07FF, 0x0800, 0x1FFF); // Mirror RAM, Stack and Zero Page.
+	AddMemoryMirrorRange(0x2000, 0x2007, 0x2008, 0x3FFF); // Mirror I/O registers.
+	//@TODO Mirror I/O registers?
+}
+
+
+NESCPUMemoryMap::~NESCPUMemoryMap()
+{
+}
+
+
+void NESCPUMemoryMap::Write8(u16 addr, u8 val)
+{
+	// @TODO
+	NESMemoryMap::Write8(addr, val);
+}
+
+
+u8 NESCPUMemoryMap::Read8(u16 addr) const
+{
+	// @TODO
+	return NESMemoryMap::Read8(addr);
+}
 
 
 std::unordered_map<u8, NESCPUOpInfo> NESCPU::opInfos_;
@@ -291,6 +319,7 @@ NESCPUStaticInit::NESCPUStaticInit()
 
 
 // Defines variables argVal and crossedPageBoundary.
+// @NOTE: Safe to end with a semi-colon after using this macro.
 #define OP_READ_ARG() \
 		const auto valPair = ReadOpArgValue(); \
 		const u8& argVal = valPair.first; \
@@ -298,11 +327,9 @@ NESCPUStaticInit::NESCPUStaticInit()
 
 
 NESCPU::NESCPU(NESMemory& mem) :
-mem_(mem),
-currentOp_(NES_OP_INVALID),
-currentOpCycleCount_(0),
-currentOpChangedPC_(false)
+mem_(mem)
 {
+	Initialize();
 }
 
 
@@ -320,12 +347,14 @@ void NESCPU::Reset()
 
 void NESCPU::Initialize()
 {
+	// Reset current op status.
 	currentOp_ = NES_OP_INVALID;
+	currentOpCycleCount_ = 0;
+	currentOpChangedPC_ = false;
 
-	// Init registers
-	reg_.PC = 0;
-	reg_.A = reg_.B = reg_.C = reg_.D = reg_.I = reg_.N = reg_.P = 0;
-	reg_.PUnused = 1; // Unused bit should always be set to 1.
+	// Init registers.
+	reg_.PC = reg_.SP = reg_.A = reg_.X = reg_.Y = reg_.P = 0;
+	reg_.PUnused = 1; // Unused status register bit should always be 1.
 }
 
 
@@ -581,7 +610,7 @@ void NESCPU::ExecuteOpAsBranch(bool shouldBranch, int branchSamePageCycleExtra, 
 	if (!shouldBranch)
 		return;
 
-	OP_READ_ARG(argVal);
+	OP_READ_ARG();
 
 	const u16 jumpPC = reg_.PC + argVal;
 
@@ -592,62 +621,6 @@ void NESCPU::ExecuteOpAsBranch(bool shouldBranch, int branchSamePageCycleExtra, 
 		currentOpCycleCount_ += branchSamePageCycleExtra;
 
 	UpdateRegPC(jumpPC);
-}
-
-
-void NESCPU::ExecuteOpBCC()
-{
-	// Branch on C = 0
-	ExecuteOpAsBranch((reg_.C == 0), 1, 2);
-}
-
-
-void NESCPU::ExecuteOpBCS()
-{
-	// Branch on C = 1
-	ExecuteOpAsBranch((reg_.C == 1), 1, 2);
-}
-
-
-void NESCPU::ExecuteOpBEQ()
-{
-	// Branch on Z = 1
-	ExecuteOpAsBranch((reg_.Z == 1), 1, 2);
-}
-
-
-void NESCPU::ExecuteOpBMI()
-{
-	// Branch on N = 1
-	ExecuteOpAsBranch((reg_.N == 1), 1, 2);
-}
-
-
-void NESCPU::ExecuteOpBNE()
-{
-	// Branch on Z = 0
-	ExecuteOpAsBranch((reg_.Z == 0), 1, 2);
-}
-
-
-void NESCPU::ExecuteOpBPL()
-{
-	// Branch on N = 0
-	ExecuteOpAsBranch((reg_.N == 0), 1, 2);
-}
-
-
-void NESCPU::ExecuteOpBVC()
-{
-	// Branch on V = 0
-	ExecuteOpAsBranch((reg_.V == 0), 1, 2);
-}
-
-
-void NESCPU::ExecuteOpBVS()
-{
-	// Branch on V = 1
-	ExecuteOpAsBranch((reg_.V == 1), 1, 2);
 }
 
 
@@ -662,41 +635,6 @@ void NESCPU::ExecuteOpBIT()
 }
 
 
-void NESCPU::StackPush8(u8 val)
-{
-	// @NOTE: Some games purposely overflow the stack
-	// So there is no need to do any bounds checks.
-	mem_.Write8(NES_CPU_STACK_START + (reg_.SP++), val);
-}
-
-
-void NESCPU::StackPush16(u16 val)
-{
-	// Push most-significant byte first, then the least.
-	StackPush8((val & 0xFF00) >> 8);
-	StackPush8((val & 0x00FF));
-}
-
-
-u8 NESCPU::StackPull8()
-{
-	// @NOTE: Some games purposely underflow the stack
-	// So there is no need to do any bounds checks.
-	return mem_.Read8(NES_CPU_STACK_START + (--reg_.SP));
-}
-
-
-u16 NESCPU::StackPull16()
-{
-	// Pull least-significant byte first, then the most.
-	const u8 lo = StackPull8();
-	const u8 hi = StackPull8();
-
-	// Convert to 16-bit val.
-	return NESHelper::ConvertTo16(hi, lo);
-}
-
-
 void NESCPU::ExecuteInterrupt(NESCPUInterrupt interruptType)
 {
 	// @TODO handle other interrupts.
@@ -705,7 +643,7 @@ void NESCPU::ExecuteInterrupt(NESCPUInterrupt interruptType)
 	case NESCPUInterrupt::IRQBRK:
 		reg_.I = 1;
 		UpdateRegPC(mem_.Read16(NES_CPU_IRQBRK_VECTOR_START));
-		break;
+		return;
 
 	default:
 		assert("Unknown interrupt type encountered!" && false);
@@ -756,7 +694,7 @@ void NESCPU::ExecuteOpCPX()
 
 void NESCPU::ExecuteOpCPY()
 {
-	OP_READ_ARG(argVal);
+	OP_READ_ARG();
 
 	// Y - M
 	const uleast16 res = reg_.Y - argVal;
@@ -1009,13 +947,6 @@ void NESCPU::ExecuteOpRTI()
 }
 
 
-void NESCPU::ExecuteOpRTS()
-{
-	// PC fromS, PC + 1 -> PC
-	UpdateRegPC(StackPull16() + 1);
-}
-
-
 void NESCPU::ExecuteOpSBC()
 {
 	OP_READ_ARG();
@@ -1032,27 +963,6 @@ void NESCPU::ExecuteOpSBC()
 	UpdateRegZ(static_cast<u8>(res));
 	reg_.V = (((~(reg_.A ^ argVal) & (reg_.A ^ res)) >> 7) & 1); // Check if the sign has changed due to overflow.
 	reg_.A = static_cast<u8>(res);
-}
-
-
-void NESCPU::ExecuteOpSEC()
-{
-	// 1 -> C
-	reg_.C = 1;
-}
-
-
-void NESCPU::ExecuteOpSED()
-{
-	// 1 -> D
-	reg_.D = 1;
-}
-
-
-void NESCPU::ExecuteOpSEI()
-{
-	// 1 -> I
-	reg_.I = 1;
 }
 
 

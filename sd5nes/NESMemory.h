@@ -2,6 +2,7 @@
 
 #include <vector>
 #include <stdexcept>
+#include <cassert>
 
 #include "NESTypes.h"
 #include "NESMemoryConstants.h"
@@ -40,17 +41,23 @@ public:
 */
 struct NESMemoryMappingInfo
 {
-	const u16 startAddr;
+	const u16 startAddr, size;
 	NESMemory& memory;
 
-	NESMemoryMappingInfo(u16 startAddr, NESMemory& memory) :
+	NESMemoryMappingInfo(NESMemory& memory, u16 startAddr, u16 size) :
 		startAddr(startAddr),
+		size(size),
 		memory(memory)
-	{ }
+	{
+		assert("Specified size is higher than the allocated memory size being mapped!" &&
+			size > memory.GetSize());
+	}
 
 	inline bool operator==(const NESMemoryMappingInfo& rhs) const
 	{
-		return (startAddr == rhs.startAddr && &memory == &rhs.memory);
+		return (startAddr == rhs.startAddr && 
+			size == rhs.size &&
+			&memory == &rhs.memory);
 	}
 };
 
@@ -87,12 +94,18 @@ public:
 	/**
 	* Adds memory to be mapped at a specified location.
 	*/
-	void AddMemoryMapping(NESMemory& memory, u16 startAddr);
+	void AddMemoryMapping(NESMemory& memory, u16 startAddr, u16 size);
 
 	/**
-	* Defines where to mirror the memory to.
+	* Defines where to mirror the memory to and of what size the mirror should be.
 	*/
 	void AddMemoryMirror(u16 startAddr, u16 mirrorToAddr, u16 size);
+
+	/**
+	* Defines where to mirror the memory to and repeats the memory until the mirrored location
+	* between mirrorToAddr and mirrorEndAddr is filled.
+	*/
+	void AddMemoryMirrorRange(u16 startAddr, u16 endAddr, u16 mirrorToAddr, u16 mirrorEndAddr);
 
 	/**
 	* Writes 8-bits to the memory at a specified location with the specified value.
@@ -119,7 +132,8 @@ private:
 	std::vector<NESMemoryMappingInfo> mappings_;
 	std::vector<NESMemoryMirroringInfo> mirrors_;
 
-	std::pair<NESMemory&, u16> LookupMapping(u16 addr);
+	std::pair<NESMemory&, u16> GetMapping(u16 addr) const;
+	u16 LookupMirrorAddress(u16 addr) const;
 };
 
 /**
