@@ -102,7 +102,7 @@ void NESGamePak::ParseROMFileData()
 			throw NESGamePakLoadException("Unsupported ROM memory mapper!");
 		}
 	}
-	catch (const NESReadBufferException& ex)
+	catch (const NESReadBufferException&)
 	{
 		throw NESGamePakLoadException("Failed to parse ROM image header!");
 	}
@@ -120,7 +120,7 @@ void NESGamePak::ParseROMFileData()
 		prgRom_.CopyFromBuffer(buf.ReadNext(prgRom_.GetSize()));
 		chrRom_.CopyFromBuffer(buf.ReadNext(chrRom_.GetSize()));
 	}
-	catch (const NESReadBufferException& ex)
+	catch (const NESReadBufferException&)
 	{
 		throw NESGamePakLoadException("Failed to parse ROM image data!");
 	}

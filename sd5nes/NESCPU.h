@@ -12,31 +12,6 @@
 #include "NESPPU.h"
 
 /**
-* Exception relating to the execution of CPU instructions.
-*/
-class NESCPUExecutionException : public std::runtime_error
-{
-public:
-	explicit NESCPUExecutionException(const char* msg, NESCPURegisters reg) :
-		std::runtime_error(msg),
-		reg_(reg)
-	{ }
-
-	explicit NESCPUExecutionException(const std::string& msg, NESCPURegisters reg) :
-		std::runtime_error(msg),
-		reg_(reg)
-	{ }
-
-	virtual ~NESCPUExecutionException()
-	{ }
-
-	inline const NESCPURegisters& GetCPURegisters() const { return reg_; }
-
-private:
-	NESCPURegisters reg_;
-};
-
-/**
 * Memory module that maps CPU memory.
 */
 class NESCPUMemoryMap : public NESMemoryMap
@@ -85,6 +60,31 @@ struct NESCPURegisters
 		u8 V : 1; /* Overflow Flag (V) */
 		u8 N : 1; /* Negative Flag (N) */
 	};
+};
+
+/**
+* Exception relating to the execution of CPU instructions.
+*/
+class NESCPUExecutionException : public std::runtime_error
+{
+public:
+	explicit NESCPUExecutionException(const char* msg, NESCPURegisters reg) :
+		std::runtime_error(msg),
+		reg_(reg)
+	{ }
+
+	explicit NESCPUExecutionException(const std::string& msg, NESCPURegisters reg) :
+		std::runtime_error(msg),
+		reg_(reg)
+	{ }
+
+	virtual ~NESCPUExecutionException()
+	{ }
+
+	inline NESCPURegisters GetCPURegisters() const { return reg_; }
+
+private:
+	NESCPURegisters reg_;
 };
 
 /**
@@ -162,7 +162,7 @@ class NESCPU
 	friend struct NESCPUStaticInit;
 
 public:
-	explicit NESCPU(NESMemory& mem);
+	explicit NESCPU(NESCPUMemoryMap& mem);
 	~NESCPU();
 
 	// Resets the CPU.
@@ -188,7 +188,7 @@ private:
 	static int GetOpSizeFromAddressingMode(NESCPUOpAddressingMode addrMode);
 
 	NESCPURegisters reg_;
-	NESMemory& mem_;
+	NESCPUMemoryMap& mem_;
 
 	u8 currentOp_;
 	std::unordered_map<u8, NESCPUOpInfo>::const_iterator currentOpMappingIt_;

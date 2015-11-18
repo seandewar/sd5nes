@@ -5,8 +5,7 @@
 
 NESEmulator::NESEmulator(sf::RenderTarget& target) :
 target_(target),
-memBus_(ram_, cart_.GetProgramROM()),
-cpu_(memBus_)
+cpu_(NESMemory(0x800)) // @TODO: DEBUG!!!!
 {
 }
 
@@ -16,24 +15,14 @@ NESEmulator::~NESEmulator()
 }
 
 
-bool NESEmulator::LoadROM(const std::string& fileName)
+void NESEmulator::LoadROM(const std::string& fileName)
 {
-	// @TODO Maybe?
-	try
-	{
-		cart_.LoadROM(fileName);
-	}
-	catch (const NESGamePakLoadException& ex)
-	{
-		return false;
-	}
-
-	return true;
+	// @TODO
+	cart_.LoadROM(fileName);
 }
 
 
-bool NESEmulator::RunFrame()
+void NESEmulator::RunFrame()
 {
 	// @TODO
-	return false;
 }

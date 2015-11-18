@@ -391,7 +391,7 @@ NESCPUStaticInit::NESCPUStaticInit()
 		const bool crossedPageBoundary = valPair.second; \
 
 
-NESCPU::NESCPU(NESMemory& mem) :
+NESCPU::NESCPU(NESCPUMemoryMap& mem) :
 mem_(mem)
 {
 	Initialize();
@@ -544,29 +544,22 @@ std::pair<u8, bool> NESCPU::ReadOpArgValue()
 		break;
 
 	case NESCPUOpAddressingMode::ZEROPAGE_X:
-		u8 addr8 = mem_.Read8(reg_.PC + 1);
 		crossedPageBoundary = false;
-		addr8 += reg_.X; // Will wrap around if X is too big.
-		addr = addr8;
+		addr = (mem_.Read8(reg_.PC + 1) + reg_.X); // Will wrap around if X is too big.
 		break;
 
 	case NESCPUOpAddressingMode::ZEROPAGE_Y:
-		u8 addr8 = mem_.Read8(reg_.PC + 1);
 		crossedPageBoundary = false;
-		addr8 += reg_.Y; // Will wrap around if Y is too big.
-		addr = addr8;
+		addr = (mem_.Read8(reg_.PC + 1) + reg_.Y); // Will wrap around if Y is too big.
 		break;
 
 	case NESCPUOpAddressingMode::INDIRECT_X:
-		u8 addr8 = mem_.Read8(reg_.PC + 1);
 		crossedPageBoundary = false;
-		addr8 += reg_.X; // Will wrap around if X is too big.
-		addr = mem_.Read16(addr8); // Read address from memory at addr8 into addr.
+		addr = mem_.Read16((mem_.Read8(reg_.PC + 1) + reg_.X)); // Will wrap around if X is too big.
 		break;
 
 	case NESCPUOpAddressingMode::INDIRECT_Y:
-		u8 addr8 = mem_.Read8(reg_.PC + 1);
-		addr = mem_.Read16(addr8); // Read address from memory at addr8 into addr.
+		addr = mem_.Read16(mem_.Read8(reg_.PC + 1)); // Read address from memory at addr8 into addr.
 		crossedPageBoundary = !NESHelper::IsInSamePage(addr, addr + reg_.Y);
 		addr += reg_.Y;
 		break;
@@ -604,9 +597,7 @@ void NESCPU::WriteOpResult(u8 result)
 		break;
 
 	case NESCPUOpAddressingMode::ZEROPAGE_X:
-		u8 addr8 = mem_.Read8(reg_.PC + 1);
-		addr8 += reg_.X; // Will wrap around if X is too big.
-		addr = addr8;
+		addr = (mem_.Read8(reg_.PC + 1) + reg_.X); // Will wrap around if X is too big.
 		break;
 
 	default:

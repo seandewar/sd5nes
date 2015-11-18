@@ -1,9 +1,9 @@
 #include "NESPPU.h"
 
 NESPPUMemoryMap::NESPPUMemoryMap(
-	const std::array<NESMemory&, 2>& patternTables,
-	const std::array<NESMemory&, 4>& nameTables,
-	const std::array<NESMemory&, 4>& attribTables,
+	const std::array<std::reference_wrapper<NESMemory>, 2>& patternTables,
+	const std::array<std::reference_wrapper<NESMemory>, 4>& nameTables,
+	const std::array<std::reference_wrapper<NESMemory>, 4>& attribTables,
 	NESMemory& paletteMem
 ) :
 	patternTables_(patternTables),
@@ -41,7 +41,7 @@ NESPPUMemoryMap::~NESPPUMemoryMap()
 }
 
 
-NESPPU::NESPPU(NESMemory& mem) :
+NESPPU::NESPPU(NESPPUMemoryMap& mem) :
 mem_(mem)
 {
 }

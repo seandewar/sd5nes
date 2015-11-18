@@ -1,6 +1,7 @@
 #pragma once
 
 #include <array>
+#include <functional>
 
 #include <SFML\Graphics\Color.hpp>
 
@@ -14,17 +15,17 @@ class NESPPUMemoryMap : public NESMemoryMap
 {
 public:
 	NESPPUMemoryMap(
-		const std::array<NESMemory&, 2>& patternTables, 
-		const std::array<NESMemory&, 4>& nameTables,
-		const std::array<NESMemory&, 4>& attribTables,
+		const std::array<std::reference_wrapper<NESMemory>, 2>& patternTables, 
+		const std::array<std::reference_wrapper<NESMemory>, 4>& nameTables,
+		const std::array<std::reference_wrapper<NESMemory>, 4>& attribTables,
 		NESMemory& paletteMem
 		);
 	virtual ~NESPPUMemoryMap();
 
 private:
-	std::array<NESMemory&, 2> patternTables_;
-	std::array<NESMemory&, 4> nameTables_;
-	std::array<NESMemory&, 4> attribTables_;
+	std::array<std::reference_wrapper<NESMemory>, 2> patternTables_;
+	std::array<std::reference_wrapper<NESMemory>, 4> nameTables_;
+	std::array<std::reference_wrapper<NESMemory>, 4> attribTables_;
 	NESMemory& paletteMem_;
 };
 
@@ -35,8 +36,8 @@ struct NESPPUColor
 {
 	u8 r, g, b;
 
-	/* Converts the colour to a SFML colour. */
-	inline sf::Color GetAsSFMLColor() const { return sf::Color(r, g, b); }
+	// Converts an NESPPUColor into it's corrisponding SFML Color (sf::Color).
+	inline sf::Color ToSFColor() { return sf::Color(r, g, b); }
 };
 
 /**
@@ -97,8 +98,7 @@ struct NESPPURegisters
 
 	union
 	{
-		/* Status Register (PPUSTAT)               */
-		/* (Should be read only from program code) */
+		/* Status Register (PPUSTAT) */
 		u8 PPUSTAT;
 
 		u8 PPUSTATUnused : 4; /* Unused bits. */
@@ -111,8 +111,8 @@ struct NESPPURegisters
 	u8 sprRamAddr; /* The address in SPR-RAM to access on the next write to sprRamIO. */
 	u8 sprRamIO; /* Writes a byte to SPR-RAM at the address indicated by sprRamAddr. */
 
-	u8 vramAddr1; /* VRAM address register 1. */
-	u8 vramAddr2; /* VRAM address register 2. */
+	u8 vramAddr1; /* VRAM address register 1 */
+	u8 vramAddr2; /* VRAM address register 2 */
 
 	u8 vramIO; /* Writes a byte to VRAM at the address indicated by vramAddr. */
 };
@@ -123,10 +123,10 @@ struct NESPPURegisters
 class NESPPU
 {
 public:
-	explicit NESPPU(NESMemory& mem);
+	explicit NESPPU(NESPPUMemoryMap& mem);
 	~NESPPU();
 
 private:
-	NESMemory& mem_;
+	NESPPUMemoryMap& mem_;
 };
 

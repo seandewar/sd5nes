@@ -15,10 +15,10 @@ public:
 	~NESEmulator();
 
 	// Loads a ROM into PRGROM memory.
-	bool LoadROM(const std::string& fileName);
+	void LoadROM(const std::string& fileName);
 
-	// Runs a frame of emulation.
-	bool RunFrame();
+	// Runs one frame of emulation.
+	void RunFrame();
 
 private:
 	sf::RenderTarget& target_;
@@ -27,6 +27,5 @@ private:
 
 	NESGamePak cart_;
 	NESMemory ram_;
-	NESCPUMemoryBus memBus_;
 };
 

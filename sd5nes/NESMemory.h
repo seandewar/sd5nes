@@ -37,6 +37,49 @@ public:
 };
 
 /**
+* Represents the memory used by a hardware component of the NES system.
+*/
+class NESMemory : public INESMemoryInterface
+{
+public:
+	NESMemory(uleast16 size = 0);
+	virtual ~NESMemory();
+
+	/**
+	* Sets all the allocated memory to zero.
+	*/
+	inline void ZeroMemory() { std::fill(data_.begin(), data_.end(), 0); }
+
+	/**
+	* Copies the contents from a buffer into zero'd memory.
+	*/
+	void CopyFromBuffer(const std::vector<u8>& buf);
+
+	/**
+	* Writes 8-bits to the memory at a specified location with the specified value.
+	*/
+	void Write8(u16 addr, u8 val) override;
+
+	/**
+	* Reads 8-bits from the memory at a specified location.
+	*/
+	u8 Read8(u16 addr) const override;
+
+	/**
+	* Reads 16-bits from the memory at a specified location.
+	*/
+	u16 Read16(u16 addr) const override;
+
+	/**
+	* Gets the allocated size.
+	*/
+	inline uleast32 GetSize() const { return data_.size(); }
+
+private:
+	std::vector<u8> data_;
+};
+
+/**
 * Basic structure containing information about memory maps in an NESMemoryMap.
 */
 struct NESMemoryMappingInfo
@@ -137,47 +180,3 @@ protected:
 	std::pair<NESMemory&, u16> GetMapping(u16 addr) const;
 	u16 LookupMirrorAddress(u16 addr) const;
 };
-
-/**
-* Represents the memory used by a hardware component of the NES system.
-*/
-class NESMemory : public INESMemoryInterface
-{
-public:
-	NESMemory(uleast16 size = 0);
-	virtual ~NESMemory();
-
-	/**
-	* Sets all the allocated memory to zero.
-	*/
-	inline void ZeroMemory() { std::fill(data_.begin(), data_.end(), 0); }
-
-	/**
-	* Copies the contents from a buffer into zero'd memory.
-	*/
-	void CopyFromBuffer(const std::vector<u8>& buf);
-
-	/**
-	* Writes 8-bits to the memory at a specified location with the specified value.
-	*/
-	void Write8(u16 addr, u8 val) override;
-
-	/**
-	* Reads 8-bits from the memory at a specified location.
-	*/
-	u8 Read8(u16 addr) const override;
-
-	/**
-	* Reads 16-bits from the memory at a specified location.
-	*/
-	u16 Read16(u16 addr) const override;
-
-	/**
-	* Gets the allocated size.
-	*/
-	inline uleast32 GetSize() const { return data_.size(); }
-
-private:
-	std::vector<u8> data_;
-};
-
