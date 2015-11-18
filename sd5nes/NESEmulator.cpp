@@ -19,7 +19,16 @@ NESEmulator::~NESEmulator()
 bool NESEmulator::LoadROM(const std::string& fileName)
 {
 	// @TODO Maybe?
-	return cart_.LoadROM(fileName);
+	try
+	{
+		cart_.LoadROM(fileName);
+	}
+	catch (const NESGamePakLoadException& ex)
+	{
+		return false;
+	}
+
+	return true;
 }
 
 

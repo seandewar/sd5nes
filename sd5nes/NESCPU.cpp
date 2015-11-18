@@ -3,16 +3,23 @@
 #include <cassert>
 #include <sstream>
 
-#include "NESHelper.h"
 
-
-NESCPUMemoryMap::NESCPUMemoryMap(NESMemory& cpuMem) :
-cpuMem_(cpuMem)
+NESCPUMemoryMap::NESCPUMemoryMap(NESMemory& cpuMem, NESPPURegisters& ppuReg) :
+cpuMem_(cpuMem),
+ppuReg_(ppuReg),
+debugApuIODummy_(0x18) // @TODO DEBUG!!!!!!
 {
-	AddMemoryMapping(cpuMem, 0x0000, 0x0800); 
-	AddMemoryMirrorRange(0x0000, 0x07FF, 0x0800, 0x1FFF); // Mirror RAM, Stack and Zero Page.
-	AddMemoryMirrorRange(0x2000, 0x2007, 0x2008, 0x3FFF); // Mirror I/O registers.
-	//@TODO Mirror I/O registers?
+	// @TODO DEBUG!!!!!! - dummy APU IO memory for testing.
+	AddMemoryMapping(debugApuIODummy_, 0x4000, 0x18);
+
+	// Map RAM, Stack & Zero Page.
+	AddMemoryMapping(cpuMem_, 0x0000, 0x0800);
+
+	// Mirror of $0000 to $07FF.
+	AddMemoryMirrorRange(0x0000, 0x07FF, 0x0800, 0x1FFF); 
+
+	// Mirror of $2000 to $2007.
+	AddMemoryMirrorRange(0x2000, 0x2007, 0x2008, 0x3FFF);
 }
 
 
@@ -23,14 +30,72 @@ NESCPUMemoryMap::~NESCPUMemoryMap()
 
 void NESCPUMemoryMap::Write8(u16 addr, u8 val)
 {
-	// @TODO
+	switch (LookupMirrorAddress(addr))
+	{
+	// $2002 and $4015 are read-only.
+	// Ignore writes.
+	case 0x2002:
+	case 0x4015:
+		return;
+
+	case 0x2000:
+		ppuReg_.PPUCTRL0 = val;
+		break;
+
+	case 0x2001:
+		ppuReg_.PPUCTRL1 = val;
+		break;
+
+	case 0x2003:
+		ppuReg_.sprRamAddr = val;
+		break;
+
+	case 0x2004:
+		ppuReg_.sprRamIO = val;
+		break;
+
+	case 0x2005:
+		ppuReg_.vramAddr1 = val;
+		break;
+
+	case 0x2006:
+		ppuReg_.vramAddr2 = val;
+		break;
+
+	case 0x2007:
+		ppuReg_.vramIO = val;
+		break;
+
+	// @TODO APU Registers
+	// @NOTE: Currently using a dummy mapping for these until we handle them.
+	}
+
 	NESMemoryMap::Write8(addr, val);
 }
 
 
 u8 NESCPUMemoryMap::Read8(u16 addr) const
 {
-	// @TODO
+	// $2000, $2001, $2003-$2006 and $4000-$4014 are write only.
+	// Return 0 on read.
+	const auto realAddr = LookupMirrorAddress(addr);
+	if (realAddr == 0x2000 || realAddr == 0x2001 ||
+		(realAddr >= 0x2003 && realAddr <= 0x2006) ||
+		(realAddr >= 0x4000 && realAddr <= 0x4014))
+		return 0;
+
+	switch (realAddr)
+	{
+	case 0x2002:
+		return ppuReg_.PPUSTAT;
+
+	case 0x2007:
+		return ppuReg_.vramIO;
+
+	// @TODO APU Registers
+	// @NOTE: Currently using a dummy mapping for these until we handle them.
+	}
+
 	return NESMemoryMap::Read8(addr);
 }
 
@@ -642,11 +707,11 @@ void NESCPU::ExecuteInterrupt(NESCPUInterrupt interruptType)
 	{
 	case NESCPUInterrupt::IRQBRK:
 		reg_.I = 1;
-		UpdateRegPC(mem_.Read16(NES_CPU_IRQBRK_VECTOR_START));
+		UpdateRegPC(mem_.Read16(0xFFFE)); // Use IRQ Vector.
 		return;
 
 	default:
-		assert("Unknown interrupt type encountered!" && false);
+		assert("Unknown interrupt type!" && false);
 		return;
 	}
 }
@@ -936,14 +1001,6 @@ void NESCPU::ExecuteOpROR()
 
 	UpdateRegZ(static_cast<u8>(res));
 	UpdateRegN(static_cast<u8>(res));
-}
-
-
-void NESCPU::ExecuteOpRTI()
-{
-	// P fromS PC fromS
-	reg_.P = StackPull8();
-	UpdateRegPC(StackPull16());
 }
 
 

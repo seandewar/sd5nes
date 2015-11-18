@@ -49,8 +49,9 @@ struct NESMemoryMappingInfo
 		size(size),
 		memory(memory)
 	{
-		assert("Specified size is higher than the allocated memory size being mapped!" &&
+		assert("Specified size for mapping is greater than allocated size of memory!" &&
 			size > memory.GetSize());
+		size = memory.GetSize();
 	}
 
 	inline bool operator==(const NESMemoryMappingInfo& rhs) const
@@ -132,6 +133,7 @@ private:
 	std::vector<NESMemoryMappingInfo> mappings_;
 	std::vector<NESMemoryMirroringInfo> mirrors_;
 
+protected:
 	std::pair<NESMemory&, u16> GetMapping(u16 addr) const;
 	u16 LookupMirrorAddress(u16 addr) const;
 };
@@ -143,7 +145,7 @@ class NESMemory : public INESMemoryInterface
 {
 public:
 	NESMemory(uleast16 size = 0);
-	~NESMemory();
+	virtual ~NESMemory();
 
 	/**
 	* Sets all the allocated memory to zero.

@@ -4,10 +4,5 @@
 #define NES_CPU_NTSC_CLOCK_SPEED_MHZ 1.7897725
 #define NES_CPU_PAL_CLOCK_SPEED_MHZ 1.773447
 
-/* Area of memory where stack starts. */
+/* Area of memory where the stack starts. */
 #define NES_CPU_STACK_START 0x0100
-
-/* Interrupt vector addresses. */
-#define NES_CPU_IRQBRK_VECTOR_START 0xFFFE
-#define NES_CPU_RESET_VECTOR_START 0xFFFC
-#define NES_CPU_NMI_VECTOR_START 0xFFFA

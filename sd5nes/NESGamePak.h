@@ -2,8 +2,27 @@
 
 #include <string>
 #include <vector>
+#include <stdexcept>
 
 #include "NESMemory.h"
+
+/**
+* Errors relating towards the loading and parsing of ROM files.
+*/
+class NESGamePakLoadException : public std::runtime_error
+{
+public:
+	explicit NESGamePakLoadException(const char* msg) :
+		std::runtime_error(msg)
+	{ }
+
+	explicit NESGamePakLoadException(const std::string& msg) :
+		std::runtime_error(msg)
+	{ }
+
+	virtual ~NESGamePakLoadException()
+	{ }
+};
 
 /**
 * The type of mirroring used by the ROM.
@@ -34,8 +53,8 @@ public:
 	NESGamePak();
 	~NESGamePak();
 
-	// Loads a NES ROM file.
-	bool LoadROM(const std::string& fileName);
+	// Loads a NES ROM file. Throws NESGamePakLoadException on failure.
+	void LoadROM(const std::string& fileName);
 
 	// Returns whether or not a ROM file has been currently loaded.
 	bool IsROMLoaded() const;
@@ -74,9 +93,9 @@ private:
 	NESMemory chrRom_;
 
 	// Reads a ROM file.
-	bool ReadROMFile(const std::string& fileName);
+	void ReadROMFile(const std::string& fileName);
 
 	// Parses the data from the loaded ROM file.
-	bool ParseROMFileData();
+	void ParseROMFileData();
 };
 

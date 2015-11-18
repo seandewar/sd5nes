@@ -20,7 +20,7 @@ NESGamePak::~NESGamePak()
 }
 
 
-bool NESGamePak::ReadROMFile(const std::string& fileName)
+void NESGamePak::ReadROMFile(const std::string& fileName)
 {
 	std::ifstream fileStream(fileName, std::ios_base::in | std::ios_base::binary);
 	std::vector<u8> fileData;
@@ -35,11 +35,11 @@ bool NESGamePak::ReadROMFile(const std::string& fileName)
 		// Read succeeded.
 		romFileName_ = fileName;
 		romFileData_ = fileData;
-		return true;
+		return;
 	}
 
 	// If not EOF, then read failed.
-	return false;
+	throw NESGamePakLoadException("Failed to read NES GamePak ROM image!");
 }
 
 
@@ -51,92 +51,91 @@ bool NESGamePak::ReadROMFile(const std::string& fileName)
 #define INES_RAM_BANKS_INDEX 4
 
 
-bool NESGamePak::ParseROMFileData()
+void NESGamePak::ParseROMFileData()
 {
-	if (!isRomLoaded_)
-		return false;
-
 	// @TODO Whole function might need some optimizations if too much
 	// stuff is being copied all around the place... ?
+	if (!isRomLoaded_)
+	{
+		assert("Tried to parse without a loaded ROM." && false);
+		throw NESGamePakLoadException("Failed to parse ROM image - no ROM image loaded!");
+	}
 
 	NESReadBuffer buf(romFileData_);
-
-	// Read file type.
-	std::string type;
-	if (!buf.ReadNextStr(4, &type))
-		return false;
-
-	// Only support iNES files for now...
-	// @TODO Support others?
-	if (type != std::string("NES") + (char)0x1A)
-		return false;
-	
-	// Vector containing the different ROM info bytes.
-	// Read ROM info bytes & skip past the 7 reserved bytes.
-	std::vector<u8> romInfo;
-	if (!buf.ReadNext(5, &romInfo) || !buf.ReadNext(7, nullptr))
-		return false;
-
-	// @TODO Assume 1 page of RAM if # 8KB RAM banks is 0.
-
-	// Check if bit 3 is 1 = four screen mirroring.
-	// If bit 3 is 0, check bit 0. If bit 0 is 1 = vertical. 0 = horizontal.
-	if ((romInfo[INES_ROM_CONTROL_1_INDEX] & 8) == 8)
-		mirrorType_ = NESMirroringType::FOUR_SCREEN;
-	else
-		mirrorType_ = ((romInfo[INES_ROM_CONTROL_1_INDEX] & 1) == 1 ? NESMirroringType::VERTICAL : NESMirroringType::HORIZONTAL);
-
-	// Check bits 1 and 2 = battery packed RAM & trainer respectively.
-	hasBatteryPackedRam_ = ((romInfo[INES_ROM_CONTROL_1_INDEX] & 2) == 2);
-	hasTrainer_ = ((romInfo[INES_ROM_CONTROL_1_INDEX] & 4) == 4);
-
-	// Get the mapper number using bits 4-7 from ROM Control Byte 1 and 2.
-	const u8 mapperNum = ((romInfo[INES_ROM_CONTROL_2_INDEX] & 0xF0) | (romInfo[INES_ROM_CONTROL_1_INDEX] >> 4));
-	switch (mapperNum)
+	std::vector<u8> romInfo; // Vector containing the different ROM info bytes.
+	try
 	{
-	case 0:
-		mapperType_ = NESMapperType::NROM;
-		break;
+		// Read file type & support iNES files.
+		// @TODO Support others?
+		const auto type = buf.ReadNextStr(4);
+		if (type != std::string("NES") + (char)0x1A)
+			throw NESGamePakLoadException("Unexpected ROM image format!");
+
+		// Read ROM info bytes & skip past the 7 reserved bytes.
+		romInfo = buf.ReadNext(5);
+		buf.ReadNext(7);
+
+		// @TODO Assume 1 page of RAM if # 8KB RAM banks is 0.
+
+		// Check if bit 3 is 1 = four screen mirroring.
+		// If bit 3 is 0, check bit 0. If bit 0 is 1 = vertical. 0 = horizontal.
+		if ((romInfo[INES_ROM_CONTROL_1_INDEX] & 8) == 8)
+			mirrorType_ = NESMirroringType::FOUR_SCREEN;
+		else
+			mirrorType_ = ((romInfo[INES_ROM_CONTROL_1_INDEX] & 1) == 1 ? NESMirroringType::VERTICAL : NESMirroringType::HORIZONTAL);
+
+		// Check bits 1 and 2 = battery packed RAM & trainer respectively.
+		hasBatteryPackedRam_ = ((romInfo[INES_ROM_CONTROL_1_INDEX] & 2) == 2);
+		hasTrainer_ = ((romInfo[INES_ROM_CONTROL_1_INDEX] & 4) == 4);
+
+		// Get the mapper number using bits 4-7 from ROM Control Byte 1 and 2.
+		const u8 mapperNum = ((romInfo[INES_ROM_CONTROL_2_INDEX] & 0xF0) | (romInfo[INES_ROM_CONTROL_1_INDEX] >> 4));
+		switch (mapperNum)
+		{
+		case 0:
+			mapperType_ = NESMapperType::NROM;
+			break;
 
 		// Unknown mapper type!
-	default:
-		mapperType_ = NESMapperType::UNKNOWN;
-		return false;
+		default:
+			mapperType_ = NESMapperType::UNKNOWN;
+			throw NESGamePakLoadException("Unsupported ROM memory mapper!");
+		}
 	}
-
-	// If there is a trainer, ignore it.
-	// @TODO Do something with trainer in future?
-	if (hasTrainer_)
+	catch (const NESReadBufferException& ex)
 	{
-		if (!buf.ReadNext(512, nullptr))
-			return false;
+		throw NESGamePakLoadException("Failed to parse ROM image header!");
 	}
 
-	// Read ROM image data. Starts with PRG-ROM and then CHR-ROM.
-	std::vector<u8> romPrgRom, romChrRom;
-	if (!buf.ReadNext(NES_MEMORY_PRGROM_BANK_SIZE * romInfo[INES_PRGROM_BANKS_INDEX], &romPrgRom) ||
-		!buf.ReadNext(NES_MEMORY_CHRROM_BANK_SIZE * romInfo[INES_CHRROM_BANKS_INDEX], &romChrRom))
-		return false;
+	try
+	{
+		// If there is a trainer, ignore it.
+		// @TODO Do something with trainer in future?
+		if (hasTrainer_)
+			buf.ReadNext(512);
 
-	prgRom_ = NESMemory(romPrgRom);
-	chrRom_ = NESMemory(romChrRom);
-	return true;
+		// Copy contents of PRGROM and CHRROM into memory.
+		prgRom_ = NESMemory(NES_MEMORY_PRGROM_BANK_SIZE * romInfo[INES_PRGROM_BANKS_INDEX]);
+		chrRom_ = NESMemory(NES_MEMORY_CHRROM_BANK_SIZE * romInfo[INES_CHRROM_BANKS_INDEX]);
+		prgRom_.CopyFromBuffer(buf.ReadNext(prgRom_.GetSize()));
+		chrRom_.CopyFromBuffer(buf.ReadNext(chrRom_.GetSize()));
+	}
+	catch (const NESReadBufferException& ex)
+	{
+		throw NESGamePakLoadException("Failed to parse ROM image data!");
+	}
 }
 
 
-bool NESGamePak::LoadROM(const std::string& fileName)
+void NESGamePak::LoadROM(const std::string& fileName)
 {
 	// Reset current loaded flag.
 	isRomLoaded_ = false;
 
-	if (!ReadROMFile(fileName))
-		return false;
-
-	if (!ParseROMFileData())
-		return false;
+	ReadROMFile(fileName);
+	ParseROMFileData();
 
 	isRomLoaded_ = true;
-	return true;
 }
 
 

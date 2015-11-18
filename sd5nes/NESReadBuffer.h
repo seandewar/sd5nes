@@ -1,8 +1,27 @@
 #pragma once
 
 #include <vector>
+#include <stdexcept>
 
 #include "NESTypes.h"
+
+/**
+* Errors relating to read errors from the NESReadBuffer class.
+*/
+class NESReadBufferException : public std::runtime_error
+{
+public:
+	explicit NESReadBufferException(const char* msg) :
+		std::runtime_error(msg)
+	{ }
+
+	explicit NESReadBufferException(const std::string& msg) :
+		std::runtime_error(msg)
+	{ }
+
+	virtual ~NESReadBufferException()
+	{ }
+};
 
 /**
 * Contains some methods for reading from a buffer.
@@ -14,13 +33,13 @@ public:
 	~NESReadBuffer();
 
 	// Reads the next 8 bits from ROM file buffer.
-	bool ReadNext8(u8* outVal);
+	u8 ReadNext8();
 
 	// Reads the next X amount of bytes from ROM file buffer.
-	bool ReadNext(size_t readSize, std::vector<u8>* outVec);
+	std::vector<u8> ReadNext(size_t readSize);
 
 	// Reads the next X amount of bytes from ROM file buffer and converts to string.
-	bool ReadNextStr(size_t readSize, std::string* outStr);
+	std::string ReadNextStr(size_t readSize);
 
 private:
 	const std::vector<u8>& romFileData_;

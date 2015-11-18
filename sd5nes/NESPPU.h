@@ -8,6 +8,27 @@
 #include "NESMemory.h"
 
 /**
+* Emulates the mapping and mirroring of the PPU's memory.
+*/
+class NESPPUMemoryMap : public NESMemoryMap
+{
+public:
+	NESPPUMemoryMap(
+		const std::array<NESMemory&, 2>& patternTables, 
+		const std::array<NESMemory&, 4>& nameTables,
+		const std::array<NESMemory&, 4>& attribTables,
+		NESMemory& paletteMem
+		);
+	virtual ~NESPPUMemoryMap();
+
+private:
+	std::array<NESMemory&, 2> patternTables_;
+	std::array<NESMemory&, 4> nameTables_;
+	std::array<NESMemory&, 4> attribTables_;
+	NESMemory& paletteMem_;
+};
+
+/**
 * Struct for PPU Color values.
 */
 struct NESPPUColor
@@ -15,7 +36,7 @@ struct NESPPUColor
 	u8 r, g, b;
 
 	/* Converts the colour to a SFML colour. */
-	inline sf::Color getAsSFMLColor() const { return sf::Color(r, g, b); }
+	inline sf::Color GetAsSFMLColor() const { return sf::Color(r, g, b); }
 };
 
 /**
@@ -80,7 +101,7 @@ struct NESPPURegisters
 		/* (Should be read only from program code) */
 		u8 PPUSTAT;
 
-		u8 statusUnused : 4; /* Unused bits. */
+		u8 PPUSTATUnused : 4; /* Unused bits. */
 		u8 ignoreVramWrites : 1; /* If set to 1, writes to VRAM will be ignored. */
 		u8 scanlineSpritesCount : 1; /* If set to 1, indicates that more than 8 sprites are on the current scanline. */
 		u8 sprite0Hit : 1; /* Set when a non-transparent pixel of Sprite 0 overlaps a non-transparent background pixel. */
@@ -90,7 +111,9 @@ struct NESPPURegisters
 	u8 sprRamAddr; /* The address in SPR-RAM to access on the next write to sprRamIO. */
 	u8 sprRamIO; /* Writes a byte to SPR-RAM at the address indicated by sprRamAddr. */
 
-	u16 vramAddr; /* VRAM address register. */
+	u8 vramAddr1; /* VRAM address register 1. */
+	u8 vramAddr2; /* VRAM address register 2. */
+
 	u8 vramIO; /* Writes a byte to VRAM at the address indicated by vramAddr. */
 };
 
@@ -100,7 +123,7 @@ struct NESPPURegisters
 class NESPPU
 {
 public:
-	NESPPU(NESMemory& mem);
+	explicit NESPPU(NESMemory& mem);
 	~NESPPU();
 
 private:

@@ -129,9 +129,12 @@ void NESMemory::CopyFromBuffer(const std::vector<u8>& buf)
 	// is probably bad...
 	assert(buf.size() <= data_.size());
 
-	ZeroMemory();
-	for (uleast16 i = 0; i < buf.size(); ++i)
-		data_[i] = buf[i];
+	for (uleast16 i = 0; i < data_.size(); ++i)
+	{
+		// Fill with data from buffer. If we have reached the end
+		// of the buffer, fill the rest with zeros.
+		data_[i] = (i < buf.size() ? buf[i] : 0);
+	}
 }
 
 

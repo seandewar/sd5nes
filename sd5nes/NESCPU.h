@@ -4,6 +4,7 @@
 #include <stdexcept>
 
 #include "NESTypes.h"
+#include "NESHelper.h"
 #include "NESCPUConstants.h"
 #include "NESCPUOpConstants.h"
 #include "NESMemoryConstants.h"
@@ -41,14 +42,18 @@ private:
 class NESCPUMemoryMap : public NESMemoryMap
 {
 public:
-	NESCPUMemoryMap(NESMemory& cpuMem);
+	NESCPUMemoryMap(NESMemory& cpuMem, NESPPURegisters& ppuReg);
 	virtual ~NESCPUMemoryMap();
 
 	void Write8(u16 addr, u8 val) override;
 	u8 Read8(u16 addr) const override;
 
 private:
+	// @TODO DEBUG
+	NESMemory debugApuIODummy_;
+
 	NESMemory& cpuMem_;
+	NESPPURegisters& ppuReg_;
 };
 
 /**
@@ -387,7 +392,7 @@ private:
 	void ExecuteOpROR();
 
 	// Execute Return from Interrupt (RTI).
-	void ExecuteOpRTI();
+	inline void ExecuteOpRTI() { /* P fromS PC fromS */ reg_.P = StackPull8(); UpdateRegPC(StackPull16()); }
 
 	// Execute Return from Subroutine (RTS).
 	inline void ExecuteOpRTS() { /* PC fromS, PC + 1 -> PC */ UpdateRegPC(StackPull16() + 1); }
