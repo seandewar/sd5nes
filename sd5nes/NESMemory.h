@@ -1,10 +1,12 @@
 #pragma once
 
+#include <array>
 #include <vector>
 #include <stdexcept>
 #include <cassert>
 
 #include "NESTypes.h"
+#include "NESHelper.h"
 #include "NESMemoryConstants.h"
 
 /**
@@ -34,16 +36,20 @@ public:
 	virtual void Write8(u16 addr, u8 val) = 0;
 	virtual u8 Read8(u16 addr) const = 0;
 	virtual u16 Read16(u16 addr) const = 0;
+	virtual uleast32 GetSize() const = 0;
 };
 
 /**
 * Represents the memory used by a hardware component of the NES system.
 */
+template <uleast16 size>
 class NESMemory : public INESMemoryInterface
 {
 public:
-	NESMemory(uleast16 size = 0);
-	virtual ~NESMemory();
+	NESMemory() { ZeroMemory(); }
+	explicit NESMemory(const std::vector<u8>& vec) { CopyFromVector(vec); }
+	virtual ~NESMemory()
+	{ }
 
 	/**
 	* Sets all the allocated memory to zero.
@@ -51,32 +57,56 @@ public:
 	inline void ZeroMemory() { std::fill(data_.begin(), data_.end(), 0); }
 
 	/**
-	* Copies the contents from a buffer into zero'd memory.
+	* Copies the contents from a vector into zero'd memory.
 	*/
-	void CopyFromBuffer(const std::vector<u8>& buf);
+	void CopyFromVector(const std::vector<u8>& buf)
+	{
+		// Copying from a buffer which is larger than ours
+		// is probably bad...
+		assert(buf.size() <= data_.size());
+
+		for (uleast16 i = 0; i < data_.size(); ++i)
+		{
+			// Fill with data from buffer. If we have reached the end
+			// of the buffer, fill the rest with zeros.
+			data_[i] = (i < buf.size() ? buf[i] : 0);
+		}
+	}
 
 	/**
 	* Writes 8-bits to the memory at a specified location with the specified value.
 	*/
-	void Write8(u16 addr, u8 val) override;
+	void Write8(u16 addr, u8 val) override
+	{
+		if (addr >= data_.size())
+			throw NESMemoryException("Cannot write to memory outside of allocated space!");
+
+		data_[addr] = val;
+	}
 
 	/**
 	* Reads 8-bits from the memory at a specified location.
 	*/
-	u8 Read8(u16 addr) const override;
+	u8 Read8(u16 addr) const override
+	{
+		if (addr >= data_.size())
+			throw NESMemoryException("Cannot read from memory outside of allocated space!");
+
+		return data_[addr];
+	}
 
 	/**
 	* Reads 16-bits from the memory at a specified location.
 	*/
-	u16 Read16(u16 addr) const override;
+	inline u16 Read16(u16 addr) const override { return NESHelper::ConvertTo16(Read8(addr + 1), Read8(addr)); }
 
 	/**
 	* Gets the allocated size.
 	*/
-	inline uleast32 GetSize() const { return data_.size(); }
+	inline uleast32 GetSize() const override { return data_.size(); }
 
 private:
-	std::vector<u8> data_;
+	std::array<u8, size> data_;
 };
 
 /**
@@ -85,9 +115,9 @@ private:
 struct NESMemoryMappingInfo
 {
 	const u16 startAddr, size;
-	NESMemory& memory;
+	INESMemoryInterface& memory;
 
-	NESMemoryMappingInfo(NESMemory& memory, u16 startAddr, u16 size) :
+	NESMemoryMappingInfo(INESMemoryInterface& memory, u16 startAddr, u16 size) :
 		startAddr(startAddr),
 		size(size),
 		memory(memory)
@@ -129,7 +159,7 @@ struct NESMemoryMirroringInfo
 /**
 * Memory module that maps memory together.
 */
-class NESMemoryMap : public INESMemoryInterface
+class NESMemoryMap
 {
 public:
 	NESMemoryMap();
@@ -138,7 +168,7 @@ public:
 	/**
 	* Adds memory to be mapped at a specified location.
 	*/
-	void AddMemoryMapping(NESMemory& memory, u16 startAddr, u16 size);
+	void AddMemoryMapping(INESMemoryInterface& memory, u16 startAddr, u16 size);
 
 	/**
 	* Defines where to mirror the memory to and of what size the mirror should be.
@@ -156,27 +186,27 @@ public:
 	* Maps the memory correctly.
 	* Can throw NESMemoryException.
 	*/
-	virtual void Write8(u16 addr, u8 val) override;
+	virtual void Write8(u16 addr, u8 val);
 
 	/**
 	* Reads 8-bits from the memory at a specified location with the specified value.
 	* Maps the memory correctly.
 	* Can throw NESMemoryException.
 	*/
-	virtual u8 Read8(u16 addr) const override;
+	virtual u8 Read8(u16 addr) const;
 
 	/**
 	* Reads 16-bits from the memory at a specified location with the specified value.
 	* Maps the memory correctly.
 	* Can throw NESMemoryException.
 	*/
-	virtual u16 Read16(u16 addr) const override;
+	virtual u16 Read16(u16 addr) const;
 
 private:
 	std::vector<NESMemoryMappingInfo> mappings_;
 	std::vector<NESMemoryMirroringInfo> mirrors_;
 
 protected:
-	std::pair<NESMemory&, u16> GetMapping(u16 addr) const;
+	std::pair<INESMemoryInterface*, u16> GetMapping(u16 addr) const;
 	u16 LookupMirrorAddress(u16 addr) const;
 };

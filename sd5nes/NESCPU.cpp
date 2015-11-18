@@ -4,16 +4,15 @@
 #include <sstream>
 
 
-NESCPUMemoryMap::NESCPUMemoryMap(NESMemory& cpuMem, NESPPURegisters& ppuReg) :
-cpuMem_(cpuMem),
-ppuReg_(ppuReg),
-debugApuIODummy_(0x18) // @TODO DEBUG!!!!!!
+NESCPUMemoryMap::NESCPUMemoryMap(NESMemCPURAM& cpuRam, NESPPURegisters& ppuReg) :
+cpuRam_(cpuRam),
+ppuReg_(ppuReg)
 {
 	// @TODO DEBUG!!!!!! - dummy APU IO memory for testing.
 	AddMemoryMapping(debugApuIODummy_, 0x4000, 0x18);
 
 	// Map RAM, Stack & Zero Page.
-	AddMemoryMapping(cpuMem_, 0x0000, 0x0800);
+	AddMemoryMapping(cpuRam_, 0x0000, 0x0800);
 
 	// Mirror of $0000 to $07FF.
 	AddMemoryMirrorRange(0x0000, 0x07FF, 0x0800, 0x1FFF); 

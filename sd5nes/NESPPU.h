@@ -1,12 +1,28 @@
 #pragma once
 
 #include <array>
-#include <functional>
 
 #include <SFML\Graphics\Color.hpp>
 
 #include "NESTypes.h"
 #include "NESMemory.h"
+
+/* Typedefs for the individual tables + typedef for holding both palettes (BG and Sprite). */
+typedef NESMemory<0x1000> NESMemPatternTable;
+typedef NESMemory<0x3C0> NESMemNameTable;
+typedef NESMemory<0x40> NESMemAttributeTable;
+typedef NESMemory<0x20> NESMemPalettes;
+
+/**
+* Struct containing palette memory, pattern, name and attribute tables for the PPU.
+*/
+struct NESPPUMemory
+{
+	std::array<NESMemPatternTable, 2> patternTables;
+	std::array<NESMemNameTable, 4> nameTables;
+	std::array<NESMemAttributeTable, 4> attribTables;
+	NESMemPalettes paletteMem;
+};
 
 /**
 * Emulates the mapping and mirroring of the PPU's memory.
@@ -14,19 +30,11 @@
 class NESPPUMemoryMap : public NESMemoryMap
 {
 public:
-	NESPPUMemoryMap(
-		const std::array<std::reference_wrapper<NESMemory>, 2>& patternTables, 
-		const std::array<std::reference_wrapper<NESMemory>, 4>& nameTables,
-		const std::array<std::reference_wrapper<NESMemory>, 4>& attribTables,
-		NESMemory& paletteMem
-		);
+	NESPPUMemoryMap(NESPPUMemory& mem);
 	virtual ~NESPPUMemoryMap();
 
 private:
-	std::array<std::reference_wrapper<NESMemory>, 2> patternTables_;
-	std::array<std::reference_wrapper<NESMemory>, 4> nameTables_;
-	std::array<std::reference_wrapper<NESMemory>, 4> attribTables_;
-	NESMemory& paletteMem_;
+	NESPPUMemory& mem_;
 };
 
 /**
@@ -126,7 +134,13 @@ public:
 	explicit NESPPU(NESPPUMemoryMap& mem);
 	~NESPPU();
 
+	/**
+	* Gets a reference to the registers being used by the PPU.
+	*/
+	NESPPURegisters& GetPPURegisters();
+
 private:
+	NESPPURegisters ppuReg_;
 	NESPPUMemoryMap& mem_;
 };
 

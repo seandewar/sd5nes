@@ -5,13 +5,9 @@
 #include "NESReadBuffer.h"
 
 
-NESGamePak::NESGamePak() :
-isRomLoaded_(false),
-hasBatteryPackedRam_(false),
-hasTrainer_(false),
-mirrorType_(NESMirroringType::UNKNOWN),
-mapperType_(NESMapperType::UNKNOWN)
+NESGamePak::NESGamePak()
 {
+	ResetLoadedState();
 }
 
 
@@ -19,8 +15,22 @@ NESGamePak::~NESGamePak()
 {
 }
 
+void NESGamePak::ResetLoadedState()
+{
+	isRomLoaded_ = false;
 
-void NESGamePak::ReadROMFile(const std::string& fileName)
+	mirrorType_ = NESMirroringType::UNKNOWN;
+	mapperType_ = NESMapperType::UNKNOWN;
+	hasBatteryPackedRam_ = false;
+	hasTrainer_ = false;
+
+	romFileName_.clear();
+	prgRomBanks_.clear();
+	chrRomBanks_.clear();
+}
+
+
+std::vector<u8> NESGamePak::ReadROMFile(const std::string& fileName)
 {
 	std::ifstream fileStream(fileName, std::ios_base::in | std::ios_base::binary);
 	std::vector<u8> fileData;
@@ -29,14 +39,9 @@ void NESGamePak::ReadROMFile(const std::string& fileName)
 	while (fileStream.good())
 		fileData.emplace_back(fileStream.get());
 
-	// Check if end-of-file.
+	// Check if end-of-file (successful read).
 	if (fileStream.eof())
-	{
-		// Read succeeded.
-		romFileName_ = fileName;
-		romFileData_ = fileData;
-		return;
-	}
+		return fileData;
 
 	// If not EOF, then read failed.
 	throw NESGamePakLoadException("Failed to read NES GamePak ROM image!");
@@ -51,7 +56,7 @@ void NESGamePak::ReadROMFile(const std::string& fileName)
 #define INES_RAM_BANKS_INDEX 4
 
 
-void NESGamePak::ParseROMFileData()
+void NESGamePak::ParseROMFileData(const std::vector<u8>& data)
 {
 	// @TODO Whole function might need some optimizations if too much
 	// stuff is being copied all around the place... ?
@@ -61,7 +66,7 @@ void NESGamePak::ParseROMFileData()
 		throw NESGamePakLoadException("Failed to parse ROM image - no ROM image loaded!");
 	}
 
-	NESReadBuffer buf(romFileData_);
+	NESReadBuffer buf(data);
 	std::vector<u8> romInfo; // Vector containing the different ROM info bytes.
 	try
 	{
@@ -115,10 +120,10 @@ void NESGamePak::ParseROMFileData()
 			buf.ReadNext(512);
 
 		// Copy contents of PRGROM and CHRROM into memory.
-		prgRom_ = NESMemory(NES_MEMORY_PRGROM_BANK_SIZE * romInfo[INES_PRGROM_BANKS_INDEX]);
-		chrRom_ = NESMemory(NES_MEMORY_CHRROM_BANK_SIZE * romInfo[INES_CHRROM_BANKS_INDEX]);
-		prgRom_.CopyFromBuffer(buf.ReadNext(prgRom_.GetSize()));
-		chrRom_.CopyFromBuffer(buf.ReadNext(chrRom_.GetSize()));
+		for (int i = 0; i < romInfo[INES_PRGROM_BANKS_INDEX]; ++i)
+			prgRomBanks_.emplace_back(buf.ReadNext(NES_MEMORY_PRGROM_BANK_SIZE));
+		for (int i = 0; i < romInfo[INES_CHRROM_BANKS_INDEX]; ++i)
+			chrRomBanks_.emplace_back(buf.ReadNext(NES_MEMORY_CHRROM_BANK_SIZE));
 	}
 	catch (const NESReadBufferException&)
 	{
@@ -129,11 +134,10 @@ void NESGamePak::ParseROMFileData()
 
 void NESGamePak::LoadROM(const std::string& fileName)
 {
-	// Reset current loaded flag.
-	isRomLoaded_ = false;
+	ResetLoadedState();
 
-	ReadROMFile(fileName);
-	ParseROMFileData();
+	romFileName_ = fileName;
+	ParseROMFileData(ReadROMFile(fileName));
 
 	isRomLoaded_ = true;
 }
@@ -145,15 +149,15 @@ bool NESGamePak::IsROMLoaded() const
 }
 
 
-const NESMemory& NESGamePak::GetProgramROM() const
+const std::vector<NESMemPRGROMBank>& NESGamePak::GetProgramROMBanks() const
 {
-	return prgRom_;
+	return prgRomBanks_;
 }
 
 
-const NESMemory& NESGamePak::GetCharacterROM() const
+const std::vector<NESMemCHRROMBank>& NESGamePak::GetCharacterROMBanks() const
 {
-	return chrRom_;
+	return chrRomBanks_;
 }
 
 

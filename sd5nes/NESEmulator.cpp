@@ -5,7 +5,10 @@
 
 NESEmulator::NESEmulator(sf::RenderTarget& target) :
 target_(target),
-cpu_(NESMemory(0x800)) // @TODO: DEBUG!!!!
+ppuMap_(ppuMem_),
+ppu_(ppuMap_),
+cpuMap_(cpuRam_, ppu_.GetPPURegisters()),
+cpu_(cpuMap_)
 {
 }
 

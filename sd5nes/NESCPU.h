@@ -11,13 +11,15 @@
 #include "NESMemory.h"
 #include "NESPPU.h"
 
+typedef NESMemory<0x800> NESMemCPURAM;
+
 /**
 * Memory module that maps CPU memory.
 */
 class NESCPUMemoryMap : public NESMemoryMap
 {
 public:
-	NESCPUMemoryMap(NESMemory& cpuMem, NESPPURegisters& ppuReg);
+	NESCPUMemoryMap(NESMemCPURAM& cpuRam, NESPPURegisters& ppuReg);
 	virtual ~NESCPUMemoryMap();
 
 	void Write8(u16 addr, u8 val) override;
@@ -25,9 +27,9 @@ public:
 
 private:
 	// @TODO DEBUG
-	NESMemory debugApuIODummy_;
+	NESMemory<0x18> debugApuIODummy_;
 
-	NESMemory& cpuMem_;
+	NESMemCPURAM& cpuRam_;
 	NESPPURegisters& ppuReg_;
 };
 
@@ -91,16 +93,11 @@ private:
 * Enum containing the different interrupts used by the NES CPU.
 * Sorted by interrupt priority (0 = highest, 1 = medium, 2 = lowest).
 */
-enum class NESCPUInterrupt : u8
+enum class NESCPUInterrupt
 {
-	/* RESET interrupt - highest priority. */
-	RESET = 0,
-
-	/* NMI interrupt - medium priority. */
-	NMI = 1,
-
-	/* IRQ/BRK interrupt - lowest priority. */
-	IRQBRK = 2
+	RESET, /* RESET interrupt - highest priority. */
+	NMI, /* NMI interrupt - medium priority. */
+	IRQBRK /* IRQ/BRK interrupt - lowest priority. */
 };
 
 /**

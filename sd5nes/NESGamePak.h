@@ -5,6 +5,7 @@
 #include <stdexcept>
 
 #include "NESMemory.h"
+#include "NESTypes.h"
 
 /**
 * Errors relating towards the loading and parsing of ROM files.
@@ -38,11 +39,14 @@ enum class NESMirroringType
 /**
 * The type of mapper used by the ROM.
 */
-enum class NESMapperType : u8
+enum class NESMapperType
 {
-	NROM, // No mapper.
-	UNKNOWN
+	NROM, // NROM - No mapper.
+	UNKNOWN // Unknown mapper.
 };
+
+typedef NESMemory<0x4000> NESMemPRGROMBank;
+typedef NESMemory<0x2000> NESMemCHRROMBank;
 
 /**
 * Handles emulation of the NES Game Pak cartridge.
@@ -59,11 +63,11 @@ public:
 	// Returns whether or not a ROM file has been currently loaded.
 	bool IsROMLoaded() const;
 
-	// Retrieves a const reference to the read-only PRG-ROM contained in the cartridge.
-	const NESMemory& GetProgramROM() const;
+	// Retrieves a const reference to the read-only PRG-ROM banks contained in the cartridge.
+	const std::vector<NESMemPRGROMBank>& GetProgramROMBanks() const;
 
-	// Retrieves a const reference to the read-only CHR-ROM contained in the cartridge.
-	const NESMemory& GetCharacterROM() const;
+	// Retrieves a const reference to the read-only CHR-ROM banks contained in the cartridge.
+	const std::vector<NESMemCHRROMBank>& GetCharacterROMBanks() const;
 
 	// Gets the mirroring type used by the ROM.
 	NESMirroringType GetMirroringType() const;
@@ -80,7 +84,6 @@ public:
 private:
 	bool isRomLoaded_;
 	std::string romFileName_;
-	std::vector<u8> romFileData_;
 
 	/* ROM Info variables */
 	NESMirroringType mirrorType_;
@@ -89,13 +92,16 @@ private:
 	bool hasTrainer_;
 
 	/* PRG-ROM and CHR-ROM of the cart. */
-	NESMemory prgRom_;
-	NESMemory chrRom_;
+	std::vector<NESMemPRGROMBank> prgRomBanks_;
+	std::vector<NESMemCHRROMBank> chrRomBanks_;
+
+	// Resets the state of loading.
+	void ResetLoadedState();
 
 	// Reads a ROM file.
-	void ReadROMFile(const std::string& fileName);
+	std::vector<u8> ReadROMFile(const std::string& fileName);
 
 	// Parses the data from the loaded ROM file.
-	void ParseROMFileData();
+	void ParseROMFileData(const std::vector<u8>& data);
 };
 

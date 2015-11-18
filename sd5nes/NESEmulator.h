@@ -3,6 +3,7 @@
 #include <SFML\Graphics\RenderTarget.hpp>
 
 #include "NESCPU.h"
+#include "NESPPU.h"
 #include "NESGamePak.h"
 
 /**
@@ -23,9 +24,14 @@ public:
 private:
 	sf::RenderTarget& target_;
 
-	NESCPU cpu_;
-
 	NESGamePak cart_;
-	NESMemory ram_;
+
+	NESPPUMemory ppuMem_;
+	NESPPUMemoryMap ppuMap_;
+	NESPPU ppu_;
+
+	NESMemCPURAM cpuRam_;
+	NESCPUMemoryMap cpuMap_;
+	NESCPU cpu_;
 };
 

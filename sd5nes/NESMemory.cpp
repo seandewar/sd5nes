@@ -2,8 +2,6 @@
 
 #include <sstream>
 
-#include "NESHelper.h"
-
 
 NESMemoryMap::NESMemoryMap()
 {
@@ -15,7 +13,7 @@ NESMemoryMap::~NESMemoryMap()
 }
 
 
-void NESMemoryMap::AddMemoryMapping(NESMemory& memory, u16 startAddr, u16 size)
+void NESMemoryMap::AddMemoryMapping(INESMemoryInterface& memory, u16 startAddr, u16 size)
 {
 	const auto info = NESMemoryMappingInfo(memory, startAddr, size);
 
@@ -59,13 +57,13 @@ void NESMemoryMap::AddMemoryMirrorRange(u16 startAddr, u16 endAddr, u16 mirrorTo
 }
 
 
-std::pair<NESMemory&, u16> NESMemoryMap::GetMapping(u16 addr) const
+std::pair<INESMemoryInterface*, u16> NESMemoryMap::GetMapping(u16 addr) const
 {
 	for (const auto& mapInfo : mappings_)
 	{
 		if (addr >= mapInfo.startAddr &&
 			addr < mapInfo.startAddr + mapInfo.size)
-			return std::make_pair(mapInfo.memory, addr - mapInfo.startAddr);
+			return std::make_pair(&mapInfo.memory, addr - mapInfo.startAddr);
 	}
 
 	// No valid mapping for this address
@@ -93,70 +91,19 @@ u16 NESMemoryMap::LookupMirrorAddress(u16 addr) const
 void NESMemoryMap::Write8(u16 addr, u8 val)
 {
 	const auto mapping = GetMapping(LookupMirrorAddress(addr));
-	mapping.first.Write8(mapping.second, val);
+	(*mapping.first).Write8(mapping.second, val);
 }
 
 
 u8 NESMemoryMap::Read8(u16 addr) const
 {
 	const auto mapping = GetMapping(LookupMirrorAddress(addr));
-	return mapping.first.Read8(mapping.second);
+	return (*mapping.first).Read8(mapping.second);
 }
 
 
 u16 NESMemoryMap::Read16(u16 addr) const
 {
 	const auto mapping = GetMapping(LookupMirrorAddress(addr));
-	return mapping.first.Read16(mapping.second);
-}
-
-
-NESMemory::NESMemory(uleast16 size) :
-data_(size)
-{
-	ZeroMemory();
-}
-
-
-NESMemory::~NESMemory()
-{
-}
-
-
-void NESMemory::CopyFromBuffer(const std::vector<u8>& buf)
-{
-	// Copying from a buffer which is larger than ours
-	// is probably bad...
-	assert(buf.size() <= data_.size());
-
-	for (uleast16 i = 0; i < data_.size(); ++i)
-	{
-		// Fill with data from buffer. If we have reached the end
-		// of the buffer, fill the rest with zeros.
-		data_[i] = (i < buf.size() ? buf[i] : 0);
-	}
-}
-
-
-void NESMemory::Write8(u16 addr, u8 val)
-{
-	if (addr >= data_.size())
-		throw NESMemoryException("Cannot write to memory outside of allocated space!");
-
-	data_[addr] = val;
-}
-
-
-u8 NESMemory::Read8(u16 addr) const
-{
-	if (addr >= data_.size())
-		throw NESMemoryException("Cannot read from memory outside of allocated space!");
-
-	return data_[addr];
-}
-
-
-u16 NESMemory::Read16(u16 addr) const
-{
-	return NESHelper::ConvertTo16(Read8(addr + 1), Read8(addr));
+	return (*mapping.first).Read16(mapping.second);
 }
