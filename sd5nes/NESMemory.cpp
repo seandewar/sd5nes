@@ -68,10 +68,10 @@ std::pair<NESMemory&, u16> NESMemoryMap::GetMapping(u16 addr) const
 			return std::make_pair(mapInfo.memory, addr - mapInfo.startAddr);
 	}
 
-	// No valid mapping for address!
+	// No valid mapping for this address
 	assert("Failed to lookup mapping - address not mapped!" && false);
 	std::ostringstream oss;
-	oss << "No mapping found for address 0x" << std::hex << addr;
+	oss << "Cannot access unmapped memory at 0x" << std::hex << addr;
 	throw NESMemoryException(oss.str());
 }
 
