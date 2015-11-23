@@ -4,98 +4,97 @@
 #include <sstream>
 
 
-NESCPUMemoryMap::NESCPUMemoryMap(NESMemCPURAM& cpuRam, NESPPURegisters& ppuReg) :
+NESCPUMemoryMapper::NESCPUMemoryMapper(NESMemCPURAM& cpuRam, NESPPURegisters& ppuReg) :
 cpuRam_(cpuRam),
 ppuReg_(ppuReg)
 {
-	// @TODO DEBUG!!!!!! - dummy APU IO memory for testing.
-	AddMemoryMapping(debugApuIODummy_, 0x4000, 0x18);
-
-	// Map RAM, Stack & Zero Page.
-	AddMemoryMapping(cpuRam_, 0x0000, 0x0800);
-
-	// Mirror of $0000 to $07FF.
-	AddMemoryMirrorRange(0x0000, 0x07FF, 0x0800, 0x1FFF); 
-
-	// Mirror of $2000 to $2007.
-	AddMemoryMirrorRange(0x2000, 0x2007, 0x2008, 0x3FFF);
 }
 
 
-NESCPUMemoryMap::~NESCPUMemoryMap()
+NESCPUMemoryMapper::~NESCPUMemoryMapper()
 {
 }
 
 
-void NESCPUMemoryMap::Write8(u16 addr, u8 val)
+std::pair<INESMemoryInterface&, u16> NESCPUMemoryMapper::GetMapping(u16 addr) const
 {
-	switch (LookupMirrorAddress(addr))
-	{
-	// $2002 and $4015 are read-only.
-	// Ignore writes.
-	case 0x2002:
-	case 0x4015:
-		return;
-
-	case 0x2000:
-		ppuReg_.PPUCTRL0 = val;
-		break;
-
-	case 0x2001:
-		ppuReg_.PPUCTRL1 = val;
-		break;
-
-	case 0x2003:
-		ppuReg_.sprRamAddr = val;
-		break;
-
-	case 0x2004:
-		ppuReg_.sprRamIO = val;
-		break;
-
-	case 0x2005:
-		ppuReg_.vramAddr1 = val;
-		break;
-
-	case 0x2006:
-		ppuReg_.vramAddr2 = val;
-		break;
-
-	case 0x2007:
-		ppuReg_.vramIO = val;
-		break;
-
-	// @TODO APU Registers
-	// @NOTE: Currently using a dummy mapping for these until we handle them.
-	}
-
-	NESMemoryMap::Write8(addr, val);
+	if (addr < 0x2000)
+		return std::make_pair(cpuRam_, (addr & 0x7FF));
+	
+	// @TODO
+	assert(false);
 }
 
 
-u8 NESCPUMemoryMap::Read8(u16 addr) const
+void NESCPUMemoryMapper::Write8(u16 addr, u8 val)
 {
-	// $2000, $2001, $2003-$2006 and $4000-$4014 are write only.
-	// Return 0 on read.
-	const auto realAddr = LookupMirrorAddress(addr);
-	if (realAddr == 0x2000 || realAddr == 0x2001 ||
-		(realAddr >= 0x2003 && realAddr <= 0x2006) ||
-		(realAddr >= 0x4000 && realAddr <= 0x4014))
-		return 0;
+	//switch (LookupMirrorAddress(addr))
+	//{
+	//// $2002 and $4015 are read-only.
+	//// Ignore writes.
+	//case 0x2002:
+	//case 0x4015:
+	//	return;
 
-	switch (realAddr)
-	{
-	case 0x2002:
-		return ppuReg_.PPUSTAT;
+	//case 0x2000:
+	//	ppuReg_.PPUCTRL0 = val;
+	//	break;
 
-	case 0x2007:
-		return ppuReg_.vramIO;
+	//case 0x2001:
+	//	ppuReg_.PPUCTRL1 = val;
+	//	break;
 
-	// @TODO APU Registers
-	// @NOTE: Currently using a dummy mapping for these until we handle them.
-	}
+	//case 0x2003:
+	//	ppuReg_.sprRamAddr = val;
+	//	break;
 
-	return NESMemoryMap::Read8(addr);
+	//case 0x2004:
+	//	ppuReg_.sprRamIO = val;
+	//	break;
+
+	//case 0x2005:
+	//	ppuReg_.vramAddr1 = val;
+	//	break;
+
+	//case 0x2006:
+	//	ppuReg_.vramAddr2 = val;
+	//	break;
+
+	//case 0x2007:
+	//	ppuReg_.vramIO = val;
+	//	break;
+
+	//// @TODO APU Registers
+	//// @NOTE: Currently using a dummy mapping for these until we handle them.
+	//}
+
+	NESMemoryMapper::Write8(addr, val);
+}
+
+
+u8 NESCPUMemoryMapper::Read8(u16 addr) const
+{
+	//// $2000, $2001, $2003-$2006 and $4000-$4014 are write only.
+	//// Return 0 on read.
+	//const auto realAddr = LookupMirrorAddress(addr);
+	//if (realAddr == 0x2000 || realAddr == 0x2001 ||
+	//	(realAddr >= 0x2003 && realAddr <= 0x2006) ||
+	//	(realAddr >= 0x4000 && realAddr <= 0x4014))
+	//	return 0;
+
+	//switch (realAddr)
+	//{
+	//case 0x2002:
+	//	return ppuReg_.PPUSTAT;
+
+	//case 0x2007:
+	//	return ppuReg_.vramIO;
+
+	//// @TODO APU Registers
+	//// @NOTE: Currently using a dummy mapping for these until we handle them.
+	//}
+
+	return NESMemoryMapper::Read8(addr);
 }
 
 
@@ -390,7 +389,7 @@ NESCPUStaticInit::NESCPUStaticInit()
 		const bool crossedPageBoundary = valPair.second; \
 
 
-NESCPU::NESCPU(NESCPUMemoryMap& mem) :
+NESCPU::NESCPU(NESCPUMemoryMapper& mem) :
 mem_(mem)
 {
 	Initialize();
@@ -522,17 +521,17 @@ std::pair<u8, bool> NESCPU::ReadOpArgValue()
 	case NESCPUOpAddressingMode::ABSOLUTE:
 	case NESCPUOpAddressingMode::INDIRECT:
 		crossedPageBoundary = false;
-		addr = mem_.Read16(reg_.PC + 1);
+		addr = NESHelper::MemoryRead16(mem_, reg_.PC + 1);
 		break;
 
 	case NESCPUOpAddressingMode::ABSOLUTE_X:
-		addr = mem_.Read16(reg_.PC + 1);
+		addr = NESHelper::MemoryRead16(mem_, reg_.PC + 1);
 		crossedPageBoundary = !NESHelper::IsInSamePage(addr, addr + reg_.X);
 		addr += reg_.X;
 		break;
 
 	case NESCPUOpAddressingMode::ABSOLUTE_Y:
-		addr = mem_.Read16(reg_.PC + 1);
+		addr = NESHelper::MemoryRead16(mem_, reg_.PC + 1);
 		crossedPageBoundary = !NESHelper::IsInSamePage(addr, addr + reg_.Y);
 		addr += reg_.Y;
 		break;
@@ -554,11 +553,11 @@ std::pair<u8, bool> NESCPU::ReadOpArgValue()
 
 	case NESCPUOpAddressingMode::INDIRECT_X:
 		crossedPageBoundary = false;
-		addr = mem_.Read16((mem_.Read8(reg_.PC + 1) + reg_.X)); // Will wrap around if X is too big.
+		addr = NESHelper::MemoryRead16(mem_, mem_.Read8(reg_.PC + 1) + reg_.X); // Will wrap around if X is too big.
 		break;
 
 	case NESCPUOpAddressingMode::INDIRECT_Y:
-		addr = mem_.Read16(mem_.Read8(reg_.PC + 1)); // Read address from memory at addr8 into addr.
+		addr = NESHelper::MemoryRead16(mem_, mem_.Read8(reg_.PC + 1));
 		crossedPageBoundary = !NESHelper::IsInSamePage(addr, addr + reg_.Y);
 		addr += reg_.Y;
 		break;
@@ -584,11 +583,11 @@ void NESCPU::WriteOpResult(u8 result)
 		return;
 
 	case NESCPUOpAddressingMode::ABSOLUTE:
-		addr = mem_.Read16(reg_.PC + 1);
+		addr = NESHelper::MemoryRead16(mem_, reg_.PC + 1);
 		break;
 
 	case NESCPUOpAddressingMode::ABSOLUTE_X:
-		addr = mem_.Read16(reg_.PC + 1) + reg_.X;
+		addr = NESHelper::MemoryRead16(mem_, reg_.PC + 1) + reg_.X;
 		break;
 
 	case NESCPUOpAddressingMode::ZEROPAGE:
@@ -697,7 +696,7 @@ void NESCPU::ExecuteInterrupt(NESCPUInterrupt interruptType)
 	{
 	case NESCPUInterrupt::IRQBRK:
 		reg_.I = 1;
-		UpdateRegPC(mem_.Read16(0xFFFE)); // Use IRQ Vector.
+		UpdateRegPC(NESHelper::MemoryRead16(mem_, 0xFFFE)); // Use IRQ Vector.
 		return;
 
 	default:

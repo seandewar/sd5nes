@@ -16,19 +16,19 @@ typedef NESMemory<0x800> NESMemCPURAM;
 /**
 * Memory module that maps CPU memory.
 */
-class NESCPUMemoryMap : public NESMemoryMap
+class NESCPUMemoryMapper : public NESMemoryMapper
 {
 public:
-	NESCPUMemoryMap(NESMemCPURAM& cpuRam, NESPPURegisters& ppuReg);
-	virtual ~NESCPUMemoryMap();
+	NESCPUMemoryMapper(NESMemCPURAM& cpuRam, NESPPURegisters& ppuReg);
+	virtual ~NESCPUMemoryMapper();
 
 	void Write8(u16 addr, u8 val) override;
 	u8 Read8(u16 addr) const override;
 
-private:
-	// @TODO DEBUG
-	NESMemory<0x18> debugApuIODummy_;
+protected:
+	std::pair<INESMemoryInterface&, u16> GetMapping(u16 addr) const override;
 
+private:
 	NESMemCPURAM& cpuRam_;
 	NESPPURegisters& ppuReg_;
 };
@@ -159,7 +159,7 @@ class NESCPU
 	friend struct NESCPUStaticInit;
 
 public:
-	explicit NESCPU(NESCPUMemoryMap& mem);
+	explicit NESCPU(NESCPUMemoryMapper& mem);
 	~NESCPU();
 
 	// Resets the CPU.
@@ -185,7 +185,7 @@ private:
 	static int GetOpSizeFromAddressingMode(NESCPUOpAddressingMode addrMode);
 
 	NESCPURegisters reg_;
-	NESCPUMemoryMap& mem_;
+	NESCPUMemoryMapper& mem_;
 
 	u8 currentOp_;
 	std::unordered_map<u8, NESCPUOpInfo>::const_iterator currentOpMappingIt_;

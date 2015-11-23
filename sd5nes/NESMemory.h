@@ -1,12 +1,10 @@
 #pragma once
 
 #include <array>
-#include <vector>
 #include <stdexcept>
 #include <cassert>
 
 #include "NESTypes.h"
-#include "NESHelper.h"
 #include "NESMemoryConstants.h"
 
 /**
@@ -33,10 +31,10 @@ public:
 class INESMemoryInterface
 {
 public:
+	virtual ~INESMemoryInterface() { }
+
 	virtual void Write8(u16 addr, u8 val) = 0;
 	virtual u8 Read8(u16 addr) const = 0;
-	virtual u16 Read16(u16 addr) const = 0;
-	virtual uleast32 GetSize() const = 0;
 };
 
 /**
@@ -48,8 +46,7 @@ class NESMemory : public INESMemoryInterface
 public:
 	NESMemory() { ZeroMemory(); }
 	explicit NESMemory(const std::vector<u8>& vec) { CopyFromVector(vec); }
-	virtual ~NESMemory()
-	{ }
+	virtual ~NESMemory() { }
 
 	/**
 	* Sets all the allocated memory to zero.
@@ -96,117 +93,38 @@ public:
 	}
 
 	/**
-	* Reads 16-bits from the memory at a specified location.
-	*/
-	inline u16 Read16(u16 addr) const override { return NESHelper::ConvertTo16(Read8(addr + 1), Read8(addr)); }
-
-	/**
 	* Gets the allocated size.
 	*/
-	inline uleast32 GetSize() const override { return data_.size(); }
+	inline uleast32 GetSize() const { return data_.size(); }
 
 private:
 	std::array<u8, size> data_;
 };
 
 /**
-* Basic structure containing information about memory maps in an NESMemoryMap.
+* Base class for memory mappers.
 */
-struct NESMemoryMappingInfo
-{
-	const u16 startAddr, size;
-	INESMemoryInterface& memory;
-
-	NESMemoryMappingInfo(INESMemoryInterface& memory, u16 startAddr, u16 size) :
-		startAddr(startAddr),
-		size(size),
-		memory(memory)
-	{
-		assert("Specified size for mapping is greater than allocated size of memory!" &&
-			size > memory.GetSize());
-		size = memory.GetSize();
-	}
-
-	inline bool operator==(const NESMemoryMappingInfo& rhs) const
-	{
-		return (startAddr == rhs.startAddr && 
-			size == rhs.size &&
-			&memory == &rhs.memory);
-	}
-};
-
-/**
-* Basic structure containing information about mirroring in an NESMemoryMap.
-*/
-struct NESMemoryMirroringInfo
-{
-	const u16 startAddr, mirrorToAddr, size;
-
-	NESMemoryMirroringInfo(u16 startAddr, u16 mirrorToAddr, u16 size) :
-		startAddr(startAddr),
-		mirrorToAddr(mirrorToAddr),
-		size(size)
-	{ }
-
-	inline bool operator==(const NESMemoryMirroringInfo& rhs) const
-	{
-		return (startAddr == rhs.startAddr && 
-			mirrorToAddr == rhs.mirrorToAddr &&
-			size == rhs.size);
-	}
-};
-
-/**
-* Memory module that maps memory together.
-*/
-class NESMemoryMap
+class NESMemoryMapper : public INESMemoryInterface
 {
 public:
-	NESMemoryMap();
-	virtual ~NESMemoryMap();
+	NESMemoryMapper();
+	virtual ~NESMemoryMapper();
 
 	/**
-	* Adds memory to be mapped at a specified location.
+	* Writes 8-bits to the memory at a specified mapped location with the specified value.
+	* Uses protected GetMapping() to get the correct mapping.
 	*/
-	void AddMemoryMapping(INESMemoryInterface& memory, u16 startAddr, u16 size);
+	virtual void Write8(u16 addr, u8 val) override;
 
 	/**
-	* Defines where to mirror the memory to and of what size the mirror should be.
+	* Reads 8-bits from the memory at a specified mapped location with the specified value.
+	* Uses protected GetMapping() to get the correct mapping.
 	*/
-	void AddMemoryMirror(u16 startAddr, u16 mirrorToAddr, u16 size);
-
-	/**
-	* Defines where to mirror the memory to and repeats the memory until the mirrored location
-	* between mirrorToAddr and mirrorEndAddr is filled.
-	*/
-	void AddMemoryMirrorRange(u16 startAddr, u16 endAddr, u16 mirrorToAddr, u16 mirrorEndAddr);
-
-	/**
-	* Writes 8-bits to the memory at a specified location with the specified value.
-	* Maps the memory correctly.
-	* Can throw NESMemoryException.
-	*/
-	virtual void Write8(u16 addr, u8 val);
-
-	/**
-	* Reads 8-bits from the memory at a specified location with the specified value.
-	* Maps the memory correctly.
-	* Can throw NESMemoryException.
-	*/
-	virtual u8 Read8(u16 addr) const;
-
-	/**
-	* Reads 16-bits from the memory at a specified location with the specified value.
-	* Maps the memory correctly.
-	* Can throw NESMemoryException.
-	*/
-	virtual u16 Read16(u16 addr) const;
-
-private:
-	std::vector<NESMemoryMappingInfo> mappings_;
-	std::vector<NESMemoryMirroringInfo> mirrors_;
+	virtual u8 Read8(u16 addr) const override;
 
 protected:
-	std::pair<INESMemoryInterface*, u16> GetMapping(u16 addr) const;
-	u16 LookupMirrorAddress(u16 addr) const;
+	/**
+	* Gets the NESMemory and mapped address corrisponding to an unmapped address.
+	*/
+	virtual std::pair<INESMemoryInterface&, u16> GetMapping(u16 addr) const = 0;
 };
