@@ -16,57 +16,55 @@ NESCPUMemoryMapper::~NESCPUMemoryMapper()
 }
 
 
-std::pair<INESMemoryInterface&, u16> NESCPUMemoryMapper::GetMapping(u16 addr) const
+std::pair<INESMemoryInterface*, u16> NESCPUMemoryMapper::GetMapping(u16 addr) const
 {
 	if (addr < 0x2000)
-		return std::make_pair(cpuRam_, (addr & 0x7FF));
-	
+		return std::make_pair(&cpuRam_, (addr & 0x7FF));
+	else if (addr < 0x4000)
+		return std::make_pair(nullptr, (addr & 7) + 0x2000);
+
 	// @TODO
 	assert(false);
 }
 
 
+std::pair<u8*, NESCPUIORegisterAccess> NESCPUMemoryMapper::GetIORegister(u16 addr) const
+{
+	switch (addr)
+	{
+	case 0x2000:
+		return std::make_pair(&ppuReg_.PPUCTRL0, NESCPUIORegisterAccess::WRITE);
+
+	case 0x2001:
+		return std::make_pair(&ppuReg_.PPUCTRL1, NESCPUIORegisterAccess::WRITE);
+
+	case 0x2002:
+		return std::make_pair(&ppuReg_.PPUSTAT, NESCPUIORegisterAccess::READ);
+
+	case 0x2003:
+		return std::make_pair(&ppuReg_.sprRamAddr, NESCPUIORegisterAccess::WRITE);
+
+	case 0x2004:
+		return std::make_pair(&ppuReg_.sprRamIO, NESCPUIORegisterAccess::WRITE);
+
+	case 0x2005:
+		return std::make_pair(&ppuReg_.vramAddr1, NESCPUIORegisterAccess::WRITE);
+
+	case 0x2006:
+		return std::make_pair(&ppuReg_.vramAddr2, NESCPUIORegisterAccess::WRITE);
+
+	case 0x2007:
+		return std::make_pair(&ppuReg_.vramIO, NESCPUIORegisterAccess::READ_WRITE);
+	}
+
+	// Unknown register.
+	return std::make_pair(nullptr, NESCPUIORegisterAccess::UNKNOWN);
+}
+
+
 void NESCPUMemoryMapper::Write8(u16 addr, u8 val)
 {
-	//switch (LookupMirrorAddress(addr))
-	//{
-	//// $2002 and $4015 are read-only.
-	//// Ignore writes.
-	//case 0x2002:
-	//case 0x4015:
-	//	return;
-
-	//case 0x2000:
-	//	ppuReg_.PPUCTRL0 = val;
-	//	break;
-
-	//case 0x2001:
-	//	ppuReg_.PPUCTRL1 = val;
-	//	break;
-
-	//case 0x2003:
-	//	ppuReg_.sprRamAddr = val;
-	//	break;
-
-	//case 0x2004:
-	//	ppuReg_.sprRamIO = val;
-	//	break;
-
-	//case 0x2005:
-	//	ppuReg_.vramAddr1 = val;
-	//	break;
-
-	//case 0x2006:
-	//	ppuReg_.vramAddr2 = val;
-	//	break;
-
-	//case 0x2007:
-	//	ppuReg_.vramIO = val;
-	//	break;
-
-	//// @TODO APU Registers
-	//// @NOTE: Currently using a dummy mapping for these until we handle them.
-	//}
+	// @TODO
 
 	NESMemoryMapper::Write8(addr, val);
 }

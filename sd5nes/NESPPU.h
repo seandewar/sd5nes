@@ -27,7 +27,7 @@ struct NESPPUMemory
 /**
 * Emulates the mapping and mirroring of the PPU's memory.
 */
-class NESPPUMemoryMap : public NESMemoryMap
+class NESPPUMemoryMap : public NESMemoryMapper
 {
 public:
 	NESPPUMemoryMap(NESPPUMemory& mem);

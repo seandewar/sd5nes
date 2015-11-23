@@ -126,5 +126,5 @@ protected:
 	/**
 	* Gets the NESMemory and mapped address corrisponding to an unmapped address.
 	*/
-	virtual std::pair<INESMemoryInterface&, u16> GetMapping(u16 addr) const = 0;
+	virtual std::pair<INESMemoryInterface*, u16> GetMapping(u16 addr) const = 0;
 };
