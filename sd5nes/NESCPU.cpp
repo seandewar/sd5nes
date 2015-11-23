@@ -19,46 +19,23 @@ NESCPUMemoryMapper::~NESCPUMemoryMapper()
 std::pair<INESMemoryInterface*, u16> NESCPUMemoryMapper::GetMapping(u16 addr) const
 {
 	if (addr < 0x2000)
-		return std::make_pair(&cpuRam_, (addr & 0x7FF));
-	else if (addr < 0x4000)
+		return std::make_pair(&cpuRam_, addr & 0x7FF);
+	else if (addr < 0x4000) // PPU I/O Registers.
 		return std::make_pair(nullptr, (addr & 7) + 0x2000);
+	else if (addr < 0x4020) // pAPU I/O Registers.
+		return std::make_pair(nullptr, addr);
+	else if (addr < 0x6000)
+		// @TODO Expansion ROM.
+		assert(false);
+	else if (addr < 0x8000)
+		// @TODO SRAM.
+		assert(false);
+	else // PRG-ROM Banks.
+		// @TODO PRG-ROM Lower & Upper Bank.
+		assert(false);
 
-	// @TODO
+	// This should be unreachable.
 	assert(false);
-}
-
-
-std::pair<u8*, NESCPUIORegisterAccess> NESCPUMemoryMapper::GetIORegister(u16 addr) const
-{
-	switch (addr)
-	{
-	case 0x2000:
-		return std::make_pair(&ppuReg_.PPUCTRL0, NESCPUIORegisterAccess::WRITE);
-
-	case 0x2001:
-		return std::make_pair(&ppuReg_.PPUCTRL1, NESCPUIORegisterAccess::WRITE);
-
-	case 0x2002:
-		return std::make_pair(&ppuReg_.PPUSTAT, NESCPUIORegisterAccess::READ);
-
-	case 0x2003:
-		return std::make_pair(&ppuReg_.sprRamAddr, NESCPUIORegisterAccess::WRITE);
-
-	case 0x2004:
-		return std::make_pair(&ppuReg_.sprRamIO, NESCPUIORegisterAccess::WRITE);
-
-	case 0x2005:
-		return std::make_pair(&ppuReg_.vramAddr1, NESCPUIORegisterAccess::WRITE);
-
-	case 0x2006:
-		return std::make_pair(&ppuReg_.vramAddr2, NESCPUIORegisterAccess::WRITE);
-
-	case 0x2007:
-		return std::make_pair(&ppuReg_.vramIO, NESCPUIORegisterAccess::READ_WRITE);
-	}
-
-	// Unknown register.
-	return std::make_pair(nullptr, NESCPUIORegisterAccess::UNKNOWN);
 }
 
 
@@ -72,25 +49,7 @@ void NESCPUMemoryMapper::Write8(u16 addr, u8 val)
 
 u8 NESCPUMemoryMapper::Read8(u16 addr) const
 {
-	//// $2000, $2001, $2003-$2006 and $4000-$4014 are write only.
-	//// Return 0 on read.
-	//const auto realAddr = LookupMirrorAddress(addr);
-	//if (realAddr == 0x2000 || realAddr == 0x2001 ||
-	//	(realAddr >= 0x2003 && realAddr <= 0x2006) ||
-	//	(realAddr >= 0x4000 && realAddr <= 0x4014))
-	//	return 0;
-
-	//switch (realAddr)
-	//{
-	//case 0x2002:
-	//	return ppuReg_.PPUSTAT;
-
-	//case 0x2007:
-	//	return ppuReg_.vramIO;
-
-	//// @TODO APU Registers
-	//// @NOTE: Currently using a dummy mapping for these until we handle them.
-	//}
+	// @TODO
 
 	return NESMemoryMapper::Read8(addr);
 }

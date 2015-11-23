@@ -9,8 +9,7 @@
 
 /* Typedefs for the individual tables + typedef for holding both palettes (BG and Sprite). */
 typedef NESMemory<0x1000> NESMemPatternTable;
-typedef NESMemory<0x3C0> NESMemNameTable;
-typedef NESMemory<0x40> NESMemAttributeTable;
+typedef NESMemory<0x400> NESMemNameTable;
 typedef NESMemory<0x20> NESMemPalettes;
 
 /**
@@ -20,18 +19,20 @@ struct NESPPUMemory
 {
 	std::array<NESMemPatternTable, 2> patternTables;
 	std::array<NESMemNameTable, 4> nameTables;
-	std::array<NESMemAttributeTable, 4> attribTables;
 	NESMemPalettes paletteMem;
 };
 
 /**
 * Emulates the mapping and mirroring of the PPU's memory.
 */
-class NESPPUMemoryMap : public NESMemoryMapper
+class NESPPUMemoryMapper : public NESMemoryMapper
 {
 public:
-	NESPPUMemoryMap(NESPPUMemory& mem);
-	virtual ~NESPPUMemoryMap();
+	NESPPUMemoryMapper(NESPPUMemory& mem);
+	virtual ~NESPPUMemoryMapper();
+
+protected:
+	std::pair<INESMemoryInterface*, u16> GetMapping(u16 addr) const override;
 
 private:
 	NESPPUMemory& mem_;
@@ -131,7 +132,7 @@ struct NESPPURegisters
 class NESPPU
 {
 public:
-	explicit NESPPU(NESPPUMemoryMap& mem);
+	explicit NESPPU(NESPPUMemoryMapper& mem);
 	~NESPPU();
 
 	/**
@@ -141,6 +142,6 @@ public:
 
 private:
 	NESPPURegisters ppuReg_;
-	NESPPUMemoryMap& mem_;
+	NESPPUMemoryMapper& mem_;
 };
 

@@ -14,17 +14,6 @@
 typedef NESMemory<0x800> NESMemCPURAM;
 
 /**
-* Enum containing the different CPU access levels of the I/O registers.
-*/
-enum class NESCPUIORegisterAccess
-{
-	WRITE,
-	READ,
-	READ_WRITE,
-	UNKNOWN
-};
-
-/**
 * Memory module that maps CPU memory.
 */
 class NESCPUMemoryMapper : public NESMemoryMapper
@@ -42,8 +31,6 @@ protected:
 private:
 	NESMemCPURAM& cpuRam_;
 	NESPPURegisters& ppuReg_;
-
-	std::pair<u8*, NESCPUIORegisterAccess> GetIORegister(u16 addr) const;
 };
 
 /**
