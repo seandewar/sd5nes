@@ -36,6 +36,9 @@
     <ClCompile Include="NESPPU.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="NESMMC.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="NESCPU.h">
@@ -72,6 +75,9 @@
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="NESPPU.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="NESMMC.h">
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>

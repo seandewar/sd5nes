@@ -4,9 +4,10 @@
 #include <sstream>
 
 
-NESCPUMemoryMapper::NESCPUMemoryMapper(NESMemCPURAM& cpuRam, NESPPURegisters& ppuReg) :
-cpuRam_(cpuRam),
-ppuReg_(ppuReg)
+NESCPUMemoryMapper::NESCPUMemoryMapper(NESMemCPURAM& ram, NESPPURegisters& ppuReg, NESMMC* mmc) :
+ram_(ram),
+ppuReg_(ppuReg),
+mmc_(mmc)
 {
 }
 
@@ -19,7 +20,7 @@ NESCPUMemoryMapper::~NESCPUMemoryMapper()
 std::pair<INESMemoryInterface*, u16> NESCPUMemoryMapper::GetMapping(u16 addr) const
 {
 	if (addr < 0x2000)
-		return std::make_pair(&cpuRam_, addr & 0x7FF);
+		return std::make_pair(&ram_, addr & 0x7FF);
 	else if (addr < 0x4000) // PPU I/O Registers.
 		return std::make_pair(nullptr, (addr & 7) + 0x2000);
 	else if (addr < 0x4020) // pAPU I/O Registers.
@@ -31,11 +32,7 @@ std::pair<INESMemoryInterface*, u16> NESCPUMemoryMapper::GetMapping(u16 addr) co
 		// @TODO SRAM.
 		assert(false);
 	else // PRG-ROM Banks.
-		// @TODO PRG-ROM Lower & Upper Bank.
-		assert(false);
-
-	// This should be unreachable.
-	assert(false);
+		return mmc_->GetMapping(addr);
 }
 
 
@@ -648,12 +645,24 @@ void NESCPU::ExecuteOpBIT()
 
 void NESCPU::ExecuteInterrupt(NESCPUInterrupt interruptType)
 {
-	// @TODO handle other interrupts.
+	// @TODO Interrupts take 7 cycles.
+
 	switch (interruptType)
 	{
+	case NESCPUInterrupt::RESET:
+		UpdateRegPC(NESHelper::MemoryRead16(mem_, 0xFFFC)); // Jump to RESET Vector.
+		return;
+
 	case NESCPUInterrupt::IRQBRK:
+		if (reg_.I == 1)
+			return;
+
 		reg_.I = 1;
-		UpdateRegPC(NESHelper::MemoryRead16(mem_, 0xFFFE)); // Use IRQ Vector.
+		UpdateRegPC(NESHelper::MemoryRead16(mem_, 0xFFFE)); // Jump to IRQ Vector.
+		return;
+
+	case NESCPUInterrupt::NMI:
+		UpdateRegPC(NESHelper::MemoryRead16(mem_, 0xFFFA)); // Jump to NMI Vector.
 		return;
 
 	default:

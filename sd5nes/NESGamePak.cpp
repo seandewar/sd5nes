@@ -20,10 +20,11 @@ void NESGamePak::ResetLoadedState()
 	isRomLoaded_ = false;
 
 	mirrorType_ = NESMirroringType::UNKNOWN;
-	mapperType_ = NESMapperType::UNKNOWN;
 	hasBatteryPackedRam_ = false;
 	hasTrainer_ = false;
+	ramBanks_ = 0;
 
+	mmc_.reset();
 	romFileName_.clear();
 	prgRomBanks_.clear();
 	chrRomBanks_.clear();
@@ -80,7 +81,8 @@ void NESGamePak::ParseROMFileData(const std::vector<u8>& data)
 		romInfo = buf.ReadNext(5);
 		buf.ReadNext(7);
 
-		// @TODO Assume 1 page of RAM if # 8KB RAM banks is 0.
+		// Read number of 8KB RAM banks. Assume 1 bank if this is 0 for compatibility reasons.
+		ramBanks_ = (romInfo[INES_RAM_BANKS_INDEX] == 0 ? 1 : romInfo[INES_RAM_BANKS_INDEX]);
 
 		// Check if bit 3 is 1 = four screen mirroring.
 		// If bit 3 is 0, check bit 0. If bit 0 is 1 = vertical. 0 = horizontal.
@@ -97,13 +99,14 @@ void NESGamePak::ParseROMFileData(const std::vector<u8>& data)
 		const u8 mapperNum = ((romInfo[INES_ROM_CONTROL_2_INDEX] & 0xF0) | (romInfo[INES_ROM_CONTROL_1_INDEX] >> 4));
 		switch (mapperNum)
 		{
+			// @TODO init mmc_
 		case 0:
-			mapperType_ = NESMapperType::NROM;
+			//mapperType_ = NESMapperType::NROM;
 			break;
 
 		// Unknown mapper type!
 		default:
-			mapperType_ = NESMapperType::UNKNOWN;
+			//mapperType_ = NESMapperType::UNKNOWN;
 			throw NESGamePakLoadException("Unsupported ROM memory mapper!");
 		}
 	}
@@ -121,9 +124,17 @@ void NESGamePak::ParseROMFileData(const std::vector<u8>& data)
 
 		// Copy contents of PRGROM and CHRROM into memory.
 		for (int i = 0; i < romInfo[INES_PRGROM_BANKS_INDEX]; ++i)
-			prgRomBanks_.emplace_back(buf.ReadNext(NES_MEMORY_PRGROM_BANK_SIZE));
+		{
+			NESMemPRGROMBank prgRomBank(buf.ReadNext(0x4000));
+			prgRomBank.MakeReadOnly();
+			prgRomBanks_.emplace_back(prgRomBank);
+		}
 		for (int i = 0; i < romInfo[INES_CHRROM_BANKS_INDEX]; ++i)
-			chrRomBanks_.emplace_back(buf.ReadNext(NES_MEMORY_CHRROM_BANK_SIZE));
+		{
+			NESMemCHRROMBank chrRomBank(buf.ReadNext(0x2000));
+			chrRomBank.MakeReadOnly();
+			chrRomBanks_.emplace_back(chrRomBank);
+		}
 	}
 	catch (const NESReadBufferException&)
 	{
@@ -164,12 +175,6 @@ const std::vector<NESMemCHRROMBank>& NESGamePak::GetCharacterROMBanks() const
 NESMirroringType NESGamePak::GetMirroringType() const
 {
 	return mirrorType_;
-}
-
-
-NESMapperType NESGamePak::GetMapperType() const
-{
-	return mapperType_;
 }
 
 
