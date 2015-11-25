@@ -2,10 +2,12 @@
 
 #include <string>
 #include <vector>
+#include <memory>
 #include <stdexcept>
 
 #include "NESMemory.h"
 #include "NESTypes.h"
+#include "NESMMC.h"
 
 /**
 * Errors relating towards the loading and parsing of ROM files.
@@ -37,18 +39,6 @@ enum class NESMirroringType
 };
 
 /**
-* The type of mapper used by the ROM.
-*/
-enum class NESMapperType
-{
-	NROM, // NROM - No mapper.
-	UNKNOWN // Unknown mapper.
-};
-
-typedef NESMemory<0x4000> NESMemPRGROMBank;
-typedef NESMemory<0x2000> NESMemCHRROMBank;
-
-/**
 * Handles emulation of the NES Game Pak cartridge.
 */
 class NESGamePak
@@ -72,9 +62,6 @@ public:
 	// Gets the mirroring type used by the ROM.
 	NESMirroringType GetMirroringType() const;
 
-	// Gets the mapper type used by the ROM.
-	NESMapperType GetMapperType() const;
-
 	// Returns whether or not the ROM has battery-packed RAM.
 	bool HasBatteryPackedRAM() const;
 
@@ -87,11 +74,12 @@ private:
 
 	/* ROM Info variables */
 	NESMirroringType mirrorType_;
-	NESMapperType mapperType_;
 	bool hasBatteryPackedRam_;
 	bool hasTrainer_;
+	u8 ramBanks_;
 
-	/* PRG-ROM and CHR-ROM of the cart. */
+	/* MMC, PRG-ROM and CHR-ROM of the cart. */
+	std::unique_ptr<NESMMC> mmc_;
 	std::vector<NESMemPRGROMBank> prgRomBanks_;
 	std::vector<NESMemCHRROMBank> chrRomBanks_;
 

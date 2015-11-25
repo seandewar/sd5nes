@@ -44,14 +44,25 @@ template <uleast16 size>
 class NESMemory : public INESMemoryInterface
 {
 public:
-	NESMemory() { ZeroMemory(); }
+	NESMemory() : isReadOnly_(false) { ZeroMemory(); }
 	explicit NESMemory(const std::vector<u8>& vec) { CopyFromVector(vec); }
 	virtual ~NESMemory() { }
 
 	/**
+	* Makes the memory read-only. Trying to modify read-only memory will throw an NESMemoryException.
+	*/
+	inline void MakeReadOnly() { isReadOnly_ = true; }
+
+	/**
 	* Sets all the allocated memory to zero.
 	*/
-	inline void ZeroMemory() { std::fill(data_.begin(), data_.end(), 0); }
+	inline void ZeroMemory() 
+	{ 
+		if (isReadOnly_) 
+			throw NESMemoryException("Cannot zero read-only memory!"); 
+		
+		std::fill(data_.begin(), data_.end(), 0);
+	}
 
 	/**
 	* Copies the contents from a vector into zero'd memory.
@@ -61,6 +72,9 @@ public:
 		// Copying from a buffer which is larger than ours
 		// is probably bad...
 		assert(buf.size() <= data_.size());
+
+		if (isReadOnly_)
+			throw NESMemoryException("Cannot copy to read-only memory!");
 
 		for (uleast16 i = 0; i < data_.size(); ++i)
 		{
@@ -75,6 +89,9 @@ public:
 	*/
 	void Write8(u16 addr, u8 val) override
 	{
+		if (isReadOnly_)
+			throw NESMemoryException("Cannot write to read-only memory!");
+
 		if (addr >= data_.size())
 			throw NESMemoryException("Cannot write to memory outside of allocated space!");
 
@@ -99,6 +116,7 @@ public:
 
 private:
 	std::array<u8, size> data_;
+	bool isReadOnly_;
 };
 
 /**

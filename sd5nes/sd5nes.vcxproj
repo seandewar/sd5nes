@@ -75,6 +75,7 @@
     <ClCompile Include="NESEmulator.cpp" />
     <ClCompile Include="NESGamePak.cpp" />
     <ClCompile Include="NESMemory.cpp" />
+    <ClCompile Include="NESMMC.cpp" />
     <ClCompile Include="NESPPU.cpp" />
     <ClCompile Include="NESReadBuffer.cpp" />
   </ItemGroup>
@@ -88,6 +89,7 @@
     <ClInclude Include="NESHelper.h" />
     <ClInclude Include="NESMemoryConstants.h" />
     <ClInclude Include="NESMemory.h" />
+    <ClInclude Include="NESMMC.h" />
     <ClInclude Include="NESPPU.h" />
     <ClInclude Include="NESReadBuffer.h" />
     <ClInclude Include="NESTypes.h" />

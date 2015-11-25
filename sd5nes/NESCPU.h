@@ -9,6 +9,7 @@
 #include "NESCPUOpConstants.h"
 #include "NESMemoryConstants.h"
 #include "NESMemory.h"
+#include "NESGamePak.h"
 #include "NESPPU.h"
 
 typedef NESMemory<0x800> NESMemCPURAM;
@@ -19,7 +20,7 @@ typedef NESMemory<0x800> NESMemCPURAM;
 class NESCPUMemoryMapper : public NESMemoryMapper
 {
 public:
-	NESCPUMemoryMapper(NESMemCPURAM& cpuRam, NESPPURegisters& ppuReg);
+	NESCPUMemoryMapper(NESMemCPURAM& ram, NESPPURegisters& ppuReg, NESMMC* mmc);
 	virtual ~NESCPUMemoryMapper();
 
 	void Write8(u16 addr, u8 val) override;
@@ -29,8 +30,9 @@ protected:
 	std::pair<INESMemoryInterface*, u16> GetMapping(u16 addr) const override;
 
 private:
-	NESMemCPURAM& cpuRam_;
+	NESMemCPURAM& ram_;
 	NESPPURegisters& ppuReg_;
+	NESMMC* mmc_;
 };
 
 /**
