@@ -232,7 +232,7 @@ private:
 	{
 		// Push most-significant byte first, then the least.
 		StackPush8((val & 0xFF00) >> 8);
-		StackPush8((val & 0x00FF));
+		StackPush8((val & 0xFF));
 	}
 
 	// Pull 8-bit value from the stack.
