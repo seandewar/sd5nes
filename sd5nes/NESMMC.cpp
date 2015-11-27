@@ -11,23 +11,36 @@ NESMMC::~NESMMC()
 }
 
 
-NESMMCNROM::NESMMCNROM(const std::array<std::reference_wrapper<NESMemPRGROMBank>, 2>& prgRomBanks)
+u8 NESMMC::Read8(u16 addr) const
 {
-	loadedPrgRomBanks_.assign(prgRomBanks.begin(), prgRomBanks.end());
+	const auto mapping = GetMMCMapping(addr);
+	if (mapping.first == nullptr)
+		throw NESMemoryException("Attemptted to read MMC unmapped memory!");
+
+	return mapping.first->Read8(mapping.second);
 }
 
+
+NESMMCNROM::NESMMCNROM(NESMemPRGROMBank& prgRom1, NESMemPRGROMBank& prgRom2)
+{
+	loadedPrgRomBanks_[0] = &prgRom1;
+	loadedPrgRomBanks_[1] = &prgRom2;
+}
+
+
 NESMMCNROM::NESMMCNROM(NESMemPRGROMBank& prgRomBank) :
-NESMMCNROM(std::array<std::reference_wrapper<NESMemPRGROMBank>, 2> { {prgRomBank, prgRomBank} })
+NESMMCNROM(prgRomBank, prgRomBank)
 {
 }
+
 
 NESMMCNROM::~NESMMCNROM()
 {
 }
 
 
-std::pair<INESMemoryInterface*, u16> NESMMCNROM::GetMapping(u16 addr) const
+std::pair<const INESMemoryInterface*, u16> NESMMCNROM::GetMMCMapping(u16 addr) const
 {
-	if (addr >= 0x8000)
-		return std::make_pair(&loadedPrgRomBanks_[(addr - 0x8000) / 0x4000].get(), addr & 0x3FFF);
+	assert(addr >= 0x8000);
+	return std::make_pair(loadedPrgRomBanks_[(addr - 0x8000) / 0x4000], addr & 0x3FFF);
 }
