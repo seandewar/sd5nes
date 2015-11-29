@@ -99,7 +99,7 @@ enum class NESCPUInterrupt
 {
 	RESET, /* RESET interrupt - highest priority. */
 	NMI, /* NMI interrupt - medium priority. */
-	IRQBRK /* IRQ/BRK interrupt - lowest priority. */
+	IRQ /* IRQ/BRK interrupt - lowest priority. */
 };
 
 /**
@@ -298,7 +298,7 @@ private:
 	inline void ExecuteOpBPL() { /* Branch on N = 0 */ ExecuteOpAsBranch((reg_.N == 0)); }
 
 	// Execute Force Break (BRK).
-	void ExecuteOpBRK();
+	inline void ExecuteOpBRK() { ExecuteInterrupt(NESCPUInterrupt::IRQ); }
 
 	// Execute Branch on Overflow Clear (BVC).
 	inline void ExecuteOpBVC() { /* Branch on V = 0 */ ExecuteOpAsBranch((reg_.V == 0)); }

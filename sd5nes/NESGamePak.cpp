@@ -94,21 +94,6 @@ void NESGamePak::ParseROMFileData(const std::vector<u8>& data)
 		// Check bits 1 and 2 = battery packed RAM & trainer respectively.
 		hasBatteryPackedRam_ = ((romInfo[INES_ROM_CONTROL_1_INDEX] & 2) == 2);
 		hasTrainer_ = ((romInfo[INES_ROM_CONTROL_1_INDEX] & 4) == 4);
-
-		// Get the mapper number using bits 4-7 from ROM Control Byte 1 and 2.
-		const u8 mapperNum = ((romInfo[INES_ROM_CONTROL_2_INDEX] & 0xF0) | (romInfo[INES_ROM_CONTROL_1_INDEX] >> 4));
-		switch (mapperNum)
-		{
-			// @TODO init mmc_
-		case 0:
-			//mapperType_ = NESMapperType::NROM;
-			break;
-
-		// Unknown mapper type!
-		default:
-			//mapperType_ = NESMapperType::UNKNOWN;
-			throw NESGamePakLoadException("Unsupported ROM memory mapper!");
-		}
 	}
 	catch (const NESReadBufferException&)
 	{
@@ -139,6 +124,25 @@ void NESGamePak::ParseROMFileData(const std::vector<u8>& data)
 	catch (const NESReadBufferException&)
 	{
 		throw NESGamePakLoadException("Failed to parse ROM image data!");
+	}
+
+	// Get the mapper number using bits 4-7 from ROM Control Byte 1 and 2.
+	switch ((romInfo[INES_ROM_CONTROL_2_INDEX] & 0xF0) | (romInfo[INES_ROM_CONTROL_1_INDEX] >> 4))
+	{
+	// @TODO init mmc_
+	case 0:
+		if (prgRomBanks_.size() == 1)
+			mmc_ = std::make_unique<NESMMCNROM>(prgRomBanks_[0]);
+		else if (prgRomBanks_.size() == 2)
+			mmc_ = std::make_unique<NESMMCNROM>(prgRomBanks_[0], prgRomBanks_[1]);
+		else
+			throw NESGamePakLoadException("Invalid amount of PRG-ROM banks for NROM mapper!");
+		break;
+
+	// Unknown mapper type!
+	default:
+		//mapperType_ = NESMapperType::UNKNOWN;
+		throw NESGamePakLoadException("Unsupported ROM memory mapper!");
 	}
 }
 

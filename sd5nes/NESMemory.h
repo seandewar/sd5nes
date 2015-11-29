@@ -49,11 +49,6 @@ public:
 	virtual ~NESMemory() { }
 
 	/**
-	* Makes the memory read-only. Trying to modify read-only memory will throw an NESMemoryException.
-	*/
-	inline void MakeReadOnly() { isReadOnly_ = true; }
-
-	/**
 	* Sets all the allocated memory to zero.
 	*/
 	inline void ZeroMemory() 
@@ -73,9 +68,6 @@ public:
 		// is probably bad...
 		assert(buf.size() <= data_.size());
 
-		if (isReadOnly_)
-			throw NESMemoryException("Cannot copy to read-only memory!");
-
 		for (uleast16 i = 0; i < data_.size(); ++i)
 		{
 			// Fill with data from buffer. If we have reached the end
@@ -89,9 +81,6 @@ public:
 	*/
 	void Write8(u16 addr, u8 val) override
 	{
-		if (isReadOnly_)
-			throw NESMemoryException("Cannot write to read-only memory!");
-
 		if (addr >= data_.size())
 			throw NESMemoryException("Cannot write to memory outside of allocated space!");
 
@@ -116,7 +105,6 @@ public:
 
 private:
 	std::array<u8, size> data_;
-	bool isReadOnly_;
 };
 
 /**

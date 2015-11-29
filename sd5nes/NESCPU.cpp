@@ -25,20 +25,30 @@ std::pair<INESMemoryInterface*, u16> NESCPUMemoryMapper::GetMapping(u16 addr) co
 		return std::make_pair(nullptr, (addr & 7) + 0x2000);
 	else if (addr < 0x4020) // pAPU I/O Registers.
 		return std::make_pair(nullptr, addr);
-	else if (addr < 0x6000)
-		// @TODO Expansion ROM.
-		assert(false);
-	else if (addr < 0x8000)
-		// @TODO SRAM.
-		assert(false);
-	else // PRG-ROM Banks.
-		return mmc_->GetMapping(addr);
+	else if (addr < 0x6000) // @TODO Expansion ROM.
+		return std::make_pair(nullptr, addr);
+	else if (addr < 0x8000) // @TODO SRAM.
+		return std::make_pair(nullptr, addr);
+	else // PRG-ROM Banks - use MMC.
+		return std::make_pair(nullptr, addr);
 }
 
 
 void NESCPUMemoryMapper::Write8(u16 addr, u8 val)
 {
-	// @TODO
+	const auto mapping = GetMapping(addr);
+	if (mapping.first == nullptr)
+	{
+		if (mapping.second >= 0x8000)
+			mmc_->Write8(mapping.second, val);
+		else 
+		{
+			// @TODO
+			assert(false);
+		}
+
+		return;
+	}
 
 	NESMemoryMapper::Write8(addr, val);
 }
@@ -46,7 +56,17 @@ void NESCPUMemoryMapper::Write8(u16 addr, u8 val)
 
 u8 NESCPUMemoryMapper::Read8(u16 addr) const
 {
-	// @TODO
+	const auto mapping = GetMapping(addr);
+	if (mapping.first == nullptr)
+	{
+		if (mapping.second >= 0x8000)
+			return mmc_->Read8(mapping.second);
+		else
+		{
+			// @TODO
+			assert(false);
+		}
+	}
 
 	return NESMemoryMapper::Read8(addr);
 }
@@ -651,34 +671,28 @@ void NESCPU::ExecuteInterrupt(NESCPUInterrupt interruptType)
 	{
 	case NESCPUInterrupt::RESET:
 		UpdateRegPC(NESHelper::MemoryRead16(mem_, 0xFFFC)); // Jump to RESET Vector.
-		return;
+		break;
 
-	case NESCPUInterrupt::IRQBRK:
-		if (reg_.I == 1)
+	case NESCPUInterrupt::IRQ:
+		if (reg_.I == 1) // IRQ checks the Interupt Disable flag.
 			return;
 
-		reg_.I = 1;
 		UpdateRegPC(NESHelper::MemoryRead16(mem_, 0xFFFE)); // Jump to IRQ Vector.
-		return;
+		break;
 
 	case NESCPUInterrupt::NMI:
 		UpdateRegPC(NESHelper::MemoryRead16(mem_, 0xFFFA)); // Jump to NMI Vector.
-		return;
-
-	default:
-		assert("Unknown interrupt type!" && false);
-		return;
+		break;
 	}
-}
 
-
-void NESCPU::ExecuteOpBRK()
-{
-	// Forced Interrupt PC + 2 toS P toS
-	StackPush16(reg_.PC + 1);
-	reg_.B = 1; // Set break flag before pushing P.
-	StackPush16(reg_.P);
-	ExecuteInterrupt(NESCPUInterrupt::IRQBRK);
+	if (interruptType != NESCPUInterrupt::RESET)
+	{
+		// Forced Interrupt PC + 2 toS P toS
+		StackPush16(reg_.PC + 1);
+		reg_.B = 1; // Set break flag before pushing P.
+		StackPush16(reg_.P);
+		reg_.I = 1;
+	}
 }
 
 

@@ -143,5 +143,7 @@ public:
 private:
 	NESPPURegisters ppuReg_;
 	NESPPUMemoryMapper& mem_;
+
+
 };
 
