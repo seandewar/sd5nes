@@ -62,6 +62,12 @@ u8 NESCPUMemoryMapper::Read8(u16 addr) const
 			return mmc_->Read8(mapping.second);
 		else
 		{
+			switch (addr)
+			{
+			case 0x2002:
+				ppuReg_.vBlankInProgress = 0; // Clear V-Blank flag on read.
+				return ppuReg_.PPUSTAT; // TODODODODOD
+			}
 			// @TODO
 		}
 	}
