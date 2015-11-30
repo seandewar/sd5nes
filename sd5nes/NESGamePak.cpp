@@ -109,17 +109,9 @@ void NESGamePak::ParseROMFileData(const std::vector<u8>& data)
 
 		// Copy contents of PRGROM and CHRROM into memory.
 		for (int i = 0; i < romInfo[INES_PRGROM_BANKS_INDEX]; ++i)
-		{
-			NESMemPRGROMBank prgRomBank(buf.ReadNext(0x4000));
-			prgRomBank.MakeReadOnly();
-			prgRomBanks_.emplace_back(prgRomBank);
-		}
+			prgRomBanks_.emplace_back(NESMemPRGROMBank(buf.ReadNext(0x4000)));
 		for (int i = 0; i < romInfo[INES_CHRROM_BANKS_INDEX]; ++i)
-		{
-			NESMemCHRROMBank chrRomBank(buf.ReadNext(0x2000));
-			chrRomBank.MakeReadOnly();
-			chrRomBanks_.emplace_back(chrRomBank);
-		}
+			chrRomBanks_.emplace_back(NESMemCHRROMBank(buf.ReadNext(0x2000)));
 	}
 	catch (const NESReadBufferException&)
 	{

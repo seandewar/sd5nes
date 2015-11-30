@@ -136,6 +136,11 @@ public:
 	~NESPPU();
 
 	/**
+	* Ticks the PPU.
+	*/
+	void Tick();
+
+	/**
 	* Gets a reference to the registers being used by the PPU.
 	*/
 	NESPPURegisters& GetPPURegisters();
@@ -144,6 +149,17 @@ private:
 	NESPPURegisters ppuReg_;
 	NESPPUMemoryMapper& mem_;
 
+	bool isEvenFrame_;
+	int currentScanline_;
 
+	/**
+	* Inits the PPU.
+	*/
+	void Initialize();
+
+	/**
+	* Handles the rendering of the current scanline.
+	*/
+	void RenderScanline();
 };
 

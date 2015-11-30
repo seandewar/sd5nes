@@ -65,8 +65,10 @@ u8 NESCPUMemoryMapper::Read8(u16 addr) const
 			switch (addr)
 			{
 			case 0x2002:
+				const auto ppuStat = ppuReg_.PPUSTAT;
 				ppuReg_.vBlankInProgress = 0; // Clear V-Blank flag on read.
-				return ppuReg_.PPUSTAT; // TODODODODOD
+				ppuReg_.vramAddr2 = ppuReg_.vramAddr1 = 0; // Reset $2005 & $2006.
+				return ppuStat;
 			}
 			// @TODO
 		}

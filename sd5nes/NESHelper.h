@@ -1,6 +1,7 @@
 #pragma once
 
 #include <string>
+#include <cassert>
 
 #include "NESTypes.h"
 #include "NESMemory.h"
@@ -18,7 +19,7 @@ namespace NESHelper
 	/**
 	* Converts two 8-bit values to one 16-bit value.
 	*/
-	inline u16 ConvertTo16(u8 hi, u8 lo) { return ((hi << 8) | lo); }
+	inline u16 ConvertTo16(u8 hi, u8 lo) { return (hi << 8) | lo; }
 
 	/**
 	* Reads 16-bits (little-endian) from a memory interface at the specified address.

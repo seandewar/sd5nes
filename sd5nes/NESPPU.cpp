@@ -1,5 +1,8 @@
 #include "NESPPU.h"
 
+#include "NESHelper.h"
+
+
 NESPPUMemoryMapper::NESPPUMemoryMapper(NESPPUMemory& mem) :
 mem_(mem)
 {
@@ -27,11 +30,36 @@ std::pair<INESMemoryInterface*, u16> NESPPUMemoryMapper::GetMapping(u16 addr) co
 NESPPU::NESPPU(NESPPUMemoryMapper& mem) :
 mem_(mem)
 {
+	Initialize();
 }
 
 
 NESPPU::~NESPPU()
 {
+}
+
+
+void NESPPU::Initialize()
+{
+	isEvenFrame_ = true;
+	currentScanline_ = 0;
+}
+
+
+void NESPPU::RenderScanline()
+{
+	//...
+}
+
+
+void NESPPU::Tick()
+{
+	isEvenFrame_ = !isEvenFrame_; // Toggle status of even frame.
+
+	RenderScanline();
+	++currentScanline_;
+
+	// @TODO
 }
 
 
