@@ -1,7 +1,5 @@
 #include "NESMemory.h"
 
-#include <sstream>
-
 
 NESMemoryMapper::NESMemoryMapper()
 {

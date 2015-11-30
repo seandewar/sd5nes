@@ -44,7 +44,6 @@ void NESCPUMemoryMapper::Write8(u16 addr, u8 val)
 		else 
 		{
 			// @TODO
-			assert(false);
 		}
 
 		return;
@@ -64,7 +63,6 @@ u8 NESCPUMemoryMapper::Read8(u16 addr) const
 		else
 		{
 			// @TODO
-			assert(false);
 		}
 	}
 
@@ -585,7 +583,7 @@ void NESCPU::WriteOpResult(u8 result)
 
 void NESCPU::ExecuteOpADC()
 {
-	OP_READ_ARG();
+	OP_READ_ARG()
 
 	// ADC takes 1 extra CPU cycle if a page boundary was crossed.
 	if (crossedPageBoundary)
@@ -597,21 +595,21 @@ void NESCPU::ExecuteOpADC()
 
 	reg_.C = (res > 0xFF ? 1 : 0);
 	UpdateRegN(static_cast<u8>(res));
-	reg_.V = (((~(reg_.A ^ argVal) & (reg_.A ^ res)) >> 7) & 1); // Check if the sign has changed due to overflow.
+	reg_.V = ((~(reg_.A ^ argVal) & (reg_.A ^ res)) >> 7) & 1; // Check if the sign has changed due to overflow.
 	reg_.A = static_cast<u8>(res);
 }
 
 
 void NESCPU::ExecuteOpAND()
 {
-	OP_READ_ARG();
+	OP_READ_ARG()
 
 	// AND takes 1 extra CPU cycle if a page boundary was crossed.
 	if (crossedPageBoundary)
 		++currentOpCycleCount_;
 
 	// A AND M -> A
-	const u8 res = (reg_.A & argVal);
+	const u8 res = reg_.A & argVal;
 
 	UpdateRegZ(res);
 	UpdateRegN(res);
@@ -621,13 +619,13 @@ void NESCPU::ExecuteOpAND()
 
 void NESCPU::ExecuteOpASL()
 {
-	OP_READ_ARG();
+	OP_READ_ARG()
 
 	// C <- [76543210] <- 0
-	const u8 res = (argVal << 1);
+	const u8 res = argVal << 1;
 	WriteOpResult(res);
 
-	reg_.C = ((argVal >> 7) & 1); // Set carry bit if bit 7 was originally 1.
+	reg_.C = (argVal >> 7) & 1; // Set carry bit if bit 7 was originally 1.
 	UpdateRegZ(res);
 	UpdateRegN(res);
 }
@@ -638,7 +636,7 @@ void NESCPU::ExecuteOpAsBranch(bool shouldBranch, int branchSamePageCycleExtra, 
 	if (!shouldBranch)
 		return;
 
-	OP_READ_ARG();
+	OP_READ_ARG()
 
 	const u16 jumpPC = reg_.PC + argVal;
 
@@ -654,12 +652,12 @@ void NESCPU::ExecuteOpAsBranch(bool shouldBranch, int branchSamePageCycleExtra, 
 
 void NESCPU::ExecuteOpBIT()
 {
-	OP_READ_ARG();
+	OP_READ_ARG()
 
 	// A /\ M, M7 -> N, M6 -> V
 	UpdateRegN(argVal);
-	UpdateRegZ((argVal & reg_.A));
-	reg_.V = ((argVal >> 6) & 1);
+	UpdateRegZ(argVal & reg_.A);
+	reg_.V = (argVal >> 6) & 1;
 }
 
 
@@ -698,7 +696,7 @@ void NESCPU::ExecuteInterrupt(NESCPUInterrupt interruptType)
 
 void NESCPU::ExecuteOpCMP()
 {
-	OP_READ_ARG();
+	OP_READ_ARG()
 
 	// CMP takes 1 extra CPU cycle if a page boundary was crossed.
 	if (crossedPageBoundary)
@@ -709,39 +707,39 @@ void NESCPU::ExecuteOpCMP()
 
 	reg_.C = (res < 0x100 ? 1 : 0);
 	UpdateRegN(static_cast<u8>(res));
-	UpdateRegZ((res & 0xFF)); // Check first 8-bits.
+	UpdateRegZ(res & 0xFF); // Check first 8-bits.
 }
 
 
 void NESCPU::ExecuteOpCPX()
 {
-	OP_READ_ARG();
+	OP_READ_ARG()
 
 	// X - M
 	const uleast16 res = reg_.X - argVal;
 
 	reg_.C = (res < 0x100 ? 1 : 0);
 	UpdateRegN(static_cast<u8>(res));
-	UpdateRegZ((res & 0xFF)); // Check first 8-bits.
+	UpdateRegZ(res & 0xFF); // Check first 8-bits.
 }
 
 
 void NESCPU::ExecuteOpCPY()
 {
-	OP_READ_ARG();
+	OP_READ_ARG()
 
 	// Y - M
 	const uleast16 res = reg_.Y - argVal;
 
 	reg_.C = (res < 0x100 ? 1 : 0);
 	UpdateRegN(static_cast<u8>(res));
-	UpdateRegZ((res & 0xFF)); // Check first 8-bits.
+	UpdateRegZ(res & 0xFF); // Check first 8-bits.
 }
 
 
 void NESCPU::ExecuteOpDEC()
 {
-	OP_READ_ARG();
+	OP_READ_ARG()
 
 	// M - 1 -> M
 	const u8 res = argVal - 1;
@@ -772,14 +770,14 @@ void NESCPU::ExecuteOpDEY()
 
 void NESCPU::ExecuteOpEOR()
 {
-	OP_READ_ARG();
+	OP_READ_ARG()
 
 	// EOR takes 1 extra CPU cycle if a page boundary was crossed.
 	if (crossedPageBoundary)
 		++currentOpCycleCount_;
 
 	// A EOR M -> A
-	const u8 res = (reg_.A ^ argVal);
+	const u8 res = reg_.A ^ argVal;
 
 	UpdateRegN(res);
 	UpdateRegZ(res);
@@ -789,7 +787,7 @@ void NESCPU::ExecuteOpEOR()
 
 void NESCPU::ExecuteOpINC()
 {
-	OP_READ_ARG();
+	OP_READ_ARG()
 	
 	// M + 1 -> M
 	const u8 res = argVal + 1;
@@ -820,7 +818,7 @@ void NESCPU::ExecuteOpINY()
 
 void NESCPU::ExecuteOpJMP()
 {
-	OP_READ_ARG();
+	OP_READ_ARG()
 
 	// (PC + 1) -> PCL
 	// (PC + 2) -> PCH
@@ -830,7 +828,7 @@ void NESCPU::ExecuteOpJMP()
 
 void NESCPU::ExecuteOpJSR()
 {
-	OP_READ_ARG();
+	OP_READ_ARG()
 
 	// PC + 2 toS, (PC + 1) -> PCL
 	//             (PC + 2) -> PCH
@@ -841,7 +839,7 @@ void NESCPU::ExecuteOpJSR()
 
 void NESCPU::ExecuteOpLDA()
 {
-	OP_READ_ARG();
+	OP_READ_ARG()
 
 	// LDA takes 1 extra CPU cycle if a page boundary was crossed.
 	if (crossedPageBoundary)
@@ -856,7 +854,7 @@ void NESCPU::ExecuteOpLDA()
 
 void NESCPU::ExecuteOpLDX()
 {
-	OP_READ_ARG();
+	OP_READ_ARG()
 
 	// LDX takes 1 extra CPU cycle if a page boundary was crossed.
 	if (crossedPageBoundary)
@@ -871,7 +869,7 @@ void NESCPU::ExecuteOpLDX()
 
 void NESCPU::ExecuteOpLDY()
 {
-	OP_READ_ARG();
+	OP_READ_ARG()
 
 	// LDY takes 1 extra CPU cycle if a page boundary was crossed.
 	if (crossedPageBoundary)
@@ -886,13 +884,13 @@ void NESCPU::ExecuteOpLDY()
 
 void NESCPU::ExecuteOpLSR()
 {
-	OP_READ_ARG();
+	OP_READ_ARG()
 
 	// 0 -> [76543210] -> C
-	const u8 res = (argVal >> 1);
+	const u8 res = argVal >> 1;
 	WriteOpResult(res);
 
-	reg_.C = ((argVal & 1)); // Set carry bit if bit 0 was originally 1.
+	reg_.C = argVal & 1; // Set carry bit if bit 0 was originally 1.
 	UpdateRegZ(res);
 	UpdateRegN(res);
 }
@@ -900,14 +898,14 @@ void NESCPU::ExecuteOpLSR()
 
 void NESCPU::ExecuteOpORA()
 {
-	OP_READ_ARG();
+	OP_READ_ARG()
 
 	// ORA takes 1 extra CPU cycle if a page boundary was crossed.
 	if (crossedPageBoundary)
 		++currentOpCycleCount_;
 
 	// A OR M -> A
-	const u8 res = (argVal | reg_.A);
+	const u8 res = argVal | reg_.A;
 
 	UpdateRegZ(res);
 	UpdateRegN(res);
@@ -939,10 +937,10 @@ void NESCPU::ExecuteOpPLP()
 
 void NESCPU::ExecuteOpROL()
 {
-	OP_READ_ARG();
+	OP_READ_ARG()
 
 	// C <- [7654321] <- C
-	uleast16 res = (argVal << 1);
+	uleast16 res = argVal << 1;
 	if (reg_.C == 1)
 		res |= 1;
 
@@ -956,14 +954,14 @@ void NESCPU::ExecuteOpROL()
 
 void NESCPU::ExecuteOpROR()
 {
-	OP_READ_ARG();
+	OP_READ_ARG()
 
 	// C -> [7654321] -> C
 	uleast16 res = argVal;
 	if (reg_.C == 1)
 		res |= 0x100;
 
-	reg_.C = (res & 1);
+	reg_.C = res & 1;
 
 	res >>= 1;
 	WriteOpResult(static_cast<u8>(res));
@@ -975,7 +973,7 @@ void NESCPU::ExecuteOpROR()
 
 void NESCPU::ExecuteOpSBC()
 {
-	OP_READ_ARG();
+	OP_READ_ARG()
 
 	// SBC takes 1 extra CPU cycle if a page boundary was crossed.
 	if (crossedPageBoundary)
@@ -987,14 +985,14 @@ void NESCPU::ExecuteOpSBC()
 	reg_.C = (res < 0x100 ? 1 : 0);
 	UpdateRegN(static_cast<u8>(res));
 	UpdateRegZ(static_cast<u8>(res));
-	reg_.V = (((~(reg_.A ^ argVal) & (reg_.A ^ res)) >> 7) & 1); // Check if the sign has changed due to overflow.
+	reg_.V = ((~(reg_.A ^ argVal) & (reg_.A ^ res)) >> 7) & 1; // Check if the sign has changed due to overflow.
 	reg_.A = static_cast<u8>(res);
 }
 
 
 void NESCPU::ExecuteOpSTA()
 {
-	OP_READ_ARG();
+	OP_READ_ARG()
 
 	// A -> M
 	mem_.Write8(argVal, reg_.A);
@@ -1003,7 +1001,7 @@ void NESCPU::ExecuteOpSTA()
 
 void NESCPU::ExecuteOpSTX()
 {
-	OP_READ_ARG();
+	OP_READ_ARG()
 
 	// X -> M
 	mem_.Write8(argVal, reg_.X);
@@ -1012,7 +1010,7 @@ void NESCPU::ExecuteOpSTX()
 
 void NESCPU::ExecuteOpSTY()
 {
-	OP_READ_ARG();
+	OP_READ_ARG()
 
 	// Y -> M
 	mem_.Write8(argVal, reg_.Y);

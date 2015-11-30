@@ -201,7 +201,7 @@ private:
 	inline void UpdateRegZ(u8 val) { reg_.Z = (val == 0 ? 1 : 0); }
 
 	// Updates the N register. Sets to the value of val's 7th bit (sign bit).
-	inline void UpdateRegN(u8 val) { reg_.N = ((val >> 7) & 1); }
+	inline void UpdateRegN(u8 val) { reg_.N = (val >> 7) & 1; }
 
 	// Updates the PC register. Sets PC to val. currentOpChangedPC_ is set to true so PC is not automatically changed afterwards.
 	inline void UpdateRegPC(u16 val) { reg_.PC = val; currentOpChangedPC_ = true; }
@@ -234,7 +234,7 @@ private:
 	{
 		// Push most-significant byte first, then the least.
 		StackPush8((val & 0xFF00) >> 8);
-		StackPush8((val & 0xFF));
+		StackPush8(val & 0xFF);
 	}
 
 	// Pull 8-bit value from the stack.
@@ -277,34 +277,34 @@ private:
 	void ExecuteOpASL();
 
 	// Execute Branch on Carry Clear (BCC).
-	inline void ExecuteOpBCC() { /* Branch on C = 0 */ ExecuteOpAsBranch((reg_.C == 0)); }
+	inline void ExecuteOpBCC() { /* Branch on C = 0 */ ExecuteOpAsBranch(reg_.C == 0); }
 
 	// Execute Branch on Carry Set (BCS).
-	inline void ExecuteOpBCS() { /* Branch on C = 1 */ ExecuteOpAsBranch((reg_.C == 1)); }
+	inline void ExecuteOpBCS() { /* Branch on C = 1 */ ExecuteOpAsBranch(reg_.C == 1); }
 
 	// Execute Branch on Result Zero (BEQ).
-	inline void ExecuteOpBEQ() { /* Branch on Z = 1 */ ExecuteOpAsBranch((reg_.Z == 1)); }
+	inline void ExecuteOpBEQ() { /* Branch on Z = 1 */ ExecuteOpAsBranch(reg_.Z == 1); }
 
 	// Execute Test Bits in Memory with Accumulator (BIT).
 	void ExecuteOpBIT();
 
 	// Execute Branch on Result Minus (BMI).
-	inline void ExecuteOpBMI() { /* Branch on N = 1 */ ExecuteOpAsBranch((reg_.N == 1)); }
+	inline void ExecuteOpBMI() { /* Branch on N = 1 */ ExecuteOpAsBranch(reg_.N == 1); }
 
 	// Execute Branch on Result Not Zero (BNE).
-	inline void ExecuteOpBNE() { /* Branch on Z = 0 */ ExecuteOpAsBranch((reg_.Z == 0)); }
+	inline void ExecuteOpBNE() { /* Branch on Z = 0 */ ExecuteOpAsBranch(reg_.Z == 0); }
 
 	// Execute Branch on Result Plus (BPL).
-	inline void ExecuteOpBPL() { /* Branch on N = 0 */ ExecuteOpAsBranch((reg_.N == 0)); }
+	inline void ExecuteOpBPL() { /* Branch on N = 0 */ ExecuteOpAsBranch(reg_.N == 0); }
 
 	// Execute Force Break (BRK).
 	inline void ExecuteOpBRK() { ExecuteInterrupt(NESCPUInterrupt::IRQ); }
 
 	// Execute Branch on Overflow Clear (BVC).
-	inline void ExecuteOpBVC() { /* Branch on V = 0 */ ExecuteOpAsBranch((reg_.V == 0)); }
+	inline void ExecuteOpBVC() { /* Branch on V = 0 */ ExecuteOpAsBranch(reg_.V == 0); }
 
 	// Execute Branch on Overflow Set (BVS).
-	inline void ExecuteOpBVS() { /* Branch on V = 1 */ ExecuteOpAsBranch((reg_.V == 1)); }
+	inline void ExecuteOpBVS() { /* Branch on V = 1 */ ExecuteOpAsBranch(reg_.V == 1); }
 
 	// Execute Clear Carry Flag (CLC).
 	inline void ExecuteOpCLC() { /* 0 -> C */ reg_.C = 0; }

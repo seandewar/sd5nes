@@ -44,20 +44,14 @@ template <uleast16 size>
 class NESMemory : public INESMemoryInterface
 {
 public:
-	NESMemory() : isReadOnly_(false) { ZeroMemory(); }
+	NESMemory() { ZeroMemory(); }
 	explicit NESMemory(const std::vector<u8>& vec) { CopyFromVector(vec); }
 	virtual ~NESMemory() { }
 
 	/**
 	* Sets all the allocated memory to zero.
 	*/
-	inline void ZeroMemory() 
-	{ 
-		if (isReadOnly_) 
-			throw NESMemoryException("Cannot zero read-only memory!"); 
-		
-		std::fill(data_.begin(), data_.end(), 0);
-	}
+	inline void ZeroMemory() { std::fill(data_.begin(), data_.end(), 0); }
 
 	/**
 	* Copies the contents from a vector into zero'd memory.
