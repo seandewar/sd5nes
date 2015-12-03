@@ -3,7 +3,7 @@
 #include <array>
 
 #include <SFML\Graphics\Color.hpp>
-#include <SFML\Graphics\RenderTarget.hpp>
+#include <SFML\Graphics\Image.hpp>
 
 #include "NESTypes.h"
 #include "NESMemory.h"
@@ -144,7 +144,7 @@ public:
 	/**
 	* Debug : Draws sprites from the pattern table.
 	*/
-	void DebugDrawPatterns(sf::RenderTarget& target, int colorOffset, float size);
+	void DebugDrawPatterns(sf::Image& target, int colorOffset);
 
 	/**
 	* Gets a reference to the registers being used by the PPU.

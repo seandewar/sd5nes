@@ -46,13 +46,9 @@ void NESPPU::Initialize()
 }
 
 
-// @TODO: DEBUG!!!
-#include <SFML\Graphics\RectangleShape.hpp>
-
-
-void NESPPU::DebugDrawPatterns(sf::RenderTarget& target, int colorOffset, float size)
+void NESPPU::DebugDrawPatterns(sf::Image& target, int colorOffset)
 {
-	sf::RectangleShape r(sf::Vector2f(size, size));
+	target.create(240, 248, sf::Color::Black);
 
 	int o = 0;
 	// Loop through the pattern tables.
@@ -68,9 +64,7 @@ void NESPPU::DebugDrawPatterns(sf::RenderTarget& target, int colorOffset, float 
 			const u8 colLo = (pLo >> j) & 1;
 			const auto col = (colHi << 1) | colLo;
 
-			r.setPosition(sf::Vector2f((7 - j) * size + (o * size * 8.0f), (i % (8 * 30)) * size));
-			r.setFillColor(col == 0 ? sf::Color::Black : NES_PPU_PALETTE_COLORS[col + colorOffset].ToSFColor());
-			target.draw(r);
+			target.setPixel((7 - j) + (o * 8), (i % (8 * 30)), col == 0 ? sf::Color::Black : NES_PPU_PALETTE_COLORS[col + colorOffset].ToSFColor());
 		}
 
 		if (i % (8 * 30) == 0 && i != 0)

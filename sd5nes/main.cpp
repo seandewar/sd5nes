@@ -7,6 +7,12 @@
 #include "NESPPU.h"
 #include "NESGamePak.h"
 
+
+// @TODO DEBUG!!
+#include <SFML\Graphics\Texture.hpp>
+#include <SFML\Graphics\Sprite.hpp>
+
+
 int main(int argc, char* argv[])
 {
 	// Init the window.
@@ -30,6 +36,9 @@ int main(int argc, char* argv[])
 	NESPPU p(pmm);
 
 	int a = 6;
+	sf::Image im;
+	sf::Texture tex;
+	sf::Sprite spr;
 
 	// Main loop.
 	while (window.isOpen())
@@ -44,13 +53,23 @@ int main(int argc, char* argv[])
 			case sf::Event::Closed:
 				window.close();
 				break;
+
+			// Change pallette debug
+			case sf::Event::KeyPressed:
+				if (event.key.code = sf::Keyboard::Up)
+					a = (a >= ((int)NES_PPU_PALETTE_COLORS.size() - 4) ? 0 : a + 1);
+				else if (event.key.code = sf::Keyboard::Down)
+					a = (a <= 0 ? ((int)NES_PPU_PALETTE_COLORS.size() - 4) : a - 1);
 			}
 		}
 
 		// @TODO DEBUG!!
 		window.clear();
-		a = (a >= ((int)NES_PPU_PALETTE_COLORS.size() - 4) ? 0 : a + 1);
-		p.DebugDrawPatterns(window, a, 2.4f);
+		p.DebugDrawPatterns(im, a);
+		tex.loadFromImage(im);
+		spr.setTexture(tex);
+		spr.setScale(2.4f, 2.4f);
+		window.draw(spr);
 		window.display();
 	}
 
