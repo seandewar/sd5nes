@@ -3,6 +3,7 @@
 #include <array>
 
 #include <SFML\Graphics\Color.hpp>
+#include <SFML\Graphics\RenderTarget.hpp>
 
 #include "NESTypes.h"
 #include "NESMemory.h"
@@ -46,7 +47,7 @@ struct NESPPUColor
 	u8 r, g, b;
 
 	// Converts an NESPPUColor into it's corrisponding SFML Color (sf::Color).
-	inline sf::Color ToSFColor() { return sf::Color(r, g, b); }
+	inline sf::Color ToSFColor() const { return sf::Color(r, g, b); }
 };
 
 /**
@@ -141,6 +142,11 @@ public:
 	void Tick();
 
 	/**
+	* Debug : Draws sprites from the pattern table.
+	*/
+	void DebugDrawPatterns(sf::RenderTarget& target, int colorOffset, float size);
+
+	/**
 	* Gets a reference to the registers being used by the PPU.
 	*/
 	NESPPURegisters& GetPPURegisters();
@@ -156,8 +162,6 @@ private:
 	* Inits the PPU.
 	*/
 	void Initialize();
-
-	inline 
 
 	/**
 	* Handles the logic and rendering of the current scanline.

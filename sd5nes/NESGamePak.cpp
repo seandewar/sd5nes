@@ -61,12 +61,6 @@ void NESGamePak::ParseROMFileData(const std::vector<u8>& data)
 {
 	// @TODO Whole function might need some optimizations if too much
 	// stuff is being copied all around the place... ?
-	if (!isRomLoaded_)
-	{
-		assert("Tried to parse without a loaded ROM." && false);
-		throw NESGamePakLoadException("Failed to parse ROM image - no ROM image loaded!");
-	}
-
 	NESReadBuffer buf(data);
 	std::vector<u8> romInfo; // Vector containing the different ROM info bytes.
 	try

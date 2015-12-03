@@ -1,6 +1,7 @@
 #pragma once
 
 #include <array>
+#include <vector>
 #include <stdexcept>
 #include <cassert>
 
@@ -56,17 +57,17 @@ public:
 	/**
 	* Copies the contents from a vector into zero'd memory.
 	*/
-	void CopyFromVector(const std::vector<u8>& buf)
+	void CopyFromVector(const std::vector<u8>& vec)
 	{
 		// Copying from a buffer which is larger than ours
 		// is probably bad...
-		assert(buf.size() <= data_.size());
+		assert(vec.size() <= data_.size());
 
 		for (uleast16 i = 0; i < data_.size(); ++i)
 		{
 			// Fill with data from buffer. If we have reached the end
 			// of the buffer, fill the rest with zeros.
-			data_[i] = (i < buf.size() ? buf[i] : 0);
+			data_[i] = (i < vec.size() ? vec[i] : 0);
 		}
 	}
 

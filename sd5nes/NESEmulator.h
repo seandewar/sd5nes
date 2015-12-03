@@ -24,14 +24,13 @@ public:
 private:
 	sf::RenderTarget& target_;
 
-	NESGamePak cart_;
-
-	NESPPUMemory ppuMem_;
-	NESPPUMemoryMap ppuMap_;
-	NESPPU ppu_;
-
-	NESMemCPURAM cpuRam_;
-	NESCPUMemoryMap cpuMap_;
-	NESCPU cpu_;
+	//NESGamePak cart_;
+	//
+	//NESPPUMemory ppuMem_;
+	//NESPPUMemoryMap ppuMap_;
+	//NESPPU ppu_;
+	//
+	//NESMemCPURAM cpuRam_;
+	//NESCPUMemoryMap cpuMap_;
+	//NESCPU cpu_;
 };
-

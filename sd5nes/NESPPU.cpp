@@ -46,6 +46,39 @@ void NESPPU::Initialize()
 }
 
 
+// @TODO: DEBUG!!!
+#include <SFML\Graphics\RectangleShape.hpp>
+
+
+void NESPPU::DebugDrawPatterns(sf::RenderTarget& target, int colorOffset, float size)
+{
+	sf::RectangleShape r(sf::Vector2f(size, size));
+
+	int o = 0;
+	// Loop through the pattern tables.
+	for (int i = 0; i < 0x2000; ++i)
+	{
+		const u8 pLo = mem_.Read8(i);
+		const u8 pHi = mem_.Read8(i + 8);
+
+		for (int j = 7; j >= 0; --j)
+		{
+			// Get the color.
+			const u8 colHi = (pHi >> j) & 1;
+			const u8 colLo = (pLo >> j) & 1;
+			const auto col = (colHi << 1) | colLo;
+
+			r.setPosition(sf::Vector2f((7 - j) * size + (o * size * 8.0f), (i % (8 * 30)) * size));
+			r.setFillColor(col == 0 ? sf::Color::Black : NES_PPU_PALETTE_COLORS[col + colorOffset].ToSFColor());
+			target.draw(r);
+		}
+
+		if (i % (8 * 30) == 0 && i != 0)
+			++o;
+	}
+}
+
+
 void NESPPU::HandleScanline()
 {
 	// @TODO: Pre-render scanline
@@ -54,7 +87,7 @@ void NESPPU::HandleScanline()
 		// Visible scanline.
 		// @TODO Idle cycle.
 
-
+		// ...
 	}
 }
 
