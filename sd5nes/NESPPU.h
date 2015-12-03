@@ -157,9 +157,11 @@ private:
 	*/
 	void Initialize();
 
+	inline 
+
 	/**
-	* Handles the rendering of the current scanline.
+	* Handles the logic and rendering of the current scanline.
 	*/
-	void RenderScanline();
+	void HandleScanline();
 };
 

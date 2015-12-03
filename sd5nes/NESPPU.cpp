@@ -46,9 +46,16 @@ void NESPPU::Initialize()
 }
 
 
-void NESPPU::RenderScanline()
+void NESPPU::HandleScanline()
 {
-	//...
+	// @TODO: Pre-render scanline
+	if (currentScanline_ >= 0 && currentScanline_ <= 239)
+	{
+		// Visible scanline.
+		// @TODO Idle cycle.
+
+
+	}
 }
 
 
@@ -56,7 +63,7 @@ void NESPPU::Tick()
 {
 	isEvenFrame_ = !isEvenFrame_; // Toggle status of even frame.
 
-	RenderScanline();
+	HandleScanline();
 	++currentScanline_;
 
 	// @TODO
