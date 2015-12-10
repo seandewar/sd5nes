@@ -74,57 +74,84 @@ const std::array<NESPPUColor, 0x40> NES_PPU_PALETTE_COLORS = {
 	}
 };
 
+/* Positions of the different bits in the OAM Attribute field. */
+#define NES_PPU_OAM_ATTRIB_PALETTE_HI_BIT 0
+#define NES_PPU_OAM_ATTRIB_PALETTE_LO_BIT 1
+#define NES_PPU_OAM_ATTRIB_PRORITY_BIT 5
+#define NES_PPU_OAM_ATTRIB_HFLIP_BIT 6
+#define NES_PPU_OAM_ATTRIB_VFLIP_BIT 7
+
+/**
+* Represents 1 entry in the PPU's OAM (Object Attribute Memory).
+*/
+struct NESPPUOAMEntry
+{
+	/* Y position of the top of the sprite. */
+	u8 spriteY;
+
+	/* Index number of the tile to use for this sprite. */
+	u8 tileIndex;
+
+	/* Sprite attributes. */
+	u8 attrib;
+};
+
+/* Positions of the different PPUCTRL bits. */
+#define NES_PPU_REG_PPUCTRL_N_HI_BIT 0
+#define NES_PPU_REG_PPUCTRL_N_LO_BIT 1
+#define NES_PPU_REG_PPUCTRL_I_BIT 2
+#define NES_PPU_REG_PPUCTRL_S_BIT 3
+#define NES_PPU_REG_PPUCTRL_B_BIT 4
+#define NES_PPU_REG_PPUCTRL_H_BIT 5
+#define NES_PPU_REG_PPUCTRL_P_BIT 6
+#define NES_PPU_REG_PPUCTRL_V_BIT 7
+
+/* Positions of the different PPUMASK bits. */
+#define NES_PPU_REG_PPUMASK_G_BIT 0
+#define NES_PPU_REG_PPUMASK_m_BIT 1
+#define NES_PPU_REG_PPUMASK_M_BIT 2
+#define NES_PPU_REG_PPUMASK_b_BIT 3
+#define NES_PPU_REG_PPUMASK_s_BIT 4
+#define NES_PPU_REG_PPUMASK_BGR_HI_BIT 5
+#define NES_PPU_REG_PPUMASK_BGR_MID_BIT 6
+#define NES_PPU_REG_PPUMASK_BGR_LO_BIT 7
+
+/* Positions of the different PPUSTATUS bits. */
+#define NES_PPU_REG_PPUSTATUS_O_BIT 5
+#define NES_PPU_REG_PPUSTATUS_S_BIT 6
+#define NES_PPU_REG_PPUSTATUS_V_BIT 7
+
 /**
 * Struct containing the registers used by the NES PPU.
 */
 struct NESPPURegisters
 {
-	union
-	{
-		/* PPU Control Register 1 (PPUCTRL0) */
-		u8 PPUCTRL0;
+	/* PPU Control Register 1 (PPUCTRL) */
+	u8 PPUCTRL;
 
-		u8 nameTableNum : 2; /* Name table number. */
-		u8 incVramAddr : 1; /* Increments VRAM address by 1 if this is 0, otherwise by 32 if this is 1. */
-		u8 spritePatternTableNum : 1; /* Number of the Pattern table that the sprites are stored in. */
-		u8 bgPatternTableNum : 1; /* Number of the Pattern table that the background is stored in. */
-		u8 spritePixelSize : 1; /* Size of the sprites in pixels - 8x8 if this is 0, otherwise 8x16 if this is 1. */
-		u8 PPUCTRL0Unused : 1; /* Unused bit. */
-		u8 vBlankTriggerNMI : 1; /* Whether or not an NMI should be triggered upon a V-Blank. */
-	};
+	/* PPU Control Register 2 (PPUMASK) */
+	u8 PPUMASK;
 
-	union
-	{
-		/* PPU Control Register 2 (PPUCTRL1) */
-		u8 PPUCTRL1;
+	/* Status Register (PPUSTATUS) */
+	u8 PPUSTATUS;
 
-		u8 colorMode : 1; /* Indicates colour (0) or monochrome mode (1). */
-		u8 clipBg : 1; /* Whether or not to clip the background (AKA hide the background in the left 8 pixels on the screen). */
-		u8 clipSprites : 1; /* Whether or not to clip the sprites (AKA hide the sprites in the left 8 pixels on the screen). */
-		u8 displayBg : 1; /* Does not display the background if 0. */
-		u8 displaySprites : 1; /* Does not display sprites if 0. */
-		u8 colorModeInfo : 3; /* Indicates background colour in monochrome mode or colour intensity in colour mode. */
-	};
+	/* OAM Read/Write Address (OAMADDR) */
+	u8 OAMADDR; 
 
-	union
-	{
-		/* Status Register (PPUSTAT) */
-		u8 PPUSTAT;
+	/* OAM Data Read/Write (OAMDATA) */
+	u8 OAMDATA;
 
-		u8 PPUSTATUnused : 4; /* Unused bits. */
-		u8 ignoreVramWrites : 1; /* If set to 1, writes to VRAM will be ignored. */
-		u8 scanlineSpritesCount : 1; /* If set to 1, indicates that more than 8 sprites are on the current scanline. */
-		u8 sprite0Hit : 1; /* Set when a non-transparent pixel of Sprite 0 overlaps a non-transparent background pixel. */
-		u8 vBlankInProgress : 1; /* Whether or not a V-Blank is in progress. */
-	};
+	/* Scroll Position (PPUSCROLL) */
+	u8 PPUSCROLL;
 
-	u8 sprRamAddr; /* The address in SPR-RAM to access on the next write to sprRamIO. */
-	u8 sprRamIO; /* Writes a byte to SPR-RAM at the address indicated by sprRamAddr. */
+	/* PPU Read/Write Address (PPUADDR) */
+	u8 PPUADDR;
 
-	u8 vramAddr1; /* VRAM address register 1 */
-	u8 vramAddr2; /* VRAM address register 2 */
+	/* PPU Data Read/Write (PPUDATA) */
+	u8 PPUDATA;
 
-	u8 vramIO; /* Writes a byte to VRAM at the address indicated by vramAddr. */
+	/* OAM DMA High Address (OAMDMA) */
+	u8 OAMDMA;
 };
 
 /**
@@ -153,6 +180,7 @@ public:
 
 private:
 	NESPPURegisters ppuReg_;
+	NESMemory<0x100> oam_;
 	NESPPUMemoryMapper& mem_;
 
 	bool isEvenFrame_;

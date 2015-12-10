@@ -64,7 +64,8 @@ void NESPPU::DebugDrawPatterns(sf::Image& target, int colorOffset)
 			const u8 colLo = (pLo >> j) & 1;
 			const auto col = (colHi << 1) | colLo;
 
-			target.setPixel((7 - j) + (o * 8), (i % (8 * 30)), col == 0 ? sf::Color::Black : NES_PPU_PALETTE_COLORS[col + colorOffset].ToSFColor());
+			target.setPixel((7 - j) + (o * 8), (i % (8 * 30)),
+				col == 0 ? sf::Color::Black : NES_PPU_PALETTE_COLORS[col + colorOffset].ToSFColor());
 		}
 
 		if (i % (8 * 30) == 0 && i != 0)
@@ -81,7 +82,7 @@ void NESPPU::HandleScanline()
 		// Visible scanline.
 		// @TODO Idle cycle.
 
-		// ...
+		
 	}
 }
 

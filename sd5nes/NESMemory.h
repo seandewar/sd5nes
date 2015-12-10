@@ -41,7 +41,7 @@ public:
 /**
 * Represents the memory used by a hardware component of the NES system.
 */
-template <uleast16 size>
+template <u16 size>
 class NESMemory : public INESMemoryInterface
 {
 public:
@@ -63,7 +63,7 @@ public:
 		// is probably bad...
 		assert(vec.size() <= data_.size());
 
-		for (uleast16 i = 0; i < data_.size(); ++i)
+		for (u16 i = 0; i < data_.size(); ++i)
 		{
 			// Fill with data from buffer. If we have reached the end
 			// of the buffer, fill the rest with zeros.
@@ -96,7 +96,7 @@ public:
 	/**
 	* Gets the allocated size.
 	*/
-	inline uleast32 GetSize() const { return data_.size(); }
+	inline u32 GetSize() const { return data_.size(); }
 
 private:
 	std::array<u8, size> data_;

@@ -65,10 +65,10 @@ u8 NESCPUMemoryMapper::Read8(u16 addr) const
 			switch (addr)
 			{
 			case 0x2002:
-				const auto ppuStat = ppuReg_.PPUSTAT;
-				ppuReg_.vBlankInProgress = 0; // Clear V-Blank flag on read.
-				ppuReg_.vramAddr2 = ppuReg_.vramAddr1 = 0; // Reset $2005 & $2006.
-				return ppuStat;
+				const auto oldPpuStat = ppuReg_.PPUSTATUS;
+				NESHelper::ClearBit(ppuReg_.PPUSTATUS, NES_PPU_REG_PPUSTATUS_V_BIT); // Clear V-Blank flag on read.
+				ppuReg_.PPUADDR = ppuReg_.PPUSCROLL = 0; // Reset $2005 & $2006.
+				return oldPpuStat;
 			}
 			// @TODO
 		}
@@ -391,19 +391,19 @@ void NESCPU::Reset()
 void NESCPU::Initialize()
 {
 	// Reset current op status.
-	currentOp_ = NES_OP_INVALID;
-	currentOpCycleCount_ = 0;
-	currentOpChangedPC_ = false;
+	currentOp_.op = NES_OP_INVALID;
+	currentOp_.opCycleCount = 0;
+	currentOp_.opChangedPC = false;
 
 	// Init registers.
-	reg_.PC = reg_.SP = reg_.A = reg_.X = reg_.Y = reg_.P = 0;
-	reg_.PUnused = 1; // Unused status register bit should always be 1.
+	reg_.PC = reg_.SP = reg_.A = reg_.X = reg_.Y;
+	reg_.P = 0x20; // Unused status register bit should always be 1.
 }
 
 
 u8 NESCPU::GetCurrentOpcode() const
 {
-	return currentOp_;
+	return currentOp_.op;
 }
 
 
@@ -417,7 +417,7 @@ NESCPUOpAddressingMode NESCPU::GetOpAddressingMode(u8 op)
 }
 
 
-int NESCPU::GetOpSizeFromAddressingMode(NESCPUOpAddressingMode addrMode)
+u16 NESCPU::GetOpSizeFromAddressingMode(NESCPUOpAddressingMode addrMode)
 {
 	switch (addrMode)
 	{
@@ -455,7 +455,7 @@ void NESCPU::ExecuteNextOp()
 	// Get the next opcode.
 	try
 	{
-		currentOp_ = mem_.Read8(reg_.PC);
+		currentOp_.op = mem_.Read8(reg_.PC);
 	}
 	catch (const NESMemoryException&)
 	{
@@ -463,21 +463,21 @@ void NESCPU::ExecuteNextOp()
 	}
 
 	// Locate the mapping for this opcode.
-	const auto it = opInfos_.find(currentOp_);
+	const auto it = opInfos_.find(currentOp_.op);
 	if (it == opInfos_.end())
 	{
 		std::ostringstream oss;
-		oss << "Unknown opcode: 0x" << std::hex << +currentOp_;
+		oss << "Unknown opcode: 0x" << std::hex << +currentOp_.op;
 		throw NESCPUExecutionException(oss.str(), reg_);
 	}
 
-	currentOpMappingIt_ = it;
-	currentOpCycleCount_ = it->second.cycleCount;
-	currentOpChangedPC_ = false;
+	currentOp_.opMappingIt = it;
+	currentOp_.opCycleCount = it->second.cycleCount;
+	currentOp_.opChangedPC = false;
 	(this->*it->second.opFunc)(); // Execute opcode func.
 
 	// Go to the next instruction.
-	if (!currentOpChangedPC_)
+	if (!currentOp_.opChangedPC)
 		reg_.PC += GetOpSizeFromAddressingMode(it->second.addrMode);
 }
 
@@ -487,7 +487,7 @@ std::pair<u8, bool> NESCPU::ReadOpArgValue()
 	u16 addr;
 	bool crossedPageBoundary;
 
-	switch (currentOpMappingIt_->second.addrMode)
+	switch (currentOp_.opMappingIt->second.addrMode)
 	{
 	case NESCPUOpAddressingMode::ACCUMULATOR:
 		return std::make_pair(reg_.A, false); // Read from accumulator instead.
@@ -556,7 +556,7 @@ std::pair<u8, bool> NESCPU::ReadOpArgValue()
 void NESCPU::WriteOpResult(u8 result)
 {
 	u16 addr;
-	switch (currentOpMappingIt_->second.addrMode)
+	switch (currentOp_.opMappingIt->second.addrMode)
 	{
 	case NESCPUOpAddressingMode::ACCUMULATOR:
 		reg_.A = result; // Write to accumulator instead.
@@ -595,15 +595,15 @@ void NESCPU::ExecuteOpADC()
 
 	// ADC takes 1 extra CPU cycle if a page boundary was crossed.
 	if (crossedPageBoundary)
-		++currentOpCycleCount_;
+		++currentOp_.opCycleCount;
 
 	// A + M + C -> A, C
 	// @NOTE: NES 6502 variant has no BCD mode.
-	const uleast16 res = reg_.A + argVal + reg_.C;
+	const u16 res = reg_.A + argVal + (NESHelper::IsBitSet(reg_.P, NES_CPU_REG_P_C_BIT) ? 1 : 0);
 
-	reg_.C = (res > 0xFF ? 1 : 0);
+	NESHelper::EditBit(reg_.P, NES_CPU_REG_P_C_BIT, res > 0xFF);
+	NESHelper::EditBit(reg_.P, NES_CPU_REG_P_V_BIT, ((~(reg_.A ^ argVal) & (reg_.A ^ res)) & 0x80) == 0x80); // Check if the sign has changed due to overflow.
 	UpdateRegN(static_cast<u8>(res));
-	reg_.V = ((~(reg_.A ^ argVal) & (reg_.A ^ res)) >> 7) & 1; // Check if the sign has changed due to overflow.
 	reg_.A = static_cast<u8>(res);
 }
 
@@ -614,7 +614,7 @@ void NESCPU::ExecuteOpAND()
 
 	// AND takes 1 extra CPU cycle if a page boundary was crossed.
 	if (crossedPageBoundary)
-		++currentOpCycleCount_;
+		++currentOp_.opCycleCount;
 
 	// A AND M -> A
 	const u8 res = reg_.A & argVal;
@@ -633,7 +633,7 @@ void NESCPU::ExecuteOpASL()
 	const u8 res = argVal << 1;
 	WriteOpResult(res);
 
-	reg_.C = (argVal >> 7) & 1; // Set carry bit if bit 7 was originally 1.
+	NESHelper::EditBit(reg_.P, NES_CPU_REG_P_C_BIT, (argVal & 0x80) == 0x80); // Set carry bit if bit 7 was originally 1.
 	UpdateRegZ(res);
 	UpdateRegN(res);
 }
@@ -650,9 +650,9 @@ void NESCPU::ExecuteOpAsBranch(bool shouldBranch, int branchSamePageCycleExtra, 
 
 	// Check if the branch will cross a page boundary.
 	if (!NESHelper::IsInSamePage(reg_.PC, jumpPC))
-		currentOpCycleCount_ += branchDiffPageCycleExtra;
+		currentOp_.opCycleCount += branchDiffPageCycleExtra;
 	else
-		currentOpCycleCount_ += branchSamePageCycleExtra;
+		currentOp_.opCycleCount += branchSamePageCycleExtra;
 
 	UpdateRegPC(jumpPC);
 }
@@ -665,7 +665,7 @@ void NESCPU::ExecuteOpBIT()
 	// A /\ M, M7 -> N, M6 -> V
 	UpdateRegN(argVal);
 	UpdateRegZ(argVal & reg_.A);
-	reg_.V = (argVal >> 6) & 1;
+	NESHelper::EditBit(reg_.P, NES_CPU_REG_P_V_BIT, (argVal & 0x40) == 0x40);
 }
 
 
@@ -680,7 +680,7 @@ void NESCPU::ExecuteInterrupt(NESCPUInterrupt interruptType)
 		break;
 
 	case NESCPUInterrupt::IRQ:
-		if (reg_.I == 1) // IRQ checks the Interupt Disable flag.
+		if (NESHelper::IsBitSet(reg_.P, NES_CPU_REG_P_I_BIT)) // IRQ checks the Interupt Disable flag.
 			return;
 
 		UpdateRegPC(NESHelper::MemoryRead16(mem_, 0xFFFE)); // Jump to IRQ Vector.
@@ -695,9 +695,9 @@ void NESCPU::ExecuteInterrupt(NESCPUInterrupt interruptType)
 	{
 		// Forced Interrupt PC + 2 toS P toS
 		StackPush16(reg_.PC + 1);
-		reg_.B = 1; // Set break flag before pushing P.
+		NESHelper::SetBit(reg_.P, NES_CPU_REG_P_B_BIT); // Set break flag before pushing P.
 		StackPush16(reg_.P);
-		reg_.I = 1;
+		NESHelper::SetBit(reg_.P, NES_CPU_REG_P_I_BIT);
 	}
 }
 
@@ -708,12 +708,12 @@ void NESCPU::ExecuteOpCMP()
 
 	// CMP takes 1 extra CPU cycle if a page boundary was crossed.
 	if (crossedPageBoundary)
-		++currentOpCycleCount_;
+		++currentOp_.opCycleCount;
 
 	// A - M
-	const uleast16 res = reg_.A - argVal;
+	const u16 res = reg_.A - argVal;
 
-	reg_.C = (res < 0x100 ? 1 : 0);
+	NESHelper::EditBit(reg_.P, NES_CPU_REG_P_C_BIT, res < 0x100);
 	UpdateRegN(static_cast<u8>(res));
 	UpdateRegZ(res & 0xFF); // Check first 8-bits.
 }
@@ -724,9 +724,9 @@ void NESCPU::ExecuteOpCPX()
 	OP_READ_ARG()
 
 	// X - M
-	const uleast16 res = reg_.X - argVal;
+	const u16 res = reg_.X - argVal;
 
-	reg_.C = (res < 0x100 ? 1 : 0);
+	NESHelper::EditBit(reg_.P, NES_CPU_REG_P_C_BIT, res < 0x100);
 	UpdateRegN(static_cast<u8>(res));
 	UpdateRegZ(res & 0xFF); // Check first 8-bits.
 }
@@ -737,9 +737,9 @@ void NESCPU::ExecuteOpCPY()
 	OP_READ_ARG()
 
 	// Y - M
-	const uleast16 res = reg_.Y - argVal;
+	const u16 res = reg_.Y - argVal;
 
-	reg_.C = (res < 0x100 ? 1 : 0);
+	NESHelper::EditBit(reg_.P, NES_CPU_REG_P_C_BIT, res < 0x100);
 	UpdateRegN(static_cast<u8>(res));
 	UpdateRegZ(res & 0xFF); // Check first 8-bits.
 }
@@ -782,7 +782,7 @@ void NESCPU::ExecuteOpEOR()
 
 	// EOR takes 1 extra CPU cycle if a page boundary was crossed.
 	if (crossedPageBoundary)
-		++currentOpCycleCount_;
+		++currentOp_.opCycleCount;
 
 	// A EOR M -> A
 	const u8 res = reg_.A ^ argVal;
@@ -851,7 +851,7 @@ void NESCPU::ExecuteOpLDA()
 
 	// LDA takes 1 extra CPU cycle if a page boundary was crossed.
 	if (crossedPageBoundary)
-		++currentOpCycleCount_;
+		++currentOp_.opCycleCount;
 
 	// M -> A
 	UpdateRegN(argVal);
@@ -866,7 +866,7 @@ void NESCPU::ExecuteOpLDX()
 
 	// LDX takes 1 extra CPU cycle if a page boundary was crossed.
 	if (crossedPageBoundary)
-		++currentOpCycleCount_;
+		++currentOp_.opCycleCount;
 
 	// M -> X
 	UpdateRegN(argVal);
@@ -881,7 +881,7 @@ void NESCPU::ExecuteOpLDY()
 
 	// LDY takes 1 extra CPU cycle if a page boundary was crossed.
 	if (crossedPageBoundary)
-		++currentOpCycleCount_;
+		++currentOp_.opCycleCount;
 
 	// M -> Y
 	UpdateRegN(argVal);
@@ -898,7 +898,7 @@ void NESCPU::ExecuteOpLSR()
 	const u8 res = argVal >> 1;
 	WriteOpResult(res);
 
-	reg_.C = argVal & 1; // Set carry bit if bit 0 was originally 1.
+	NESHelper::EditBit(reg_.P, NES_CPU_REG_P_C_BIT, (argVal & 1) == 1);
 	UpdateRegZ(res);
 	UpdateRegN(res);
 }
@@ -910,7 +910,7 @@ void NESCPU::ExecuteOpORA()
 
 	// ORA takes 1 extra CPU cycle if a page boundary was crossed.
 	if (crossedPageBoundary)
-		++currentOpCycleCount_;
+		++currentOp_.opCycleCount;
 
 	// A OR M -> A
 	const u8 res = argVal | reg_.A;
@@ -948,13 +948,13 @@ void NESCPU::ExecuteOpROL()
 	OP_READ_ARG()
 
 	// C <- [7654321] <- C
-	uleast16 res = argVal << 1;
-	if (reg_.C == 1)
+	u16 res = argVal << 1;
+	if (NESHelper::IsBitSet(reg_.P, NES_CPU_REG_P_C_BIT))
 		res |= 1;
 
 	WriteOpResult(static_cast<u8>(res));
 
-	reg_.C = (res > 0xFF ? 1 : 0);
+	NESHelper::EditBit(reg_.P, NES_CPU_REG_P_C_BIT, res > 0xFF);
 	UpdateRegZ(static_cast<u8>(res));
 	UpdateRegN(static_cast<u8>(res));
 }
@@ -965,11 +965,11 @@ void NESCPU::ExecuteOpROR()
 	OP_READ_ARG()
 
 	// C -> [7654321] -> C
-	uleast16 res = argVal;
-	if (reg_.C == 1)
+	u16 res = argVal;
+	if (NESHelper::IsBitSet(reg_.P, NES_CPU_REG_P_C_BIT))
 		res |= 0x100;
 
-	reg_.C = res & 1;
+	NESHelper::EditBit(reg_.P, NES_CPU_REG_P_C_BIT, (res & 1) == 1);
 
 	res >>= 1;
 	WriteOpResult(static_cast<u8>(res));
@@ -985,15 +985,15 @@ void NESCPU::ExecuteOpSBC()
 
 	// SBC takes 1 extra CPU cycle if a page boundary was crossed.
 	if (crossedPageBoundary)
-		++currentOpCycleCount_;
+		++currentOp_.opCycleCount;
 
 	// A - M - C -> A
-	const uleast16 res = reg_.A - argVal - (1 - reg_.C);
+	const u16 res = reg_.A - argVal - 1 + (NESHelper::IsBitSet(reg_.P, NES_CPU_REG_P_C_BIT) ? 1 : 0);
 
-	reg_.C = (res < 0x100 ? 1 : 0);
+	NESHelper::EditBit(reg_.P, NES_CPU_REG_P_C_BIT, res < 0x100);
+	NESHelper::EditBit(reg_.P, NES_CPU_REG_P_V_BIT, ((~(reg_.A ^ argVal) & (reg_.A ^ res)) & 0x80) == 0x80); // Check if the sign has changed due to overflow.
 	UpdateRegN(static_cast<u8>(res));
 	UpdateRegZ(static_cast<u8>(res));
-	reg_.V = ((~(reg_.A ^ argVal) & (reg_.A ^ res)) >> 7) & 1; // Check if the sign has changed due to overflow.
 	reg_.A = static_cast<u8>(res);
 }
 

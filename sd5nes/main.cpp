@@ -56,10 +56,11 @@ int main(int argc, char* argv[])
 
 			// Change pallette debug
 			case sf::Event::KeyPressed:
-				if (event.key.code = sf::Keyboard::Up)
-					a = (a >= ((int)NES_PPU_PALETTE_COLORS.size() - 4) ? 0 : a + 1);
-				else if (event.key.code = sf::Keyboard::Down)
-					a = (a <= 0 ? ((int)NES_PPU_PALETTE_COLORS.size() - 4) : a - 1);
+				if (event.key.code == sf::Keyboard::Up)
+					a = (a >= (int)NES_PPU_PALETTE_COLORS.size() - 4 ? 0 : a + 1);
+				else if (event.key.code == sf::Keyboard::Down)
+					a = (a <= 0 ? (int)NES_PPU_PALETTE_COLORS.size() - 4 : a - 1);
+				break;
 			}
 		}
 

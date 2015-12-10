@@ -12,6 +12,26 @@
 namespace NESHelper
 {
 	/**
+	* Gets the value of a bit in the specified position of an 8-bit value.
+	*/
+	inline bool IsBitSet(u8 val, u8 pos) { assert(pos < 8); return (((val >> pos) & 1) == 1); }
+
+	/**
+	* Sets the bit at the specified position of an 8-bit value.
+	*/
+	inline void SetBit(u8& val, u8 pos) { assert(pos < 8); val |= (1 << pos); }
+
+	/**
+	* Clear the bit at the specified position of an 8-bit value.
+	*/
+	inline void ClearBit(u8& val, u8 pos) { assert(pos < 8); val &= ~(1 << pos); }
+
+	/**
+	* Sets/clears the bit at the specified position of an 8-bit value.
+	*/
+	inline void EditBit(u8& val, u8 pos, bool setBit) { (setBit ? SetBit(val, pos) : ClearBit(val, pos)); }
+
+	/**
 	* Checks whether or not addr1 and addr2 are in the same page of memory.
 	*/
 	inline bool IsInSamePage(u16 addr1, u16 addr2) { return ((addr1 & 0xFF00) == (addr2 & 0xFF00)); }
