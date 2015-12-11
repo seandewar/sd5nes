@@ -420,6 +420,7 @@ void NESCPU::Initialize()
 
 	reg_ = {}; // Zero the registers.
 	reg_.P = 0x20; // Unused status register bit should always be 1.
+	reg_.PC = 0x8000; // Start on the lower PRG-ROM bank.
 }
 
 
@@ -495,7 +496,7 @@ void NESCPU::ExecuteNextOp()
 	try
 	{
 		currentOp_.op = mem_.Read8(reg_.PC);
-		std::cout << "op " << std::hex << +currentOp_.op << " pc " << std::hex << +reg_.PC << std::endl;
+		std::cout << "op " << std::hex << +currentOp_.op << ", pc: " << std::hex << reg_.PC << std::endl;
 	}
 	catch (const NESMemoryException&)
 	{
@@ -686,7 +687,7 @@ void NESCPU::ExecuteOpAsBranch(bool shouldBranch, int branchSamePageCycleExtra, 
 
 	OP_READ_ARG()
 
-	const u16 jumpPC = reg_.PC + argVal;
+	const u16 jumpPC = reg_.PC + static_cast<s8>(argVal) + 1;
 
 	// Check if the branch will cross a page boundary.
 	if (!NESHelper::IsInSamePage(reg_.PC, jumpPC))
