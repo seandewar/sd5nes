@@ -180,8 +180,10 @@ public:
 
 private:
 	NESPPURegisters ppuReg_;
-	NESMemory<0x100> oam_;
 	NESPPUMemoryMapper& mem_;
+
+	NESMemory<0x100> primaryOam_;
+	NESMemory<0x20> secondaryOam_;
 
 	bool isEvenFrame_;
 	int currentScanline_;
