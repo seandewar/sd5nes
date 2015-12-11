@@ -19,8 +19,20 @@ typedef NESMemory<0x20> NESMemPalettes;
 struct NESPPUMemory
 {
 	std::array<NESMemPatternTable, 2> patternTables;
-	std::array<NESMemNameTable, 4> nameTables;
+	std::array<NESMemNameTable, 2> nameTables;
 	NESMemPalettes paletteMem;
+};
+
+/**
+* The types of nametable mirroring that can be used.
+*/
+enum class NESPPUMirroringType
+{
+	HORIZONTAL,
+	VERTICAL,
+	ONE_SCREEN,
+	FOUR_SCREEN,
+	UNKNOWN
 };
 
 /**
@@ -29,7 +41,7 @@ struct NESPPUMemory
 class NESPPUMemoryMapper : public NESMemoryMapper
 {
 public:
-	NESPPUMemoryMapper(NESPPUMemory& mem);
+	NESPPUMemoryMapper(NESPPUMemory& mem, NESPPUMirroringType ntMirror);
 	virtual ~NESPPUMemoryMapper();
 
 protected:
@@ -37,6 +49,7 @@ protected:
 
 private:
 	NESPPUMemory& mem_;
+	NESPPUMirroringType ntMirror_;
 };
 
 /**
@@ -122,6 +135,23 @@ struct NESPPUOAMEntry
 #define NES_PPU_REG_PPUSTATUS_V_BIT 7
 
 /**
+* Enum containing a list of the different types of registers.
+*/
+enum class NESPPURegisterType
+{
+	PPUCTRL,
+	PPUMASK,
+	PPUSTATUS,
+	OAMADDR,
+	OAMDATA,
+	PPUSCROLL,
+	PPUADDR,
+	PPUDATA,
+	OAMDMA,
+	UNKNOWN
+};
+
+/**
 * Struct containing the registers used by the NES PPU.
 */
 struct NESPPURegisters
@@ -141,10 +171,10 @@ struct NESPPURegisters
 	/* OAM Data Read/Write (OAMDATA) */
 	u8 OAMDATA;
 
-	/* Scroll Position (PPUSCROLL) */
+	/* Scroll Position (PPUSCROLL) W x2 */
 	u8 PPUSCROLL;
 
-	/* PPU Read/Write Address (PPUADDR) */
+	/* PPU Read/Write Address (PPUADDR) W x2 */
 	u8 PPUADDR;
 
 	/* PPU Data Read/Write (PPUDATA) */
@@ -155,18 +185,30 @@ struct NESPPURegisters
 };
 
 /**
+* Struct containing info on the status of the PPU's reg write latches.
+*/
+struct NESPPULatches
+{
+	/* The value stored in the internal data bus. */
+	u8 internalDataBusVal;
+
+	/* The state of the address latch used by PPUSCROLL and PPUADDR. */
+	bool isAddressLatchOn;
+};
+
+/**
 * Handles emulation of the 2C02 PPU used in the NES.
 */
 class NESPPU
 {
 public:
-	explicit NESPPU(NESPPUMemoryMapper& mem);
+	explicit NESPPU(NESPPUMemoryMapper& mem, sf::Image& debug);
 	~NESPPU();
 
 	/**
-	* Ticks the PPU.
+	* Handles one frame worth of PPU logic.
 	*/
-	void Tick();
+	void Frame();
 
 	/**
 	* Debug : Draws sprites from the pattern table.
@@ -174,19 +216,29 @@ public:
 	void DebugDrawPatterns(sf::Image& target, int colorOffset);
 
 	/**
-	* Gets a reference to the registers being used by the PPU.
+	* Writes to the specified PPU register.
 	*/
-	NESPPURegisters& GetPPURegisters();
+	void WriteRegister(NESPPURegisterType reg, u8 val);
+
+	/**
+	* Reads from the specified PPU register.
+	*/
+	u8 ReadRegister(NESPPURegisterType reg);
 
 private:
-	NESPPURegisters ppuReg_;
+	sf::Image& debug_; // @TODO DEBUG!!
+
+	NESPPURegisters reg_;
+	NESPPULatches latches_;
+	u8 xNtScroll_, yNtScroll_;
+	u16 vramDataAddr_;
+
 	NESPPUMemoryMapper& mem_;
 
 	NESMemory<0x100> primaryOam_;
 	NESMemory<0x20> secondaryOam_;
 
 	bool isEvenFrame_;
-	int currentScanline_;
 
 	/**
 	* Inits the PPU.
@@ -196,6 +248,6 @@ private:
 	/**
 	* Handles the logic and rendering of the current scanline.
 	*/
-	void HandleScanline();
+	void HandleScanline(unsigned int scanline);
 };
 

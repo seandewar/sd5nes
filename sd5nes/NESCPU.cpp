@@ -4,9 +4,9 @@
 #include <sstream>
 
 
-NESCPUMemoryMapper::NESCPUMemoryMapper(NESMemCPURAM& ram, NESPPURegisters& ppuReg, NESMMC* mmc) :
+NESCPUMemoryMapper::NESCPUMemoryMapper(NESMemCPURAM& ram, NESPPU& ppu, NESMMC* mmc) :
 ram_(ram),
-ppuReg_(ppuReg),
+ppu_(ppu),
 mmc_(mmc)
 {
 }
@@ -34,6 +34,43 @@ std::pair<INESMemoryInterface*, u16> NESCPUMemoryMapper::GetMapping(u16 addr) co
 }
 
 
+NESPPURegisterType NESCPUMemoryMapper::GetRegisterFromMappedAddress(u16 addr)
+{
+	switch (addr)
+	{
+	case 0x2000:
+		return NESPPURegisterType::PPUCTRL;
+
+	case 0x2001:
+		return NESPPURegisterType::PPUMASK;
+
+	case 0x2002:
+		return NESPPURegisterType::PPUSTATUS;
+
+	case 0x2003:
+		return NESPPURegisterType::OAMADDR;
+
+	case 0x2004:
+		return NESPPURegisterType::OAMDATA;
+
+	case 0x2005:
+		return NESPPURegisterType::PPUSCROLL;
+
+	case 0x2006:
+		return NESPPURegisterType::PPUADDR;
+
+	case 0x2007:
+		return NESPPURegisterType::PPUDATA;
+
+	case 0x4014:
+		return NESPPURegisterType::OAMDMA;
+
+	default:
+		return NESPPURegisterType::UNKNOWN;
+	}
+}
+
+
 void NESCPUMemoryMapper::Write8(u16 addr, u8 val)
 {
 	const auto mapping = GetMapping(addr);
@@ -41,12 +78,8 @@ void NESCPUMemoryMapper::Write8(u16 addr, u8 val)
 	{
 		if (mapping.second >= 0x8000)
 			mmc_->Write8(mapping.second, val);
-		else 
-		{
-			// @TODO
-		}
-
-		return;
+		else
+			ppu_.WriteRegister(GetRegisterFromMappedAddress(mapping.second), val);
 	}
 
 	NESMemoryMapper::Write8(addr, val);
@@ -61,17 +94,7 @@ u8 NESCPUMemoryMapper::Read8(u16 addr) const
 		if (mapping.second >= 0x8000)
 			return mmc_->Read8(mapping.second);
 		else
-		{
-			switch (addr)
-			{
-			case 0x2002:
-				const auto oldPpuStat = ppuReg_.PPUSTATUS;
-				NESHelper::ClearBit(ppuReg_.PPUSTATUS, NES_PPU_REG_PPUSTATUS_V_BIT); // Clear V-Blank flag on read.
-				ppuReg_.PPUADDR = ppuReg_.PPUSCROLL = 0; // Reset $2005 & $2006.
-				return oldPpuStat;
-			}
-			// @TODO
-		}
+			return ppu_.ReadRegister(GetRegisterFromMappedAddress(mapping.second));
 	}
 
 	return NESMemoryMapper::Read8(addr);
@@ -395,9 +418,21 @@ void NESCPU::Initialize()
 	currentOp_.opCycleCount = 0;
 	currentOp_.opChangedPC = false;
 
-	// Init registers.
-	reg_.PC = reg_.SP = reg_.A = reg_.X = reg_.Y;
+	reg_ = {}; // Zero the registers.
 	reg_.P = 0x20; // Unused status register bit should always be 1.
+}
+
+
+void NESCPU::Run(int numCycles)
+{
+	// @TODO debug!
+	int elapsedCycles = 0;
+
+	while (elapsedCycles < numCycles)
+	{
+		ExecuteNextOp();
+		elapsedCycles += currentOp_.opCycleCount;
+	}
 }
 
 
@@ -450,12 +485,17 @@ u16 NESCPU::GetOpSizeFromAddressingMode(NESCPUOpAddressingMode addrMode)
 }
 
 
+
+#include <iostream> // @TODO DEBUYG!!!
+
+
 void NESCPU::ExecuteNextOp()
 {
 	// Get the next opcode.
 	try
 	{
 		currentOp_.op = mem_.Read8(reg_.PC);
+		std::cout << "op " << std::hex << +currentOp_.op << " pc " << std::hex << +reg_.PC << std::endl;
 	}
 	catch (const NESMemoryException&)
 	{

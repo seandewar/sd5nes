@@ -8,6 +8,7 @@
 #include "NESMemory.h"
 #include "NESTypes.h"
 #include "NESMMC.h"
+#include "NESPPU.h"
 
 /**
 * Errors relating towards the loading and parsing of ROM files.
@@ -25,17 +26,6 @@ public:
 
 	virtual ~NESGamePakLoadException()
 	{ }
-};
-
-/**
-* The type of mirroring used by the ROM.
-*/
-enum class NESMirroringType
-{
-	HORIZONTAL,
-	VERTICAL,
-	FOUR_SCREEN,
-	UNKNOWN
 };
 
 /**
@@ -60,7 +50,10 @@ public:
 	const std::vector<NESMemCHRROMBank>& GetCharacterROMBanks() const;
 
 	// Gets the mirroring type used by the ROM.
-	NESMirroringType GetMirroringType() const;
+	NESPPUMirroringType GetMirroringType() const;
+
+	// Gets the MMC @TODO Debug?
+	inline NESMMC& GetMMC() const { return *mmc_; }
 
 	// Returns whether or not the ROM has battery-packed RAM.
 	bool HasBatteryPackedRAM() const;
@@ -73,7 +66,7 @@ private:
 	std::string romFileName_;
 
 	/* ROM Info variables */
-	NESMirroringType mirrorType_;
+	NESPPUMirroringType mirrorType_;
 	bool hasBatteryPackedRam_;
 	bool hasTrainer_;
 	u8 ramBanks_;

@@ -4,13 +4,7 @@
 #include <SFML\Window\Event.hpp>
 
 #include "NESEmulationConstants.h"
-#include "NESPPU.h"
-#include "NESGamePak.h"
-
-
-// @TODO DEBUG!!
-#include <SFML\Graphics\Texture.hpp>
-#include <SFML\Graphics\Sprite.hpp>
+#include "NESEmulator.h"
 
 
 int main(int argc, char* argv[])
@@ -22,23 +16,26 @@ int main(int argc, char* argv[])
 		);
 	
 	// @TODO DEBUG!!!!!
-	NESGamePak g;
-	g.LoadROM("smb.nes");
-	NESPPUMemory pm;
-	std::array<NESMemPatternTable, 2> pt;
-	for (int i = 0; i < 0x1000; ++i)
-	{
-		pt[0].Write8(i, g.GetCharacterROMBanks()[0].Read8(i + 0x0000));
-		pt[1].Write8(i, g.GetCharacterROMBanks()[0].Read8(i + 0x1000));
-	}
-	pm.patternTables = pt;
-	NESPPUMemoryMapper pmm(pm);
-	NESPPU p(pmm);
+	//NESGamePak g;
+	//g.LoadROM("smb.nes");
+	//NESPPUMemory pm;
+	//std::array<NESMemPatternTable, 2> pt;
+	//for (int i = 0; i < 0x1000; ++i)
+	//{
+	//	pt[0].Write8(i, g.GetCharacterROMBanks()[0].Read8(i + 0x0000));
+	//	pt[1].Write8(i, g.GetCharacterROMBanks()[0].Read8(i + 0x1000));
+	//}
+	//pm.patternTables = pt;
+	//NESPPUMemoryMapper pmm(pm);
+	//NESPPU p(pmm);
 
-	int a = 6;
-	sf::Image im;
-	sf::Texture tex;
-	sf::Sprite spr;
+	//int a = 6;
+	//sf::Image im;
+	//sf::Texture tex;
+	//sf::Sprite spr;
+
+	NESEmulator emu(window);
+	emu.LoadROM("smb.nes");
 
 	// Main loop.
 	while (window.isOpen())
@@ -55,22 +52,23 @@ int main(int argc, char* argv[])
 				break;
 
 			// Change pallette debug
-			case sf::Event::KeyPressed:
-				if (event.key.code == sf::Keyboard::Up)
-					a = (a >= (int)NES_PPU_PALETTE_COLORS.size() - 4 ? 0 : a + 1);
-				else if (event.key.code == sf::Keyboard::Down)
-					a = (a <= 0 ? (int)NES_PPU_PALETTE_COLORS.size() - 4 : a - 1);
-				break;
+			//case sf::Event::KeyPressed:
+			//	if (event.key.code == sf::Keyboard::Up)
+			//		a = (a >= (int)NES_PPU_PALETTE_COLORS.size() - 4 ? 0 : a + 1);
+			//	else if (event.key.code == sf::Keyboard::Down)
+			//		a = (a <= 0 ? (int)NES_PPU_PALETTE_COLORS.size() - 4 : a - 1);
+			//	break;
 			}
 		}
 
 		// @TODO DEBUG!!
 		window.clear();
-		p.DebugDrawPatterns(im, a);
-		tex.loadFromImage(im);
-		spr.setTexture(tex);
-		spr.setScale(2.4f, 2.4f);
-		window.draw(spr);
+		emu.Frame();
+		/*p.DebugDrawPatterns(im, a);*/
+		//tex.loadFromImage(im);
+		//spr.setTexture(tex);
+		//spr.setScale(2.4f, 2.4f);
+		//window.draw(spr);
 		window.display();
 	}
 

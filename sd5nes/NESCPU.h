@@ -20,7 +20,7 @@ typedef NESMemory<0x800> NESMemCPURAM;
 class NESCPUMemoryMapper : public NESMemoryMapper
 {
 public:
-	NESCPUMemoryMapper(NESMemCPURAM& ram, NESPPURegisters& ppuReg, NESMMC* mmc);
+	NESCPUMemoryMapper(NESMemCPURAM& ram, NESPPU& ppu, NESMMC* mmc);
 	virtual ~NESCPUMemoryMapper();
 
 	void Write8(u16 addr, u8 val) override;
@@ -30,8 +30,10 @@ protected:
 	std::pair<INESMemoryInterface*, u16> GetMapping(u16 addr) const override;
 
 private:
+	static NESPPURegisterType GetRegisterFromMappedAddress(u16 addr);
+
 	NESMemCPURAM& ram_;
-	NESPPURegisters& ppuReg_;
+	NESPPU& ppu_;
 	NESMMC* mmc_;
 };
 
@@ -173,6 +175,9 @@ public:
 
 	// Resets the CPU.
 	void Reset();
+
+	// Runs the CPU for a number of cycles.
+	void Run(int numCycles);
 
 	// Gets the current opcode being executed.
 	u8 GetCurrentOpcode() const;

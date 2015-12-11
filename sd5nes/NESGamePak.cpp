@@ -19,7 +19,7 @@ void NESGamePak::ResetLoadedState()
 {
 	isRomLoaded_ = false;
 
-	mirrorType_ = NESMirroringType::UNKNOWN;
+	mirrorType_ = NESPPUMirroringType::UNKNOWN;
 	hasBatteryPackedRam_ = false;
 	hasTrainer_ = false;
 	ramBanks_ = 0;
@@ -81,9 +81,9 @@ void NESGamePak::ParseROMFileData(const std::vector<u8>& data)
 		// Check if bit 3 is 1 = four screen mirroring.
 		// If bit 3 is 0, check bit 0. If bit 0 is 1 = vertical. 0 = horizontal.
 		if ((romInfo[INES_ROM_CONTROL_1_INDEX] & 8) == 8)
-			mirrorType_ = NESMirroringType::FOUR_SCREEN;
+			mirrorType_ = NESPPUMirroringType::FOUR_SCREEN;
 		else
-			mirrorType_ = ((romInfo[INES_ROM_CONTROL_1_INDEX] & 1) == 1 ? NESMirroringType::VERTICAL : NESMirroringType::HORIZONTAL);
+			mirrorType_ = ((romInfo[INES_ROM_CONTROL_1_INDEX] & 1) == 1 ? NESPPUMirroringType::VERTICAL : NESPPUMirroringType::HORIZONTAL);
 
 		// Check bits 1 and 2 = battery packed RAM & trainer respectively.
 		hasBatteryPackedRam_ = ((romInfo[INES_ROM_CONTROL_1_INDEX] & 2) == 2);
@@ -162,7 +162,7 @@ const std::vector<NESMemCHRROMBank>& NESGamePak::GetCharacterROMBanks() const
 }
 
 
-NESMirroringType NESGamePak::GetMirroringType() const
+NESPPUMirroringType NESGamePak::GetMirroringType() const
 {
 	return mirrorType_;
 }

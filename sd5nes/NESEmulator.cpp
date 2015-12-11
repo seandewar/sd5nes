@@ -2,13 +2,12 @@
 
 #include <fstream>
 
+#include <SFML\Graphics\Sprite.hpp>
+#include <SFML\Graphics\Texture.hpp>
+
 
 NESEmulator::NESEmulator(sf::RenderTarget& target) :
-target_(target)//,
-//ppuMap_(ppuMem_),
-//ppu_(ppuMap_),
-//cpuMap_(cpuRam_, ppu_.GetPPURegisters()),
-//cpu_(cpuMap_)
+target_(target)
 {
 }
 
@@ -20,12 +19,29 @@ NESEmulator::~NESEmulator()
 
 void NESEmulator::LoadROM(const std::string& fileName)
 {
-	// @TODO
-	//cart_.LoadROM(fileName);
+	// @TODO debugdebugdebug
+	cart_.LoadROM(fileName);
+
+	ppuMap_ = std::make_unique<NESPPUMemoryMapper>(ppuMem_, cart_.GetMirroringType());
+	ppu_ = std::make_unique<NESPPU>(*ppuMap_, debug_);
+
+	cpuMap_ = std::make_unique<NESCPUMemoryMapper>(cpuRam_, *ppu_, &cart_.GetMMC());
+	cpu_ = std::make_unique<NESCPU>(*cpuMap_);
 }
 
 
-void NESEmulator::RunFrame()
+void NESEmulator::Frame()
 {
-	// @TODO
+	sf::Sprite spr;
+	sf::Texture tex;
+
+	// @TODO DEBUG!!
+	debug_.create(32 * 8, 240, sf::Color::Black);
+
+	cpu_->Run(300); // @TODO DEBUG!!
+
+	tex.loadFromImage(debug_);
+	spr.setTexture(tex);
+	spr.setScale(2.4f, 2.4f);
+	target_.draw(spr);
 }
