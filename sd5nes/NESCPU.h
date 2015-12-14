@@ -34,12 +34,11 @@ private:
 	NESMMC* mmc_;
 };
 
-/* Positions of the different status bits inside of the CPU status register.*/
+/* Positions of the different used status bits inside of the CPU status register.*/
 #define NES_CPU_REG_P_C_BIT 0
 #define NES_CPU_REG_P_Z_BIT 1
 #define NES_CPU_REG_P_I_BIT 2
 #define NES_CPU_REG_P_D_BIT 3
-#define NES_CPU_REG_P_B_BIT 4
 #define NES_CPU_REG_P_V_BIT 6
 #define NES_CPU_REG_P_N_BIT 7
 
@@ -48,7 +47,7 @@ private:
 */
 struct NESCPURegisters
 {
-	/* The Program Counter (PC) */
+	/* The Program Counter (PC) - pointer to current instruction being executed */
 	u16 PC;
 
 	/* The Stack Pointer (SP) */
@@ -202,11 +201,14 @@ private:
 	// (Re-)Initializes the CPU.
 	void Initialize();
 
-	// Updates the Z register. Sets to 1 if val is zero. Sets to 0 otherwise.
+	// Updates the Z bit of the P register. Sets to 1 if val is zero. Sets to 0 otherwise.
 	inline void UpdateRegZ(u8 val) { NESHelper::EditBit(reg_.P, NES_CPU_REG_P_Z_BIT, val == 0); }
 
-	// Updates the N register. Sets to the value of val's 7th bit (sign bit).
+	// Updates the N bit of the P register. Sets to the value of val's 7th bit (sign bit).
 	inline void UpdateRegN(u8 val) { reg_.P = (reg_.P & 0x7F) | (val & 0x80); }
+
+	// Updates the P register. Ensures that unused bit D is 1 and unused bit B is 0 regardless of val.
+	inline void UpdateRegP(u8 val) { reg_.P = (val & 0xCF) | 0x20; }
 
 	// Updates the PC register. Sets PC to val. currentOpChangedPC_ is set to true so PC is not automatically changed afterwards.
 	inline void UpdateRegPC(u16 val) { reg_.PC = val; currentOp_.opChangedPC = true; }
@@ -390,7 +392,7 @@ private:
 	void ExecuteOpPLA();
 
 	// Execute Pull Processor Status from Stack (PLP).
-	void ExecuteOpPLP();
+	inline void ExecuteOpPLP() { /* P fromS. */ UpdateRegP(StackPull8()); }
 
 	// Execute Rotate One Bit Left (ROL).
 	void ExecuteOpROL();
@@ -399,7 +401,7 @@ private:
 	void ExecuteOpROR();
 
 	// Execute Return from Interrupt (RTI).
-	inline void ExecuteOpRTI() { /* P fromS PC fromS */ reg_.P = StackPull8(); UpdateRegPC(StackPull16()); }
+	inline void ExecuteOpRTI() { /* P fromS PC fromS */ UpdateRegP(StackPull8()); UpdateRegPC(StackPull16()); }
 
 	// Execute Return from Subroutine (RTS).
 	inline void ExecuteOpRTS() { /* PC fromS, PC + 1 -> PC */ UpdateRegPC(StackPull16() + 1); }

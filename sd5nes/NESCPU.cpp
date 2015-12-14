@@ -405,9 +405,9 @@ void NESCPU::Initialize()
 	currentOp_.opChangedPC = false;
 
 	reg_ = {}; // Zero the registers.
-	reg_.P = 0x20; // Unused status register bit should always be 1.
+	reg_.P = 0x20; // Unused status register D (Decimal Mode) bit should always be 1.
 	reg_.PC = 0xC000; // Start on the upper PRG-ROM bank.
-	reg_.SP = 0xFF;
+	reg_.SP = 0xFF; // Set stack pointer to the top of the stack.
 }
 
 
@@ -698,7 +698,17 @@ void NESCPU::ExecuteOpBIT()
 
 void NESCPU::ExecuteInterrupt(NESCPUInterrupt interruptType)
 {
-	// @TODO Interrupts take 7 cycles.
+	OpAddCycles(7); // All interrupts take 7 cycles to execute.
+
+	if (interruptType != NESCPUInterrupt::RESET)
+	{
+		// Forced Interrupt PC + 2 toS P toS
+		StackPush16(reg_.PC + 1);
+		NESHelper::SetBit(reg_.P, NES_CPU_REG_P_B_BIT); // Set break flag before pushing P.
+		StackPush16(reg_.P);
+	}
+
+	NESHelper::SetBit(reg_.P, NES_CPU_REG_P_I_BIT);
 
 	switch (interruptType)
 	{
@@ -716,15 +726,6 @@ void NESCPU::ExecuteInterrupt(NESCPUInterrupt interruptType)
 	case NESCPUInterrupt::NMI:
 		UpdateRegPC(NESHelper::MemoryRead16(mem_, 0xFFFA)); // Jump to NMI Vector.
 		break;
-	}
-
-	if (interruptType != NESCPUInterrupt::RESET)
-	{
-		// Forced Interrupt PC + 2 toS P toS
-		StackPush16(reg_.PC + 1);
-		NESHelper::SetBit(reg_.P, NES_CPU_REG_P_B_BIT); // Set break flag before pushing P.
-		StackPush16(reg_.P);
-		NESHelper::SetBit(reg_.P, NES_CPU_REG_P_I_BIT);
 	}
 }
 
@@ -956,17 +957,6 @@ void NESCPU::ExecuteOpPLA()
 	UpdateRegZ(val);
 	UpdateRegN(val);
 	reg_.A = val;
-}
-
-
-void NESCPU::ExecuteOpPLP()
-{
-	// P fromS.
-	const u8 val = StackPull8();
-
-	UpdateRegZ(val);
-	UpdateRegN(val);
-	reg_.P = val;
 }
 
 
