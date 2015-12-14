@@ -7,7 +7,6 @@
 
 #include "NESMemory.h"
 #include "NESTypes.h"
-#include "NESMMC.h"
 #include "NESPPU.h"
 
 /**
@@ -27,6 +26,12 @@ public:
 	virtual ~NESGamePakLoadException()
 	{ }
 };
+
+typedef NESMemory<0x2000> NESMemSRAM;
+typedef NESMemory<0x4000> NESMemPRGROMBank;
+typedef NESMemory<0x2000> NESMemCHRROMBank;
+
+class NESMMC;
 
 /**
 * Handles emulation of the NES Game Pak cartridge.
@@ -53,7 +58,7 @@ public:
 	NESPPUMirroringType GetMirroringType() const;
 
 	// Gets the MMC @TODO Debug?
-	inline NESMMC& GetMMC() const { return *mmc_; }
+	inline NESMMC* GetMMC() const { return mmc_.get(); }
 
 	// Returns whether or not the ROM has battery-packed RAM.
 	bool HasBatteryPackedRAM() const;
@@ -71,10 +76,11 @@ private:
 	bool hasTrainer_;
 	u8 ramBanks_;
 
-	/* MMC, PRG-ROM and CHR-ROM of the cart. */
+	/* MMC, SRAM, PRG-ROM and CHR-ROM of the cart. */
 	std::unique_ptr<NESMMC> mmc_;
 	std::vector<NESMemPRGROMBank> prgRomBanks_;
 	std::vector<NESMemCHRROMBank> chrRomBanks_;
+	NESMemSRAM sram_;
 
 	// Resets the state of loading.
 	void ResetLoadedState();

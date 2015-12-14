@@ -36,13 +36,13 @@ public:
 	u8 ReadNext8();
 
 	// Reads the next X amount of bytes from ROM file buffer.
-	std::vector<u8> ReadNext(size_t readSize);
+	std::vector<u8> ReadNext(std::size_t readSize);
 
 	// Reads the next X amount of bytes from ROM file buffer and converts to string.
-	std::string ReadNextStr(size_t readSize);
+	std::string ReadNextStr(std::size_t readSize);
 
 private:
 	const std::vector<u8>& romFileData_;
-	size_t romFileReadPos_;
+	std::size_t romFileReadPos_;
 };
 

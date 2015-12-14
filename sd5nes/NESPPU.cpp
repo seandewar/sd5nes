@@ -7,6 +7,7 @@ NESPPUMemoryMapper::NESPPUMemoryMapper(NESPPUMemory& mem, NESPPUMirroringType nt
 mem_(mem),
 ntMirror_(ntMirror)
 {
+	assert(ntMirror != NESPPUMirroringType::UNKNOWN);
 }
 
 
@@ -15,35 +16,52 @@ NESPPUMemoryMapper::~NESPPUMemoryMapper()
 }
 
 
-std::pair<INESMemoryInterface*, u16> NESPPUMemoryMapper::GetMapping(u16 addr) const
+std::size_t NESPPUMemoryMapper::GetNameTableIndex(u16 addr) const
 {
-	addr &= 0x3FFF; // Mirror $0000 - $3FFF to $4000
-
-	if (addr < 0x2000)
-		return std::make_pair(&mem_.patternTables[addr / 0x1000], addr & 0xFFF);
-	else if (addr < 0x3F00)
+	switch (ntMirror_)
 	{
-		// Consider the different nametable mirroring types that could be used here.
-		switch (ntMirror_)
-		{
-			case NESPPUMirroringType::VERTICAL:
-				return std::make_pair(&mem_.nameTables[(addr & 0x7FF) / 0x400], addr & 0x3FF);
-				
-			case NESPPUMirroringType::HORIZONTAL:
-				return std::make_pair(&mem_.nameTables[(addr & 0xFFF) / 0x800], addr & 0x3FF);
+	case NESPPUMirroringType::VERTICAL:
+		return (addr & 0x7FF) / 0x400;
 
-			case NESPPUMirroringType::ONE_SCREEN:
-				return std::make_pair(&mem_.nameTables[0], addr & 0x3FF);
+	case NESPPUMirroringType::HORIZONTAL:
+		return (addr & 0xFFF) / 0x800;
 
-			case NESPPUMirroringType::FOUR_SCREEN:
-				// @TODO
-				assert(false);
-				return std::make_pair(nullptr, 0);
-		}
+	case NESPPUMirroringType::ONE_SCREEN:
+		return 0;
+
+	case NESPPUMirroringType::FOUR_SCREEN:
+		// @TODO NOT IMPLEMENTED YET!
+
+	default:
+		assert(false && "Invalid name table mirror type!");
+		return NES_INVALID_NAME_TABLE_INDEX;
 	}
-	
-	// $3F00 to $3FFF
-	return std::make_pair(&mem_.paletteMem, addr & 0x1F); // @TODO Mirror $3F00, $3F04, $3F08 and $3F0C to $3F10...
+}
+
+
+void NESPPUMemoryMapper::Write8(u16 addr, u8 val)
+{
+	addr &= 0x3FFF; // Mirror ($0000 .. $3FFF) to $4000
+
+	if (addr < 0x2000) // Pattern tables
+		mem_.patternTables[addr / 0x1000].Write8(addr & 0xFFF, val);
+	else if (addr < 0x3F00) // Name tables
+		mem_.nameTables[GetNameTableIndex(addr)].Write8(addr & 0x3FF, val);
+	else // Palette memory
+		mem_.paletteMem.Write8(addr & 0x1F, val); // @TODO Mirror $3F00, $3F04, $3F08 and $3F0C!
+}
+
+
+u8 NESPPUMemoryMapper::Read8(u16 addr) const
+{
+	addr &= 0x3FFF; // Mirror ($0000 .. $3FFF) to $4000
+
+	if (addr < 0x2000) // Pattern tables
+		return mem_.patternTables[addr / 0x1000].Read8(addr & 0xFFF);
+	else if (addr < 0x3F00) // Name tables
+		return mem_.nameTables[GetNameTableIndex(addr)].Read8(addr & 0x3FF);
+	else // Palette memory
+		return mem_.paletteMem.Read8(addr & 0x1F); // @TODO Mirror $3F00, $3F04, $3F08 and $3F0C!
 }
 
 
@@ -76,7 +94,7 @@ void NESPPU::DebugDrawPatterns(sf::Image& target, int colorOffset)
 
 	int o = 0;
 	// Loop through the pattern tables.
-	for (int i = 0; i < 0x2000; ++i)
+	for (std::size_t i = 0; i < 0x2000; ++i)
 	{
 		const u8 pLo = mem_.Read8(i);
 		const u8 pHi = mem_.Read8(i + 8);
@@ -198,6 +216,8 @@ u8 NESPPU::ReadRegister(NESPPURegisterType reg)
 
 void NESPPU::HandleScanline(unsigned int scanline)
 {
+	NESHelper::SetBit(reg_.PPUSTATUS, NES_PPU_REG_PPUSTATUS_V_BIT); // @TODO debug!!!!
+
 	if (scanline < 20)
 	{
 		// "VINT period"

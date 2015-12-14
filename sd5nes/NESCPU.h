@@ -26,11 +26,8 @@ public:
 	void Write8(u16 addr, u8 val) override;
 	u8 Read8(u16 addr) const override;
 
-protected:
-	std::pair<INESMemoryInterface*, u16> GetMapping(u16 addr) const override;
-
 private:
-	static NESPPURegisterType GetRegisterFromMappedAddress(u16 addr);
+	static NESPPURegisterType GetPPURegister(u16 realAddr);
 
 	NESMemCPURAM& ram_;
 	NESPPU& ppu_;
@@ -213,6 +210,9 @@ private:
 
 	// Updates the PC register. Sets PC to val. currentOpChangedPC_ is set to true so PC is not automatically changed afterwards.
 	inline void UpdateRegPC(u16 val) { reg_.PC = val; currentOp_.opChangedPC = true; }
+
+	// Adds the specified amount of extra cycles to the current instruction's execution.
+	inline void OpAddCycles(int cycleAmount) { currentOp_.opCycleCount += cycleAmount; }
 
 	/**
 	* Reads the value of the next op's immediate argument depending on its addressing mode.

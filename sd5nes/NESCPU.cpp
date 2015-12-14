@@ -3,12 +3,15 @@
 #include <cassert>
 #include <sstream>
 
+#include "NESMMC.h"
+
 
 NESCPUMemoryMapper::NESCPUMemoryMapper(NESMemCPURAM& ram, NESPPU& ppu, NESMMC* mmc) :
 ram_(ram),
 ppu_(ppu),
 mmc_(mmc)
 {
+	assert(mmc_ != nullptr);
 }
 
 
@@ -17,26 +20,9 @@ NESCPUMemoryMapper::~NESCPUMemoryMapper()
 }
 
 
-std::pair<INESMemoryInterface*, u16> NESCPUMemoryMapper::GetMapping(u16 addr) const
+NESPPURegisterType NESCPUMemoryMapper::GetPPURegister(u16 realAddr)
 {
-	if (addr < 0x2000)
-		return std::make_pair(&ram_, addr & 0x7FF);
-	else if (addr < 0x4000) // PPU I/O Registers.
-		return std::make_pair(nullptr, (addr & 7) + 0x2000);
-	else if (addr < 0x4020) // pAPU I/O Registers.
-		return std::make_pair(nullptr, addr);
-	else if (addr < 0x6000) // @TODO Expansion ROM.
-		return std::make_pair(nullptr, addr);
-	else if (addr < 0x8000) // @TODO SRAM.
-		return std::make_pair(nullptr, addr);
-	else // PRG-ROM Banks - use MMC.
-		return std::make_pair(nullptr, addr);
-}
-
-
-NESPPURegisterType NESCPUMemoryMapper::GetRegisterFromMappedAddress(u16 addr)
-{
-	switch (addr)
+	switch (realAddr)
 	{
 	case 0x2000:
 		return NESPPURegisterType::PPUCTRL;
@@ -73,31 +59,31 @@ NESPPURegisterType NESCPUMemoryMapper::GetRegisterFromMappedAddress(u16 addr)
 
 void NESCPUMemoryMapper::Write8(u16 addr, u8 val)
 {
-	const auto mapping = GetMapping(addr);
-	if (mapping.first == nullptr)
-	{
-		if (mapping.second >= 0x8000)
-			mmc_->Write8(mapping.second, val);
-		else
-			ppu_.WriteRegister(GetRegisterFromMappedAddress(mapping.second), val);
-	}
-
-	NESMemoryMapper::Write8(addr, val);
+	if (addr < 0x2000) // RAM
+		ram_.Write8(addr & 0x7FF, val);
+	else if (addr < 0x4000) // PPU I/O Registers
+		ppu_.WriteRegister(GetPPURegister(0x2000 + (addr & 7)), val);
+	else if (addr == 0x4014) // PPU I/O OAMDATA Register
+		ppu_.WriteRegister(GetPPURegister(0x4014), val);
+	else if (addr < 0x4020) // pAPU I/O Registers
+		return; // @TODO
+	else // Use the MMC
+		mmc_->Write8(addr, val);
 }
 
 
 u8 NESCPUMemoryMapper::Read8(u16 addr) const
 {
-	const auto mapping = GetMapping(addr);
-	if (mapping.first == nullptr)
-	{
-		if (mapping.second >= 0x8000)
-			return mmc_->Read8(mapping.second);
-		else
-			return ppu_.ReadRegister(GetRegisterFromMappedAddress(mapping.second));
-	}
-
-	return NESMemoryMapper::Read8(addr);
+	if (addr < 0x2000) // RAM
+		return ram_.Read8(addr & 0x7FF);
+	else if (addr < 0x4000) // PPU I/O Registers
+		return ppu_.ReadRegister(GetPPURegister(0x2000 + (addr & 7)));
+	else if (addr == 0x4014) // PPU I/O OAMDATA Register
+		return ppu_.ReadRegister(GetPPURegister(0x4014));
+	else if (addr < 0x4020) // pAPU I/O Registers
+		return 0; // @TODO
+	else // Use the MMC
+		return mmc_->Read8(addr);
 }
 
 
@@ -420,7 +406,7 @@ void NESCPU::Initialize()
 
 	reg_ = {}; // Zero the registers.
 	reg_.P = 0x20; // Unused status register bit should always be 1.
-	reg_.PC = 0x8000; // Start on the lower PRG-ROM bank.
+	reg_.PC = 0xC000; // Start on the upper PRG-ROM bank.
 }
 
 
@@ -459,12 +445,12 @@ u16 NESCPU::GetOpSizeFromAddressingMode(NESCPUOpAddressingMode addrMode)
 	{
 	// 1 byte addressing modes.
 	case NESCPUOpAddressingMode::ACCUMULATOR:
-	case NESCPUOpAddressingMode::RELATIVE:
 	case NESCPUOpAddressingMode::IMPLIED:
 		return 1;
 
 	// 2 byte addressing modes.
 	case NESCPUOpAddressingMode::IMMEDIATE:
+	case NESCPUOpAddressingMode::RELATIVE:
 	case NESCPUOpAddressingMode::ZEROPAGE:
 	case NESCPUOpAddressingMode::ZEROPAGE_X:
 	case NESCPUOpAddressingMode::ZEROPAGE_Y:
@@ -496,7 +482,7 @@ void NESCPU::ExecuteNextOp()
 	try
 	{
 		currentOp_.op = mem_.Read8(reg_.PC);
-		std::cout << "op " << std::hex << +currentOp_.op << ", pc: " << std::hex << reg_.PC << std::endl;
+		std::cout << "op " << std::hex << +currentOp_.op << ", pc: " << std::hex << reg_.PC << std::endl; // @TODO Debug!
 	}
 	catch (const NESMemoryException&)
 	{
@@ -564,17 +550,17 @@ std::pair<u8, bool> NESCPU::ReadOpArgValue()
 
 	case NESCPUOpAddressingMode::ZEROPAGE_X:
 		crossedPageBoundary = false;
-		addr = (mem_.Read8(reg_.PC + 1) + reg_.X); // Will wrap around if X is too big.
+		addr = (mem_.Read8(reg_.PC + 1) + reg_.X) & 0xFF;
 		break;
 
 	case NESCPUOpAddressingMode::ZEROPAGE_Y:
 		crossedPageBoundary = false;
-		addr = (mem_.Read8(reg_.PC + 1) + reg_.Y); // Will wrap around if Y is too big.
+		addr = (mem_.Read8(reg_.PC + 1) + reg_.Y) & 0xFF;
 		break;
 
 	case NESCPUOpAddressingMode::INDIRECT_X:
 		crossedPageBoundary = false;
-		addr = NESHelper::MemoryRead16(mem_, mem_.Read8(reg_.PC + 1) + reg_.X); // Will wrap around if X is too big.
+		addr = NESHelper::MemoryRead16(mem_, (mem_.Read8(reg_.PC + 1) + reg_.X) & 0xFF);
 		break;
 
 	case NESCPUOpAddressingMode::INDIRECT_Y:
@@ -616,7 +602,7 @@ void NESCPU::WriteOpResult(u8 result)
 		break;
 
 	case NESCPUOpAddressingMode::ZEROPAGE_X:
-		addr = (mem_.Read8(reg_.PC + 1) + reg_.X); // Will wrap around if X is too big.
+		addr = (mem_.Read8(reg_.PC + 1) + reg_.X) & 0xFF;
 		break;
 
 	default:
@@ -636,7 +622,7 @@ void NESCPU::ExecuteOpADC()
 
 	// ADC takes 1 extra CPU cycle if a page boundary was crossed.
 	if (crossedPageBoundary)
-		++currentOp_.opCycleCount;
+		OpAddCycles(1);
 
 	// A + M + C -> A, C
 	// @NOTE: NES 6502 variant has no BCD mode.
@@ -655,7 +641,7 @@ void NESCPU::ExecuteOpAND()
 
 	// AND takes 1 extra CPU cycle if a page boundary was crossed.
 	if (crossedPageBoundary)
-		++currentOp_.opCycleCount;
+		OpAddCycles(1);
 
 	// A AND M -> A
 	const u8 res = reg_.A & argVal;
@@ -687,13 +673,12 @@ void NESCPU::ExecuteOpAsBranch(bool shouldBranch, int branchSamePageCycleExtra, 
 
 	OP_READ_ARG()
 
-	const u16 jumpPC = reg_.PC + static_cast<s8>(argVal) + 1;
+	// If bit 7 is set in argVal, it's a negative number (not 2's complement!)
+	// We add an extra 1 to the PC to cover the size of the rest of the instruction.
+	const u16 jumpPC = reg_.PC + ((argVal & 0x80) == 0x80 ? -argVal : argVal) + 1;
 
 	// Check if the branch will cross a page boundary.
-	if (!NESHelper::IsInSamePage(reg_.PC, jumpPC))
-		currentOp_.opCycleCount += branchDiffPageCycleExtra;
-	else
-		currentOp_.opCycleCount += branchSamePageCycleExtra;
+	OpAddCycles(NESHelper::IsInSamePage(reg_.PC, jumpPC) ? branchSamePageCycleExtra : branchDiffPageCycleExtra);
 
 	UpdateRegPC(jumpPC);
 }
@@ -749,7 +734,7 @@ void NESCPU::ExecuteOpCMP()
 
 	// CMP takes 1 extra CPU cycle if a page boundary was crossed.
 	if (crossedPageBoundary)
-		++currentOp_.opCycleCount;
+		OpAddCycles(1);
 
 	// A - M
 	const u16 res = reg_.A - argVal;
@@ -823,7 +808,7 @@ void NESCPU::ExecuteOpEOR()
 
 	// EOR takes 1 extra CPU cycle if a page boundary was crossed.
 	if (crossedPageBoundary)
-		++currentOp_.opCycleCount;
+		OpAddCycles(1);
 
 	// A EOR M -> A
 	const u8 res = reg_.A ^ argVal;
@@ -892,7 +877,7 @@ void NESCPU::ExecuteOpLDA()
 
 	// LDA takes 1 extra CPU cycle if a page boundary was crossed.
 	if (crossedPageBoundary)
-		++currentOp_.opCycleCount;
+		OpAddCycles(1);
 
 	// M -> A
 	UpdateRegN(argVal);
@@ -907,7 +892,7 @@ void NESCPU::ExecuteOpLDX()
 
 	// LDX takes 1 extra CPU cycle if a page boundary was crossed.
 	if (crossedPageBoundary)
-		++currentOp_.opCycleCount;
+		OpAddCycles(1);
 
 	// M -> X
 	UpdateRegN(argVal);
@@ -922,7 +907,7 @@ void NESCPU::ExecuteOpLDY()
 
 	// LDY takes 1 extra CPU cycle if a page boundary was crossed.
 	if (crossedPageBoundary)
-		++currentOp_.opCycleCount;
+		OpAddCycles(1);
 
 	// M -> Y
 	UpdateRegN(argVal);
@@ -951,7 +936,7 @@ void NESCPU::ExecuteOpORA()
 
 	// ORA takes 1 extra CPU cycle if a page boundary was crossed.
 	if (crossedPageBoundary)
-		++currentOp_.opCycleCount;
+		OpAddCycles(1);
 
 	// A OR M -> A
 	const u8 res = argVal | reg_.A;
@@ -1026,7 +1011,7 @@ void NESCPU::ExecuteOpSBC()
 
 	// SBC takes 1 extra CPU cycle if a page boundary was crossed.
 	if (crossedPageBoundary)
-		++currentOp_.opCycleCount;
+		OpAddCycles(1);
 
 	// A - M - C -> A
 	const u16 res = reg_.A - argVal - 1 + (NESHelper::IsBitSet(reg_.P, NES_CPU_REG_P_C_BIT) ? 1 : 0);

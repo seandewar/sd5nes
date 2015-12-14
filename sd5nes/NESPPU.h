@@ -35,6 +35,9 @@ enum class NESPPUMirroringType
 	UNKNOWN
 };
 
+/* Invalid Name Table */
+#define NES_INVALID_NAME_TABLE_INDEX -1
+
 /**
 * Emulates the mapping and mirroring of the PPU's memory.
 */
@@ -44,12 +47,18 @@ public:
 	NESPPUMemoryMapper(NESPPUMemory& mem, NESPPUMirroringType ntMirror);
 	virtual ~NESPPUMemoryMapper();
 
-protected:
-	std::pair<INESMemoryInterface*, u16> GetMapping(u16 addr) const override;
+	void Write8(u16 addr, u8 val) override;
+	u8 Read8(u16 addr) const override;
 
 private:
 	NESPPUMemory& mem_;
 	NESPPUMirroringType ntMirror_;
+
+	/**
+	* Gets the corrisponding nametable's index from an address that is inside the nametable.
+	* Considers the nametable mirroring type that is being used.
+	*/
+	std::size_t GetNameTableIndex(u16 addr) const;
 };
 
 /**

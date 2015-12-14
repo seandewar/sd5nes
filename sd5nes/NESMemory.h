@@ -110,22 +110,4 @@ class NESMemoryMapper : public INESMemoryInterface
 public:
 	NESMemoryMapper();
 	virtual ~NESMemoryMapper();
-
-	/**
-	* Writes 8-bits to the memory at a specified mapped location with the specified value.
-	* Uses protected GetMapping() to get the correct mapping.
-	*/
-	virtual void Write8(u16 addr, u8 val) override;
-
-	/**
-	* Reads 8-bits from the memory at a specified mapped location with the specified value.
-	* Uses protected GetMapping() to get the correct mapping.
-	*/
-	virtual u8 Read8(u16 addr) const override;
-
-protected:
-	/**
-	* Gets the NESMemory and mapped address corrisponding to an unmapped address.
-	*/
-	virtual std::pair<INESMemoryInterface*, u16> GetMapping(u16 addr) const = 0;
 };

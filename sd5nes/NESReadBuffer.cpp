@@ -22,17 +22,17 @@ u8 NESReadBuffer::ReadNext8()
 }
 
 
-std::vector<u8> NESReadBuffer::ReadNext(size_t readSize)
+std::vector<u8> NESReadBuffer::ReadNext(std::size_t readSize)
 {
 	std::vector<u8> vec;
-	for (size_t i = 0; i < readSize; ++i)
+	for (std::size_t i = 0; i < readSize; ++i)
 		vec.emplace_back(ReadNext8());
 
 	return vec;
 }
 
 
-std::string NESReadBuffer::ReadNextStr(size_t readSize)
+std::string NESReadBuffer::ReadNextStr(std::size_t readSize)
 {
 	const auto vec = ReadNext(readSize);
 	return std::string(vec.begin(), vec.end());

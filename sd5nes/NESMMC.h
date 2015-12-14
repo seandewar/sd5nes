@@ -2,7 +2,7 @@
 
 #include <array>
 
-#include "NESMemory.h"
+#include "NESGamePak.h"
 
 /**
 * The type of MMC.
@@ -13,23 +13,19 @@ enum class NESMMCType
 	UNKNOWN // Unknown mapper.
 };
 
-typedef NESMemory<0x4000> NESMemPRGROMBank;
-typedef NESMemory<0x2000> NESMemCHRROMBank;
-
 /**
-* Base class for creating MMCs for allowing bank switching .etc
+* Base class for MMCs.
 */
 class NESMMC : public INESMemoryInterface
 {
 public:
-	NESMMC();
+	explicit NESMMC(NESMemSRAM& sram);
 	virtual ~NESMMC();
 
 	/**
 	* Write 8-bits to MMC mapped memory.
-	* Assumes all MMC memory is read-only.
 	*/
-	inline virtual void Write8(u16 addr, u8 val) { /* Do nothing - assume memory is read-only. */ }
+	virtual void Write8(u16 addr, u8 val);
 
 	/**
 	* Reads 8-bits from MMC mapped memory.
@@ -43,15 +39,7 @@ public:
 
 protected:
 	std::array<const NESMemPRGROMBank*, 2> loadedPrgRomBanks_;
-
-	/**
-	* Gets the MMC mapping of an address.
-	*/
-	inline virtual std::pair<const INESMemoryInterface*, u16> GetMMCMapping(u16 addr) const
-	{ 
-		// Default behaviour - return supplied address.
-		return std::make_pair(nullptr, addr);
-	}
+	NESMemSRAM& sram_;
 };
 
 /**
@@ -60,12 +48,9 @@ protected:
 class NESMMCNROM : public NESMMC
 {
 public:
-	NESMMCNROM(NESMemPRGROMBank& prgRomBank);
-	NESMMCNROM(NESMemPRGROMBank& prgRom1, NESMemPRGROMBank& prgRom2);
+	NESMMCNROM(NESMemSRAM& sram, NESMemPRGROMBank& prgRomBank);
+	NESMMCNROM(NESMemSRAM& sram, NESMemPRGROMBank& prgRom1, NESMemPRGROMBank& prgRom2);
 	virtual ~NESMMCNROM();
 
 	inline NESMMCType GetType() const override { return NESMMCType::NROM; }
-
-protected:
-	std::pair<const INESMemoryInterface*, u16> GetMMCMapping(u16 addr) const override;
 };

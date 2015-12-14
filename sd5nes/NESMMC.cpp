@@ -1,7 +1,8 @@
 #include "NESMMC.h"
 
 
-NESMMC::NESMMC()
+NESMMC::NESMMC(NESMemSRAM& sram) :
+sram_(sram)
 {
 }
 
@@ -11,36 +12,40 @@ NESMMC::~NESMMC()
 }
 
 
-u8 NESMMC::Read8(u16 addr) const
+void NESMMC::Write8(u16 addr, u8 val)
 {
-	const auto mapping = GetMMCMapping(addr);
-	if (mapping.first == nullptr)
-		throw NESMemoryException("Attemptted to read MMC unmapped memory!");
+	assert(addr >= 0x6000);
 
-	return mapping.first->Read8(mapping.second);
+	if (addr < 0x8000) // Cartridge SRAM
+		sram_.Write8(addr - 0x6000, val);
 }
 
 
-NESMMCNROM::NESMMCNROM(NESMemPRGROMBank& prgRom1, NESMemPRGROMBank& prgRom2)
+u8 NESMMC::Read8(u16 addr) const
+{
+	assert(addr >= 0x6000);
+
+	if (addr < 0x8000) // Cartridge SRAM
+		return sram_.Read8(addr - 0x6000);
+	else // Upper & Lower PRG-ROM Banks
+		return loadedPrgRomBanks_[(addr - 0x8000) / 0x4000]->Read8(addr & 0x3FFF);
+}
+
+
+NESMMCNROM::NESMMCNROM(NESMemSRAM& sram, NESMemPRGROMBank& prgRom1, NESMemPRGROMBank& prgRom2) :
+NESMMC(sram)
 {
 	loadedPrgRomBanks_[0] = &prgRom1;
 	loadedPrgRomBanks_[1] = &prgRom2;
 }
 
 
-NESMMCNROM::NESMMCNROM(NESMemPRGROMBank& prgRomBank) :
-NESMMCNROM(prgRomBank, prgRomBank)
+NESMMCNROM::NESMMCNROM(NESMemSRAM& sram, NESMemPRGROMBank& prgRomBank) :
+NESMMCNROM(sram, prgRomBank, prgRomBank)
 {
 }
 
 
 NESMMCNROM::~NESMMCNROM()
 {
-}
-
-
-std::pair<const INESMemoryInterface*, u16> NESMMCNROM::GetMMCMapping(u16 addr) const
-{
-	assert(addr >= 0x8000);
-	return std::make_pair(loadedPrgRomBanks_[(addr - 0x8000) / 0x4000], addr & 0x3FFF);
 }
