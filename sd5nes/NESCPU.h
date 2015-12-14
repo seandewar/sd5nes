@@ -87,13 +87,13 @@ private:
 
 /**
 * Enum containing the different interrupts used by the NES CPU.
-* Sorted by interrupt priority (0 = highest, 1 = medium, 2 = lowest).
 */
-enum class NESCPUInterrupt
+enum class NESCPUInterruptType
 {
 	RESET, /* RESET interrupt - highest priority. */
 	NMI, /* NMI interrupt - medium priority. */
-	IRQ /* IRQ/BRK interrupt - lowest priority. */
+	IRQ, /* IRQ/BRK interrupt - lowest priority. */
+	NONE
 };
 
 /**
@@ -169,14 +169,18 @@ public:
 	explicit NESCPU(NESCPUMemoryMapper& mem);
 	~NESCPU();
 
-	// Resets the CPU.
-	void Reset();
+	/**
+	* Resets the CPU by setting a reset interrupt to trigger on the next run step.
+	*/ 
+	inline void Reset() { SetInterrupt(NESCPUInterruptType::RESET); }
+
+	/**
+	* Sets an interrupt to be executed next frame.
+	*/
+	void SetInterrupt(NESCPUInterruptType interrupt);
 
 	// Runs the CPU for a number of cycles.
-	void Run(int numCycles);
-
-	// Gets the current opcode being executed.
-	u8 GetCurrentOpcode() const;
+	void Run(unsigned int numCycles);
 
 private:
 	// Allows init of static stuff such as registration of opcode mapp
@@ -197,6 +201,7 @@ private:
 	NESCPURegisters reg_;
 	NESCPUMemoryMapper& mem_;
 	NESCPUExecutingOpInfo currentOp_;
+	bool intReset_, intNmi_, intIrq_;
 
 	// (Re-)Initializes the CPU.
 	void Initialize();
@@ -207,7 +212,7 @@ private:
 	// Updates the N bit of the P register. Sets to the value of val's 7th bit (sign bit).
 	inline void UpdateRegN(u8 val) { reg_.P = (reg_.P & 0x7F) | (val & 0x80); }
 
-	// Updates the P register. Ensures that unused bit D is 1 and unused bit B is 0 regardless of val.
+	// Updates the P register. Ensures that unused bit 5 is 1 and unused bit B is 0 regardless of val.
 	inline void UpdateRegP(u8 val) { reg_.P = (val & 0xCF) | 0x20; }
 
 	// Updates the PC register. Sets PC to val. currentOpChangedPC_ is set to true so PC is not automatically changed afterwards.
@@ -226,6 +231,12 @@ private:
 
 	// Writes an op's result to the intended piece of memory / register.
 	void WriteOpResult(u8 result);
+
+	/**
+	* Handles the execution of pending interrupts while accounting for interrupt priority.
+	* Returns NESCPUInterruptType::NONE if no interrupt was handled.
+	*/
+	NESCPUInterruptType HandleInterrupts();
 
 	// Executes the next opcode at the PC.
 	// Can throw NESCPUExecutionException.
@@ -270,9 +281,6 @@ private:
 	// Adds 1 to the current op's cycle count if branched to same page, 2 if branched to a different page.
 	void ExecuteOpAsBranch(bool shouldBranch, int branchSamePageCycleExtra = 1, int branchDiffPageCycleExtra = 2);
 
-	// Executes an interrupt of the specified type.
-	void ExecuteInterrupt(NESCPUInterrupt interruptType);
-
 	/****************************************/
 	/****** Instruction Implementation ******/
 	/****************************************/
@@ -308,7 +316,7 @@ private:
 	inline void ExecuteOpBPL() { /* Branch on N = 0 */ ExecuteOpAsBranch(!NESHelper::IsBitSet(reg_.P, NES_CPU_REG_P_N_BIT)); }
 
 	// Execute Force Break (BRK).
-	inline void ExecuteOpBRK() { ExecuteInterrupt(NESCPUInterrupt::IRQ); }
+	void ExecuteOpBRK();
 
 	// Execute Branch on Overflow Clear (BVC).
 	inline void ExecuteOpBVC() { /* Branch on V = 0 */ ExecuteOpAsBranch(!NESHelper::IsBitSet(reg_.P, NES_CPU_REG_P_V_BIT)); }
@@ -386,7 +394,7 @@ private:
 	inline void ExecuteOpPHA() { /* A toS */ StackPush8(reg_.A); }
 
 	// Execute Push Processor Status to Stack (PHP).
-	inline void ExecuteOpPHP() { /* P toS */ StackPush8(reg_.P | 0x10); }
+	inline void ExecuteOpPHP() { /* P toS - make sure bit 5 is set. */ StackPush8(reg_.P | 0x10); }
 
 	// Execute Pull Accumulator from Stack (PLA).
 	void ExecuteOpPLA();

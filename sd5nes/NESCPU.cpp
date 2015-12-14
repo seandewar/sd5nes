@@ -2,6 +2,7 @@
 
 #include <cassert>
 #include <sstream>
+#include <iostream> // @TODO Debug?
 
 #include "NESMMC.h"
 
@@ -390,13 +391,6 @@ NESCPU::~NESCPU()
 }
 
 
-void NESCPU::Reset()
-{
-	// @TODO
-	Initialize();
-}
-
-
 void NESCPU::Initialize()
 {
 	// Reset current op status.
@@ -408,25 +402,50 @@ void NESCPU::Initialize()
 	reg_.P = 0x20; // Unused status register D (Decimal Mode) bit should always be 1.
 	reg_.PC = 0xC000; // Start on the upper PRG-ROM bank.
 	reg_.SP = 0xFF; // Set stack pointer to the top of the stack.
+
+	intReset_ = true; // Trigger a reset when we first run.
+	intNmi_ = intIrq_ = false;
 }
 
 
-void NESCPU::Run(int numCycles)
+void NESCPU::SetInterrupt(NESCPUInterruptType interrupt)
 {
-	// @TODO debug!
-	int elapsedCycles = 0;
-
-	while (elapsedCycles < numCycles)
+	switch (interrupt)
 	{
-		ExecuteNextOp();
-		elapsedCycles += currentOp_.opCycleCount;
+	case NESCPUInterruptType::RESET:
+		intReset_ = true;
+		break;
+
+	case NESCPUInterruptType::NMI:
+		intNmi_ = true;
+		break;
+
+	case NESCPUInterruptType::IRQ:
+		intIrq_ = true;
+		break;
 	}
 }
 
 
-u8 NESCPU::GetCurrentOpcode() const
+void NESCPU::Run(unsigned int numCycles)
 {
-	return currentOp_.op;
+	// @TODO Need to compensate for going over the specified amount of
+	// numCycles for the next Run()
+	unsigned int elapsedCycles = 0;
+
+	while (elapsedCycles < numCycles)
+	{
+		// Check for interrupts. Return if it's a reset.
+		const auto handledInt = HandleInterrupts();
+		if (handledInt == NESCPUInterruptType::RESET)
+			return;
+
+		// Execute next instruction.
+		ExecuteNextOp();
+
+		// Add 7 extra cycles if an interrupt was handled.
+		elapsedCycles += currentOp_.opCycleCount + (handledInt != NESCPUInterruptType::NONE ? 7 : 0);
+	}
 }
 
 
@@ -473,8 +492,50 @@ u16 NESCPU::GetOpSizeFromAddressingMode(NESCPUOpAddressingMode addrMode)
 }
 
 
+NESCPUInterruptType NESCPU::HandleInterrupts()
+{
+	NESCPUInterruptType handledInt = NESCPUInterruptType::NONE;
 
-#include <iostream> // @TODO DEBUYG!!!
+	// Handle interrupts while accounting for priority.
+	// Only IRQ's check for the interrupt disable flag (I).
+	if (intReset_)
+	{
+		handledInt = NESCPUInterruptType::RESET;
+
+		UpdateRegPC(NESHelper::MemoryRead16(mem_, 0xFFFC));
+		reg_.SP = 0xFF;
+		intReset_ = false;
+	}
+	else if (intNmi_) // @TODO: Check for NMI Edge!
+	{
+		handledInt = NESCPUInterruptType::NMI;
+
+		UpdateRegPC(NESHelper::MemoryRead16(mem_, 0xFFFA));
+		intNmi_ = false;
+	}
+	else if (intIrq_ && !NESHelper::IsBitSet(reg_.P, NES_CPU_REG_P_I_BIT))
+	{
+		handledInt = NESCPUInterruptType::IRQ;
+
+		UpdateRegPC(NESHelper::MemoryRead16(mem_, 0xFFFE));
+		intIrq_ = false;
+	}
+
+	if (handledInt != NESCPUInterruptType::NONE)
+	{
+		// If it wasn't a reset, we need to push the next PC and status register (P).
+		if (handledInt != NESCPUInterruptType::RESET)
+		{
+			StackPush16(reg_.PC + 1);
+			StackPush8(reg_.P); // Make sure unused 5 is set in the copy we push.
+		}
+
+		// Make sure the interrupt disable flag is set if we interrupted.
+		NESHelper::SetBit(reg_.P, NES_CPU_REG_P_I_BIT);
+	}
+
+	return handledInt;
+}
 
 
 void NESCPU::ExecuteNextOp()
@@ -696,37 +757,14 @@ void NESCPU::ExecuteOpBIT()
 }
 
 
-void NESCPU::ExecuteInterrupt(NESCPUInterrupt interruptType)
+void NESCPU::ExecuteOpBRK()
 {
-	OpAddCycles(7); // All interrupts take 7 cycles to execute.
-
-	if (interruptType != NESCPUInterrupt::RESET)
-	{
-		// Forced Interrupt PC + 2 toS P toS
-		StackPush16(reg_.PC + 1);
-		NESHelper::SetBit(reg_.P, NES_CPU_REG_P_B_BIT); // Set break flag before pushing P.
-		StackPush16(reg_.P);
-	}
-
+	// Forced Interrupt PC + 2 toS P toS 
+	StackPush16(reg_.PC + 1);
+	StackPush8(reg_.P | 0x10);
 	NESHelper::SetBit(reg_.P, NES_CPU_REG_P_I_BIT);
 
-	switch (interruptType)
-	{
-	case NESCPUInterrupt::RESET:
-		UpdateRegPC(NESHelper::MemoryRead16(mem_, 0xFFFC)); // Jump to RESET Vector.
-		break;
-
-	case NESCPUInterrupt::IRQ:
-		if (NESHelper::IsBitSet(reg_.P, NES_CPU_REG_P_I_BIT)) // IRQ checks the Interupt Disable flag.
-			return;
-
-		UpdateRegPC(NESHelper::MemoryRead16(mem_, 0xFFFE)); // Jump to IRQ Vector.
-		break;
-
-	case NESCPUInterrupt::NMI:
-		UpdateRegPC(NESHelper::MemoryRead16(mem_, 0xFFFA)); // Jump to NMI Vector.
-		break;
-	}
+	UpdateRegPC(NESHelper::MemoryRead16(mem_, 0xFFFE));
 }
 
 
