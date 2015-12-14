@@ -386,7 +386,7 @@ private:
 	inline void ExecuteOpPHA() { /* A toS */ StackPush8(reg_.A); }
 
 	// Execute Push Processor Status to Stack (PHP).
-	inline void ExecuteOpPHP() { /* P toS */ StackPush8(reg_.P); }
+	inline void ExecuteOpPHP() { /* P toS */ StackPush8(reg_.P | 0x10); }
 
 	// Execute Pull Accumulator from Stack (PLA).
 	void ExecuteOpPLA();
