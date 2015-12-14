@@ -234,7 +234,7 @@ private:
 	{
 		// @NOTE: Some games purposely overflow the stack
 		// So there is no need to do any bounds checks.
-		mem_.Write8(NES_CPU_STACK_START + (reg_.SP++), val);
+		mem_.Write8(NES_CPU_STACK_START + (reg_.SP--), val);
 	}
 
 	// Push 16-bit value onto the stack.
@@ -250,7 +250,7 @@ private:
 	{
 		// @NOTE: Some games purposely underflow the stack
 		// So there is no need to do any bounds checks.
-		return mem_.Read8(NES_CPU_STACK_START + (--reg_.SP));
+		return mem_.Read8(NES_CPU_STACK_START + (++reg_.SP));
 	}
 
 	// Pull 16-bit value from the stack.

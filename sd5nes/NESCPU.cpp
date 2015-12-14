@@ -407,6 +407,7 @@ void NESCPU::Initialize()
 	reg_ = {}; // Zero the registers.
 	reg_.P = 0x20; // Unused status register bit should always be 1.
 	reg_.PC = 0xC000; // Start on the upper PRG-ROM bank.
+	reg_.SP = 0xFF;
 }
 
 
