@@ -2,6 +2,7 @@
 
 #include <unordered_map>
 #include <stdexcept>
+#include <sstream>
 
 #include "NESTypes.h"
 #include "NESHelper.h"
@@ -65,6 +66,19 @@ struct NESCPURegisters
 		SP(0xFF),
 		A(0), X(0), Y(0)
 	{ }
+
+	/**
+	* Returns a string representation of the value of the registers.
+	*/
+	inline std::string ToString() const
+	{
+		std::ostringstream oss;
+		oss << "PC: $" << std::hex << PC << ", SP: $" << std::hex << +SP
+			<< ", A: $" << std::hex << +A << ", X: $" << std::hex << +X << ", Y: $" << std::hex << +Y
+			<< ", P: $" << std::hex << +P;
+
+		return oss.str();
+	}
 };
 
 /**
@@ -121,6 +135,7 @@ enum class NESCPUOpAddressingMode
 	ACCUMULATOR,
 	RELATIVE,
 	IMPLIED,
+	IMPLIED_BRK,
 	UNKNOWN
 };
 
@@ -209,7 +224,9 @@ public:
 	*/
 	void SetInterrupt(NESCPUInterruptType interrupt);
 
-	// Runs the CPU for a number of cycles.
+	/**
+	* Runs the CPU for a number of cycles.
+	*/
 	void Run(unsigned int numCycles);
 
 private:
@@ -237,6 +254,7 @@ private:
 	NESCPUMemoryMapper& mem_;
 	NESCPUExecutingOpInfo currentOp_;
 	bool intReset_, intNmi_, intIrq_;
+	unsigned int elapsedCycles_;
 
 	// Updates the Z bit of the P register. Sets to 1 if val is zero. Sets to 0 otherwise.
 	inline void UpdateRegZ(u8 val) { NESHelper::EditBit(reg_.P, NES_CPU_REG_P_Z_BIT, val == 0); }
@@ -272,8 +290,10 @@ private:
 	*/
 	NESCPUInterruptType HandleInterrupts();
 
-	// Executes the next opcode at the PC.
-	// Can throw NESCPUExecutionException.
+	/**
+	* Executes the next opcode at the PC.
+	* Can throw NESCPUExecutionException.
+	*/
 	void ExecuteNextOp();
 
 	// Push 8-bit value onto the stack.
@@ -496,13 +516,13 @@ private:
 	inline void ExecuteOpSEI(NESCPUOpArgInfo& argInfo) { /* 1 -> I */ NESHelper::SetBit(reg_.P, NES_CPU_REG_P_I_BIT); }
 
 	// Execute Store Accumulator in Memory (STA).
-	inline void ExecuteOpSTA(NESCPUOpArgInfo& argInfo) { /* A -> M */ mem_.Write8(mem_.Read8(argInfo.argAddr), reg_.A); }
+	inline void ExecuteOpSTA(NESCPUOpArgInfo& argInfo) { /* A -> M */ mem_.Write8(argInfo.argAddr, reg_.A); }
 
 	// Execute Store Index X in Memory (STX).
-	inline void ExecuteOpSTX(NESCPUOpArgInfo& argInfo) { /* X -> M */ mem_.Write8(mem_.Read8(argInfo.argAddr), reg_.X); }
+	inline void ExecuteOpSTX(NESCPUOpArgInfo& argInfo) { /* X -> M */ mem_.Write8(argInfo.argAddr, reg_.X); }
 
 	// Execute Store Index Y in Memory (STY).
-	inline void ExecuteOpSTY(NESCPUOpArgInfo& argInfo) { /* Y -> M */ mem_.Write8(mem_.Read8(argInfo.argAddr), reg_.Y); }
+	inline void ExecuteOpSTY(NESCPUOpArgInfo& argInfo) { /* Y -> M */ mem_.Write8(argInfo.argAddr, reg_.Y); }
 
 	// Execute Transfer Accumulator to Index Y (TAY).
 	inline void ExecuteOpTAY(NESCPUOpArgInfo& argInfo) { /* A -> X */ reg_.X = reg_.A; }

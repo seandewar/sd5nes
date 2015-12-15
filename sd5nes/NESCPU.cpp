@@ -156,7 +156,7 @@ NESCPUStaticInit::NESCPUStaticInit()
 	NESCPU::RegisterOpMapping(NES_OP_BPL_NAME, NES_OP_BPL_RELATIVE, &NESCPU::ExecuteOpBPL, NESCPUOpAddressingMode::RELATIVE, 2);
 
 	// BRK
-	NESCPU::RegisterOpMapping(NES_OP_BRK_NAME, NES_OP_BRK_IMPLIED, &NESCPU::ExecuteOpBRK, NESCPUOpAddressingMode::IMPLIED, 7);
+	NESCPU::RegisterOpMapping(NES_OP_BRK_NAME, NES_OP_BRK_IMPLIED, &NESCPU::ExecuteOpBRK, NESCPUOpAddressingMode::IMPLIED_BRK, 7);
 
 	// BVC
 	NESCPU::RegisterOpMapping(NES_OP_BVC_NAME, NES_OP_BVC_RELATIVE, &NESCPU::ExecuteOpBVC, NESCPUOpAddressingMode::RELATIVE, 2);
@@ -374,7 +374,8 @@ NESCPU::NESCPU(NESCPUMemoryMapper& mem) :
 mem_(mem),
 intReset_(true),
 intNmi_(false),
-intIrq_(false)
+intIrq_(false),
+elapsedCycles_(0)
 {
 }
 
@@ -407,9 +408,7 @@ void NESCPU::Run(unsigned int numCycles)
 {
 	// @TODO Need to compensate for going over the specified amount of
 	// numCycles for the next Run()
-	unsigned int elapsedCycles = 0;
-
-	while (elapsedCycles < numCycles)
+	while (elapsedCycles_ < numCycles)
 	{
 		// Check for interrupts. Return if it's a reset.
 		const auto handledInt = HandleInterrupts();
@@ -420,7 +419,7 @@ void NESCPU::Run(unsigned int numCycles)
 		ExecuteNextOp();
 
 		// Add 7 extra cycles if an interrupt was handled.
-		elapsedCycles += currentOp_.opCycleCount + (handledInt != NESCPUInterruptType::NONE ? 7 : 0);
+		elapsedCycles_ += currentOp_.opCycleCount + (handledInt != NESCPUInterruptType::NONE ? 7 : 0);
 	}
 }
 
@@ -433,6 +432,7 @@ std::string NESCPU::OpAsAsm(const std::string& opName, NESCPUOpAddressingMode ad
 	switch (addrMode)
 	{
 	case NESCPUOpAddressingMode::IMPLIED:
+	case NESCPUOpAddressingMode::IMPLIED_BRK:
 		break; // No operand in implied instructions.
 
 	case NESCPUOpAddressingMode::ACCUMULATOR:
@@ -509,6 +509,7 @@ u16 NESCPU::GetOpSizeFromAddressingMode(NESCPUOpAddressingMode addrMode)
 		return 1;
 
 	// 2 byte addressing modes.
+	case NESCPUOpAddressingMode::IMPLIED_BRK: // BRK has a padding byte.
 	case NESCPUOpAddressingMode::IMMEDIATE:
 	case NESCPUOpAddressingMode::RELATIVE:
 	case NESCPUOpAddressingMode::ZEROPAGE:
@@ -595,6 +596,9 @@ void NESCPU::ExecuteNextOp()
 	const auto it = opInfos_.find(currentOp_.op);
 	if (it == opInfos_.end())
 	{
+		std::cout << "Test status: $" << std::hex << +mem_.Read8(0x6000) << std::endl;
+		std::cout << "$" << std::hex << +mem_.Read8(0x6001) << ", $" << std::hex << +mem_.Read8(0x6002) << ", $" << std::hex << +mem_.Read8(0x6003) << std::endl;
+
 		std::ostringstream oss;
 		oss << "Unknown opcode: 0x" << std::hex << +currentOp_.op;
 		throw NESCPUExecutionException(oss.str(), reg_);
@@ -613,11 +617,14 @@ void NESCPU::ExecuteNextOp()
 	else
 		val = argInfo.argAddr;
 
-	std::cout << "SP: $" << std::hex << +reg_.SP << ",  " << OpAsAsm(it->second.opName, it->second.addrMode, val) << std::endl;
-	std::cout << "stack: ";
-	for (auto i = 0xFF; i >= 0 && i > reg_.SP; --i)
-		std::cout << std::hex << +mem_.Read8(NES_CPU_STACK_START + i) << ", ";
-	std::cout << std::endl;
+	//std::cout << "SP: $" << std::hex << +reg_.SP << ",  " <<  << std::endl;
+	//std::cout << "stack: ";
+	//for (u8 i = 0xFF; i >= 0 && i > reg_.SP; --i)
+	//	std::cout << std::hex << +mem_.Read8(NES_CPU_STACK_START + i) << ", ";
+	//std::cout << std::endl;
+
+	if (elapsedCycles_ >= 550000)
+		std::cout << "Cyc: " << elapsedCycles_ << ", Reg: " << reg_.ToString() << "\t Ins: " << OpAsAsm(it->second.opName, it->second.addrMode, val) << std::endl;
 
 	(this->*it->second.opFunc)(argInfo);
 
@@ -634,7 +641,8 @@ NESCPUOpArgInfo NESCPU::ReadOpArgInfo(NESCPUOpAddressingMode addrMode)
 	switch (argInfo.addrMode)
 	{
 	case NESCPUOpAddressingMode::ACCUMULATOR: // Instruction will need to read the register.
-	case NESCPUOpAddressingMode::IMPLIED: // No operand.
+	case NESCPUOpAddressingMode::IMPLIED: // No operands for implied addr modes.
+	case NESCPUOpAddressingMode::IMPLIED_BRK:
 		break;
 
 	case NESCPUOpAddressingMode::IMMEDIATE:
@@ -809,7 +817,7 @@ void NESCPU::ExecuteOpBIT(NESCPUOpArgInfo& argInfo)
 void NESCPU::ExecuteOpBRK(NESCPUOpArgInfo& argInfo)
 {
 	// Forced Interrupt PC + 2 toS P toS 
-	StackPush16(reg_.PC + 2);
+	StackPush16(reg_.PC + 2); // There is a padding byte after the opcode, hence the +2.
 	StackPush8(reg_.P | 0x10);
 	NESHelper::SetBit(reg_.P, NES_CPU_REG_P_I_BIT);
 

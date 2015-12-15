@@ -23,6 +23,11 @@ public:
 	virtual ~NESMMC();
 
 	/**
+	* Gets the type of MMC used.
+	*/
+	virtual NESMMCType GetType() const = 0;
+
+	/**
 	* Write 8-bits to MMC mapped memory.
 	*/
 	virtual void Write8(u16 addr, u8 val);
@@ -31,11 +36,6 @@ public:
 	* Reads 8-bits from MMC mapped memory.
 	*/
 	virtual u8 Read8(u16 addr) const;
-
-	/**
-	* Gets the type of MMC used.
-	*/
-	virtual NESMMCType GetType() const = 0;
 
 protected:
 	std::array<const NESMemPRGROMBank*, 2> loadedPrgRomBanks_;
@@ -53,4 +53,8 @@ public:
 	virtual ~NESMMCNROM();
 
 	inline NESMMCType GetType() const override { return NESMMCType::NROM; }
+
+	inline void Write8(u16 addr, u8 val) override { NESMMC::Write8(addr, val); }
+
+	inline u8 Read8(u16 addr) const override { return NESMMC::Read8(addr); }
 };
