@@ -4,6 +4,7 @@
 #define NES_OP_INVALID 0xFF
 
 /* ADC */
+#define NES_OP_ADC_NAME "ADC"
 #define NES_OP_ADC_IMMEDIATE 0x69
 #define NES_OP_ADC_ZEROPAGE 0x65
 #define NES_OP_ADC_ZEROPAGE_X 0x75
@@ -14,6 +15,7 @@
 #define NES_OP_ADC_INDIRECT_Y 0x71
 
 /* AND */
+#define NES_OP_AND_NAME "AND"
 #define NES_OP_AND_IMMEDIATE 0x29
 #define NES_OP_AND_ZEROPAGE 0x25
 #define NES_OP_AND_ZEROPAGE_X 0x35
@@ -24,6 +26,7 @@
 #define NES_OP_AND_INDIRECT_Y 0x31
 
 /* ASL */
+#define NES_OP_ASL_NAME "ASL"
 #define NES_OP_ASL_ACCUMULATOR 0x0A
 #define NES_OP_ASL_ZEROPAGE 0x06
 #define NES_OP_ASL_ZEROPAGE_X 0x16
@@ -31,49 +34,64 @@
 #define NES_OP_ASL_ABSOLUTE_X 0x1E
 
 /* BCC */
+#define NES_OP_BCC_NAME "BCC"
 #define NES_OP_BCC_RELATIVE 0x90
 
 /* BCS */
+#define NES_OP_BCS_NAME "BCS"
 #define NES_OP_BCS_RELATIVE 0xB0
 
 /* BEQ */
+#define NES_OP_BEQ_NAME "BEQ"
 #define NES_OP_BEQ_RELATIVE 0xF0
 
 /* BIT */
+#define NES_OP_BIT_NAME "BIT"
 #define NES_OP_BIT_ZEROPAGE 0x24
 #define NES_OP_BIT_ABSOLUTE 0x2C
 
 /* BMI */
+#define NES_OP_BMI_NAME "BMI"
 #define NES_OP_BMI_RELATIVE 0x30
 
 /* BNE */
+#define NES_OP_BNE_NAME "BNE"
 #define NES_OP_BNE_RELATIVE 0xD0
 
 /* BPL */
+#define NES_OP_BPL_NAME "BPL"
 #define NES_OP_BPL_RELATIVE 0x10
 
 /* BRK */
+#define NES_OP_BRK_NAME "BRK"
 #define NES_OP_BRK_IMPLIED 0x00
 
 /* BVC */
+#define NES_OP_BVC_NAME "BVC"
 #define NES_OP_BVC_RELATIVE 0x50
 
 /* BVS */
+#define NES_OP_BVS_NAME "BVS"
 #define NES_OP_BVS_RELATIVE 0x70
 
 /* CLC */
+#define NES_OP_CLC_NAME "CLC"
 #define NES_OP_CLC_IMPLIED 0x18
 
 /* CLD */
+#define NES_OP_CLD_NAME "CLD"
 #define NES_OP_CLD_IMPLIED 0xD8
 
 /* CLI */
+#define NES_OP_CLI_NAME "CLI"
 #define NES_OP_CLI_IMPLIED 0x58
 
 /* CLV */
+#define NES_OP_CLV_NAME "CLV"
 #define NES_OP_CLV_IMPLIED 0xB8
 
 /* CMP */
+#define NES_OP_CMP_NAME "CMP"
 #define NES_OP_CMP_IMMEDIATE 0xC9
 #define NES_OP_CMP_ZEROPAGE 0xC5
 #define NES_OP_CMP_ZEROPAGE_X 0xD5
@@ -84,28 +102,34 @@
 #define NES_OP_CMP_INDIRECT_Y 0xD1
 
 /* CPX */
+#define NES_OP_CPX_NAME "CPX"
 #define NES_OP_CPX_IMMEDIATE 0xE0
 #define NES_OP_CPX_ZEROPAGE 0xE4
 #define NES_OP_CPX_ABSOLUTE 0xEC
 
 /* CPY */
+#define NES_OP_CPY_NAME "CPY"
 #define NES_OP_CPY_IMMEDIATE 0xC0
 #define NES_OP_CPY_ZEROPAGE 0xC4
 #define NES_OP_CPY_ABSOLUTE 0xCC
 
 /* DEC */
+#define NES_OP_DEC_NAME "DEC"
 #define NES_OP_DEC_ZEROPAGE 0xC6
 #define NES_OP_DEC_ZEROPAGE_X 0xD6
 #define NES_OP_DEC_ABSOLUTE 0xCE
 #define NES_OP_DEC_ABSOLUTE_X 0xDE
 
 /* DEX */
+#define NES_OP_DEX_NAME "DEX"
 #define NES_OP_DEX_IMPLIED 0xCA
 
 /* DEY */
+#define NES_OP_DEY_NAME "DEY"
 #define NES_OP_DEY_IMPLIED 0x88
 
 /* EOR */
+#define NES_OP_EOR_NAME "EOR"
 #define NES_OP_EOR_IMMEDIATE 0x49
 #define NES_OP_EOR_ZEROPAGE 0x45
 #define NES_OP_EOR_ZEROPAGE_X 0x55
@@ -116,25 +140,31 @@
 #define NES_OP_EOR_INDIRECT_Y 0x51
 
 /* INC */
+#define NES_OP_INC_NAME "INC"
 #define NES_OP_INC_ZEROPAGE 0xE6
 #define NES_OP_INC_ZEROPAGE_X 0xF6
 #define NES_OP_INC_ABSOLUTE 0xEE
 #define NES_OP_INC_ABSOLUTE_X 0xFE
 
 /* INX */
+#define NES_OP_INX_NAME "INX"
 #define NES_OP_INX_IMPLIED 0xE8
 
 /* INY */
+#define NES_OP_INY_NAME "INY"
 #define NES_OP_INY_IMPLIED 0xC8
 
 /* JMP */
+#define NES_OP_JMP_NAME "JMP"
 #define NES_OP_JMP_ABSOLUTE 0x4C
 #define NES_OP_JMP_INDIRECT 0x6C
 
 /* JSR */
+#define NES_OP_JSR_NAME "JSR"
 #define NES_OP_JSR_ABSOLUTE 0x20
 
 /* LDA */
+#define NES_OP_LDA_NAME "LDA"
 #define NES_OP_LDA_IMMEDIATE 0xA9
 #define NES_OP_LDA_ZEROPAGE 0xA5
 #define NES_OP_LDA_ZEROPAGE_X 0xB5
@@ -145,6 +175,7 @@
 #define NES_OP_LDA_INDIRECT_Y 0xB1
 
 /* LDX */
+#define NES_OP_LDX_NAME "LDX"
 #define NES_OP_LDX_IMMEDIATE 0xA2
 #define NES_OP_LDX_ZEROPAGE 0xA6
 #define NES_OP_LDX_ZEROPAGE_Y 0xB6
@@ -152,6 +183,7 @@
 #define NES_OP_LDX_ABSOLUTE_Y 0xBE
 
 /* LDY */
+#define NES_OP_LDY_NAME "LDY"
 #define NES_OP_LDY_IMMEDIATE 0xA0
 #define NES_OP_LDY_ZEROPAGE 0xA4
 #define NES_OP_LDY_ZEROPAGE_X 0xB4
@@ -159,6 +191,7 @@
 #define NES_OP_LDY_ABSOLUTE_X 0xBC
 
 /* LSR */
+#define NES_OP_LSR_NAME "LSR"
 #define NES_OP_LSR_ACCUMULATOR 0x4A
 #define NES_OP_LSR_ZEROPAGE 0x46
 #define NES_OP_LSR_ZEROPAGE_X 0x56
@@ -166,9 +199,11 @@
 #define NES_OP_LSR_ABSOLUTE_X 0x5E
 
 /* NOP */
+#define NES_OP_NOP_NAME "NOP"
 #define NES_OP_NOP_IMPLIED 0xEA
 
 /* ORA */
+#define NES_OP_ORA_NAME "ORA"
 #define NES_OP_ORA_IMMEDIATE 0x09
 #define NES_OP_ORA_ZEROPAGE 0x05
 #define NES_OP_ORA_ZEROPAGE_X 0x15
@@ -179,18 +214,23 @@
 #define NES_OP_ORA_INDIRECT_Y 0x11
 
 /* PHA */
+#define NES_OP_PHA_NAME "PHA"
 #define NES_OP_PHA_IMPLIED 0x48
 
 /* PHP */
+#define NES_OP_PHP_NAME "PHP"
 #define NES_OP_PHP_IMPLIED 0x08
 
 /* PLA */
+#define NES_OP_PLA_NAME "PLA"
 #define NES_OP_PLA_IMPLIED 0x68
 
 /* PLP */
+#define NES_OP_PLP_NAME "PLP"
 #define NES_OP_PLP_IMPLIED 0x28
 
 /* ROL */
+#define NES_OP_ROL_NAME "ROL"
 #define NES_OP_ROL_ACCUMULATOR 0x2A
 #define NES_OP_ROL_ZEROPAGE 0x26
 #define NES_OP_ROL_ZEROPAGE_X 0x36
@@ -198,6 +238,7 @@
 #define NES_OP_ROL_ABSOLUTE_X 0x3E
 
 /* ROR */
+#define NES_OP_ROR_NAME "ROR"
 #define NES_OP_ROR_ACCUMULATOR 0x6A
 #define NES_OP_ROR_ZEROPAGE 0x66
 #define NES_OP_ROR_ZEROPAGE_X 0x76
@@ -205,12 +246,15 @@
 #define NES_OP_ROR_ABSOLUTE_X 0x7E
 
 /* RTI */
+#define NES_OP_RTI_NAME "RTI"
 #define NES_OP_RTI_IMPLIED 0x40
 
 /* RTS */
+#define NES_OP_RTS_NAME "RTS"
 #define NES_OP_RTS_IMPLIED 0x60
 
 /* SBC */
+#define NES_OP_SBC_NAME "SBC"
 #define NES_OP_SBC_IMMEDIATE 0xE9
 #define NES_OP_SBC_ZEROPAGE 0xE5
 #define NES_OP_SBC_ZEROPAGE_X 0xF5
@@ -221,15 +265,19 @@
 #define NES_OP_SBC_INDIRECT_Y 0xF1
 
 /* SEC */
+#define NES_OP_SEC_NAME "SEC"
 #define NES_OP_SEC_IMPLIED 0x38
 
 /* SED */
+#define NES_OP_SED_NAME "SED"
 #define NES_OP_SED_IMPLIED 0xF8
 
 /* SEI */
+#define NES_OP_SEI_NAME "SEI"
 #define NES_OP_SEI_IMPLIED 0x78
 
 /* STA */
+#define NES_OP_STA_NAME "STA"
 #define NES_OP_STA_ZEROPAGE 0x85
 #define NES_OP_STA_ZEROPAGE_X 0x95
 #define NES_OP_STA_ABSOLUTE 0x8D
@@ -239,30 +287,38 @@
 #define NES_OP_STA_INDIRECT_Y 0x91
 
 /* STX */
+#define NES_OP_STX_NAME "STX"
 #define NES_OP_STX_ZEROPAGE 0x86
 #define NES_OP_STX_ZEROPAGE_Y 0x96
 #define NES_OP_STX_ABSOLUTE 0x8E
 
 /* STY */
+#define NES_OP_STY_NAME "STY"
 #define NES_OP_STY_ZEROPAGE 0x84
 #define NES_OP_STY_ZEROPAGE_X 0x94
 #define NES_OP_STY_ABSOLUTE 0x8C
 
 /* TAX */
+#define NES_OP_TAX_NAME "TAX"
 #define NES_OP_TAX_IMPLIED 0xAA
 
 /* TAY */
+#define NES_OP_TAY_NAME "TAY"
 #define NES_OP_TAY_IMPLIED 0xA8
 
 /* TSX */
+#define NES_OP_TSX_NAME "TSX"
 #define NES_OP_TSX_IMPLIED 0xBA
 
 /* TXA */
+#define NES_OP_TXA_NAME "TXA"
 #define NES_OP_TXA_IMPLIED 0x8A
 
 /* TXS */
+#define NES_OP_TXS_NAME "TXS"
 #define NES_OP_TXS_IMPLIED 0x9A
 
 /* TYA */
+#define NES_OP_TYA_NAME "TYA"
 #define NES_OP_TYA_IMPLIED 0x98
 

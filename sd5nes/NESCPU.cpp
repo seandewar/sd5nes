@@ -92,10 +92,10 @@ std::unordered_map<u8, NESCPUOpInfo> NESCPU::opInfos_;
 NESCPUStaticInit NESCPU::staticInit_;
 
 
-void NESCPU::RegisterOpMapping(u8 op, NESOpFuncPointer opFunc, NESCPUOpAddressingMode addrMode, int cycleCount)
+void NESCPU::RegisterOpMapping(const std::string& opName, u8 op, NESOpFuncPointer opFunc, NESCPUOpAddressingMode addrMode, int cycleCount)
 {
-	assert("Duplicate op mapping entry or unknown addressing mode!" 
-		&& (opInfos_.emplace(op, NESCPUOpInfo(opFunc, addrMode, cycleCount)).second)
+	assert("Duplicate op mapping entry or unknown addressing mode!"
+		&& (opInfos_.emplace(op, NESCPUOpInfo(opName, opFunc, addrMode, cycleCount)).second)
 		&& (addrMode != NESCPUOpAddressingMode::UNKNOWN));
 }
 
@@ -107,304 +107,280 @@ NESCPUStaticInit::NESCPUStaticInit()
 	/****************************************/
 
 	// ADC
-	NESCPU::RegisterOpMapping(NES_OP_ADC_IMMEDIATE, &NESCPU::ExecuteOpADC, NESCPUOpAddressingMode::IMMEDIATE, 2);
-	NESCPU::RegisterOpMapping(NES_OP_ADC_ABSOLUTE, &NESCPU::ExecuteOpADC, NESCPUOpAddressingMode::ABSOLUTE, 4);
-	NESCPU::RegisterOpMapping(NES_OP_ADC_ABSOLUTE_X, &NESCPU::ExecuteOpADC, NESCPUOpAddressingMode::ABSOLUTE_X, 4);
-	NESCPU::RegisterOpMapping(NES_OP_ADC_ABSOLUTE_Y, &NESCPU::ExecuteOpADC, NESCPUOpAddressingMode::ABSOLUTE_Y, 4);
-	NESCPU::RegisterOpMapping(NES_OP_ADC_ZEROPAGE, &NESCPU::ExecuteOpADC, NESCPUOpAddressingMode::ZEROPAGE, 3);
-	NESCPU::RegisterOpMapping(NES_OP_ADC_ZEROPAGE_X, &NESCPU::ExecuteOpADC, NESCPUOpAddressingMode::ZEROPAGE_X, 4);
-	NESCPU::RegisterOpMapping(NES_OP_ADC_INDIRECT_X, &NESCPU::ExecuteOpADC, NESCPUOpAddressingMode::INDIRECT_X, 6);
-	NESCPU::RegisterOpMapping(NES_OP_ADC_INDIRECT_Y, &NESCPU::ExecuteOpADC, NESCPUOpAddressingMode::INDIRECT_Y, 5);
+	NESCPU::RegisterOpMapping(NES_OP_ADC_NAME, NES_OP_ADC_IMMEDIATE, &NESCPU::ExecuteOpADC, NESCPUOpAddressingMode::IMMEDIATE, 2);
+	NESCPU::RegisterOpMapping(NES_OP_ADC_NAME, NES_OP_ADC_ABSOLUTE, &NESCPU::ExecuteOpADC, NESCPUOpAddressingMode::ABSOLUTE, 4);
+	NESCPU::RegisterOpMapping(NES_OP_ADC_NAME, NES_OP_ADC_ABSOLUTE_X, &NESCPU::ExecuteOpADC, NESCPUOpAddressingMode::ABSOLUTE_X, 4);
+	NESCPU::RegisterOpMapping(NES_OP_ADC_NAME, NES_OP_ADC_ABSOLUTE_Y, &NESCPU::ExecuteOpADC, NESCPUOpAddressingMode::ABSOLUTE_Y, 4);
+	NESCPU::RegisterOpMapping(NES_OP_ADC_NAME, NES_OP_ADC_ZEROPAGE, &NESCPU::ExecuteOpADC, NESCPUOpAddressingMode::ZEROPAGE, 3);
+	NESCPU::RegisterOpMapping(NES_OP_ADC_NAME, NES_OP_ADC_ZEROPAGE_X, &NESCPU::ExecuteOpADC, NESCPUOpAddressingMode::ZEROPAGE_X, 4);
+	NESCPU::RegisterOpMapping(NES_OP_ADC_NAME, NES_OP_ADC_INDIRECT_X, &NESCPU::ExecuteOpADC, NESCPUOpAddressingMode::INDIRECT_X, 6);
+	NESCPU::RegisterOpMapping(NES_OP_ADC_NAME, NES_OP_ADC_INDIRECT_Y, &NESCPU::ExecuteOpADC, NESCPUOpAddressingMode::INDIRECT_Y, 5);
 
 	// AND
-	NESCPU::RegisterOpMapping(NES_OP_AND_IMMEDIATE, &NESCPU::ExecuteOpAND, NESCPUOpAddressingMode::IMMEDIATE, 2);
-	NESCPU::RegisterOpMapping(NES_OP_AND_ABSOLUTE, &NESCPU::ExecuteOpAND, NESCPUOpAddressingMode::ABSOLUTE, 4);
-	NESCPU::RegisterOpMapping(NES_OP_AND_ABSOLUTE_X, &NESCPU::ExecuteOpAND, NESCPUOpAddressingMode::ABSOLUTE_X, 4);
-	NESCPU::RegisterOpMapping(NES_OP_AND_ABSOLUTE_Y, &NESCPU::ExecuteOpAND, NESCPUOpAddressingMode::ABSOLUTE_Y, 4);
-	NESCPU::RegisterOpMapping(NES_OP_AND_ZEROPAGE, &NESCPU::ExecuteOpAND, NESCPUOpAddressingMode::ZEROPAGE, 3);
-	NESCPU::RegisterOpMapping(NES_OP_AND_ZEROPAGE_X, &NESCPU::ExecuteOpAND, NESCPUOpAddressingMode::ZEROPAGE_X, 4);
-	NESCPU::RegisterOpMapping(NES_OP_AND_INDIRECT_X, &NESCPU::ExecuteOpAND, NESCPUOpAddressingMode::INDIRECT_X, 6);
-	NESCPU::RegisterOpMapping(NES_OP_AND_INDIRECT_Y, &NESCPU::ExecuteOpAND, NESCPUOpAddressingMode::INDIRECT_Y, 5);
+	NESCPU::RegisterOpMapping(NES_OP_AND_NAME, NES_OP_AND_IMMEDIATE, &NESCPU::ExecuteOpAND, NESCPUOpAddressingMode::IMMEDIATE, 2);
+	NESCPU::RegisterOpMapping(NES_OP_AND_NAME, NES_OP_AND_ABSOLUTE, &NESCPU::ExecuteOpAND, NESCPUOpAddressingMode::ABSOLUTE, 4);
+	NESCPU::RegisterOpMapping(NES_OP_AND_NAME, NES_OP_AND_ABSOLUTE_X, &NESCPU::ExecuteOpAND, NESCPUOpAddressingMode::ABSOLUTE_X, 4);
+	NESCPU::RegisterOpMapping(NES_OP_AND_NAME, NES_OP_AND_ABSOLUTE_Y, &NESCPU::ExecuteOpAND, NESCPUOpAddressingMode::ABSOLUTE_Y, 4);
+	NESCPU::RegisterOpMapping(NES_OP_AND_NAME, NES_OP_AND_ZEROPAGE, &NESCPU::ExecuteOpAND, NESCPUOpAddressingMode::ZEROPAGE, 3);
+	NESCPU::RegisterOpMapping(NES_OP_AND_NAME, NES_OP_AND_ZEROPAGE_X, &NESCPU::ExecuteOpAND, NESCPUOpAddressingMode::ZEROPAGE_X, 4);
+	NESCPU::RegisterOpMapping(NES_OP_AND_NAME, NES_OP_AND_INDIRECT_X, &NESCPU::ExecuteOpAND, NESCPUOpAddressingMode::INDIRECT_X, 6);
+	NESCPU::RegisterOpMapping(NES_OP_AND_NAME, NES_OP_AND_INDIRECT_Y, &NESCPU::ExecuteOpAND, NESCPUOpAddressingMode::INDIRECT_Y, 5);
 
 	// ASL
-	NESCPU::RegisterOpMapping(NES_OP_ASL_ACCUMULATOR, &NESCPU::ExecuteOpASL, NESCPUOpAddressingMode::ACCUMULATOR, 2);
-	NESCPU::RegisterOpMapping(NES_OP_ASL_ZEROPAGE, &NESCPU::ExecuteOpASL, NESCPUOpAddressingMode::ZEROPAGE, 5);
-	NESCPU::RegisterOpMapping(NES_OP_ASL_ZEROPAGE_X, &NESCPU::ExecuteOpASL, NESCPUOpAddressingMode::ZEROPAGE_X, 6);
-	NESCPU::RegisterOpMapping(NES_OP_ASL_ABSOLUTE, &NESCPU::ExecuteOpASL, NESCPUOpAddressingMode::ABSOLUTE, 6);
-	NESCPU::RegisterOpMapping(NES_OP_ASL_ABSOLUTE_X, &NESCPU::ExecuteOpASL, NESCPUOpAddressingMode::ABSOLUTE_X, 7);
+	NESCPU::RegisterOpMapping(NES_OP_ASL_NAME, NES_OP_ASL_ACCUMULATOR, &NESCPU::ExecuteOpASL, NESCPUOpAddressingMode::ACCUMULATOR, 2);
+	NESCPU::RegisterOpMapping(NES_OP_ASL_NAME, NES_OP_ASL_ZEROPAGE, &NESCPU::ExecuteOpASL, NESCPUOpAddressingMode::ZEROPAGE, 5);
+	NESCPU::RegisterOpMapping(NES_OP_ASL_NAME, NES_OP_ASL_ZEROPAGE_X, &NESCPU::ExecuteOpASL, NESCPUOpAddressingMode::ZEROPAGE_X, 6);
+	NESCPU::RegisterOpMapping(NES_OP_ASL_NAME, NES_OP_ASL_ABSOLUTE, &NESCPU::ExecuteOpASL, NESCPUOpAddressingMode::ABSOLUTE, 6);
+	NESCPU::RegisterOpMapping(NES_OP_ASL_NAME, NES_OP_ASL_ABSOLUTE_X, &NESCPU::ExecuteOpASL, NESCPUOpAddressingMode::ABSOLUTE_X, 7);
 
 	// BCC
-	NESCPU::RegisterOpMapping(NES_OP_BCC_RELATIVE, &NESCPU::ExecuteOpBCC, NESCPUOpAddressingMode::RELATIVE, 2);
+	NESCPU::RegisterOpMapping(NES_OP_BCC_NAME, NES_OP_BCC_RELATIVE, &NESCPU::ExecuteOpBCC, NESCPUOpAddressingMode::RELATIVE, 2);
 
 	// BCS
-	NESCPU::RegisterOpMapping(NES_OP_BCS_RELATIVE, &NESCPU::ExecuteOpBCS, NESCPUOpAddressingMode::RELATIVE, 2);
+	NESCPU::RegisterOpMapping(NES_OP_BCS_NAME, NES_OP_BCS_RELATIVE, &NESCPU::ExecuteOpBCS, NESCPUOpAddressingMode::RELATIVE, 2);
 
 	// BEQ
-	NESCPU::RegisterOpMapping(NES_OP_BEQ_RELATIVE, &NESCPU::ExecuteOpBEQ, NESCPUOpAddressingMode::RELATIVE, 2);
+	NESCPU::RegisterOpMapping(NES_OP_BEQ_NAME, NES_OP_BEQ_RELATIVE, &NESCPU::ExecuteOpBEQ, NESCPUOpAddressingMode::RELATIVE, 2);
 
 	// BIT
-	NESCPU::RegisterOpMapping(NES_OP_BIT_ZEROPAGE, &NESCPU::ExecuteOpBIT, NESCPUOpAddressingMode::ZEROPAGE, 3);
-	NESCPU::RegisterOpMapping(NES_OP_BIT_ABSOLUTE, &NESCPU::ExecuteOpBIT, NESCPUOpAddressingMode::ABSOLUTE, 4);
+	NESCPU::RegisterOpMapping(NES_OP_BIT_NAME, NES_OP_BIT_ZEROPAGE, &NESCPU::ExecuteOpBIT, NESCPUOpAddressingMode::ZEROPAGE, 3);
+	NESCPU::RegisterOpMapping(NES_OP_BIT_NAME, NES_OP_BIT_ABSOLUTE, &NESCPU::ExecuteOpBIT, NESCPUOpAddressingMode::ABSOLUTE, 4);
 
 	// BMI
-	NESCPU::RegisterOpMapping(NES_OP_BMI_RELATIVE, &NESCPU::ExecuteOpBMI, NESCPUOpAddressingMode::RELATIVE, 2);
+	NESCPU::RegisterOpMapping(NES_OP_BMI_NAME, NES_OP_BMI_RELATIVE, &NESCPU::ExecuteOpBMI, NESCPUOpAddressingMode::RELATIVE, 2);
 
 	// BNE
-	NESCPU::RegisterOpMapping(NES_OP_BNE_RELATIVE, &NESCPU::ExecuteOpBNE, NESCPUOpAddressingMode::RELATIVE, 2);
+	NESCPU::RegisterOpMapping(NES_OP_BNE_NAME, NES_OP_BNE_RELATIVE, &NESCPU::ExecuteOpBNE, NESCPUOpAddressingMode::RELATIVE, 2);
 
 	// BPL
-	NESCPU::RegisterOpMapping(NES_OP_BPL_RELATIVE, &NESCPU::ExecuteOpBPL, NESCPUOpAddressingMode::RELATIVE, 2);
+	NESCPU::RegisterOpMapping(NES_OP_BPL_NAME, NES_OP_BPL_RELATIVE, &NESCPU::ExecuteOpBPL, NESCPUOpAddressingMode::RELATIVE, 2);
 
 	// BRK
-	NESCPU::RegisterOpMapping(NES_OP_BRK_IMPLIED, &NESCPU::ExecuteOpBRK, NESCPUOpAddressingMode::IMPLIED, 7);
+	NESCPU::RegisterOpMapping(NES_OP_BRK_NAME, NES_OP_BRK_IMPLIED, &NESCPU::ExecuteOpBRK, NESCPUOpAddressingMode::IMPLIED, 7);
 
 	// BVC
-	NESCPU::RegisterOpMapping(NES_OP_BVC_RELATIVE, &NESCPU::ExecuteOpBVC, NESCPUOpAddressingMode::RELATIVE, 2);
+	NESCPU::RegisterOpMapping(NES_OP_BVC_NAME, NES_OP_BVC_RELATIVE, &NESCPU::ExecuteOpBVC, NESCPUOpAddressingMode::RELATIVE, 2);
 
 	// BVS
-	NESCPU::RegisterOpMapping(NES_OP_BVS_RELATIVE, &NESCPU::ExecuteOpBVS, NESCPUOpAddressingMode::RELATIVE, 2);
+	NESCPU::RegisterOpMapping(NES_OP_BVS_NAME, NES_OP_BVS_RELATIVE, &NESCPU::ExecuteOpBVS, NESCPUOpAddressingMode::RELATIVE, 2);
 
 	// CLC
-	NESCPU::RegisterOpMapping(NES_OP_CLC_IMPLIED, &NESCPU::ExecuteOpCLC, NESCPUOpAddressingMode::IMPLIED, 2);
+	NESCPU::RegisterOpMapping(NES_OP_CLC_NAME, NES_OP_CLC_IMPLIED, &NESCPU::ExecuteOpCLC, NESCPUOpAddressingMode::IMPLIED, 2);
 
 	// CLD
-	NESCPU::RegisterOpMapping(NES_OP_CLD_IMPLIED, &NESCPU::ExecuteOpCLD, NESCPUOpAddressingMode::IMPLIED, 2);
+	NESCPU::RegisterOpMapping(NES_OP_CLD_NAME, NES_OP_CLD_IMPLIED, &NESCPU::ExecuteOpCLD, NESCPUOpAddressingMode::IMPLIED, 2);
 
 	// CLI
-	NESCPU::RegisterOpMapping(NES_OP_CLI_IMPLIED, &NESCPU::ExecuteOpCLI, NESCPUOpAddressingMode::IMPLIED, 2);
+	NESCPU::RegisterOpMapping(NES_OP_CLI_NAME, NES_OP_CLI_IMPLIED, &NESCPU::ExecuteOpCLI, NESCPUOpAddressingMode::IMPLIED, 2);
 
 	// CLV
-	NESCPU::RegisterOpMapping(NES_OP_CLV_IMPLIED, &NESCPU::ExecuteOpCLV, NESCPUOpAddressingMode::IMPLIED, 2);
+	NESCPU::RegisterOpMapping(NES_OP_CLV_NAME, NES_OP_CLV_IMPLIED, &NESCPU::ExecuteOpCLV, NESCPUOpAddressingMode::IMPLIED, 2);
 
 	// CMP
-	NESCPU::RegisterOpMapping(NES_OP_CMP_IMMEDIATE, &NESCPU::ExecuteOpCMP, NESCPUOpAddressingMode::IMMEDIATE, 2);
-	NESCPU::RegisterOpMapping(NES_OP_CMP_ABSOLUTE, &NESCPU::ExecuteOpCMP, NESCPUOpAddressingMode::ABSOLUTE, 4);
-	NESCPU::RegisterOpMapping(NES_OP_CMP_ABSOLUTE_X, &NESCPU::ExecuteOpCMP, NESCPUOpAddressingMode::ABSOLUTE_X, 4);
-	NESCPU::RegisterOpMapping(NES_OP_CMP_ABSOLUTE_Y, &NESCPU::ExecuteOpCMP, NESCPUOpAddressingMode::ABSOLUTE_Y, 4);
-	NESCPU::RegisterOpMapping(NES_OP_CMP_ZEROPAGE, &NESCPU::ExecuteOpCMP, NESCPUOpAddressingMode::ZEROPAGE, 3);
-	NESCPU::RegisterOpMapping(NES_OP_CMP_ZEROPAGE_X, &NESCPU::ExecuteOpCMP, NESCPUOpAddressingMode::ZEROPAGE_X, 4);
-	NESCPU::RegisterOpMapping(NES_OP_CMP_INDIRECT_X, &NESCPU::ExecuteOpCMP, NESCPUOpAddressingMode::INDIRECT_X, 6);
-	NESCPU::RegisterOpMapping(NES_OP_CMP_INDIRECT_Y, &NESCPU::ExecuteOpCMP, NESCPUOpAddressingMode::INDIRECT_Y, 5);
+	NESCPU::RegisterOpMapping(NES_OP_CMP_NAME, NES_OP_CMP_IMMEDIATE, &NESCPU::ExecuteOpCMP, NESCPUOpAddressingMode::IMMEDIATE, 2);
+	NESCPU::RegisterOpMapping(NES_OP_CMP_NAME, NES_OP_CMP_ABSOLUTE, &NESCPU::ExecuteOpCMP, NESCPUOpAddressingMode::ABSOLUTE, 4);
+	NESCPU::RegisterOpMapping(NES_OP_CMP_NAME, NES_OP_CMP_ABSOLUTE_X, &NESCPU::ExecuteOpCMP, NESCPUOpAddressingMode::ABSOLUTE_X, 4);
+	NESCPU::RegisterOpMapping(NES_OP_CMP_NAME, NES_OP_CMP_ABSOLUTE_Y, &NESCPU::ExecuteOpCMP, NESCPUOpAddressingMode::ABSOLUTE_Y, 4);
+	NESCPU::RegisterOpMapping(NES_OP_CMP_NAME, NES_OP_CMP_ZEROPAGE, &NESCPU::ExecuteOpCMP, NESCPUOpAddressingMode::ZEROPAGE, 3);
+	NESCPU::RegisterOpMapping(NES_OP_CMP_NAME, NES_OP_CMP_ZEROPAGE_X, &NESCPU::ExecuteOpCMP, NESCPUOpAddressingMode::ZEROPAGE_X, 4);
+	NESCPU::RegisterOpMapping(NES_OP_CMP_NAME, NES_OP_CMP_INDIRECT_X, &NESCPU::ExecuteOpCMP, NESCPUOpAddressingMode::INDIRECT_X, 6);
+	NESCPU::RegisterOpMapping(NES_OP_CMP_NAME, NES_OP_CMP_INDIRECT_Y, &NESCPU::ExecuteOpCMP, NESCPUOpAddressingMode::INDIRECT_Y, 5);
 
 	// CPX
-	NESCPU::RegisterOpMapping(NES_OP_CPX_IMMEDIATE, &NESCPU::ExecuteOpCPX, NESCPUOpAddressingMode::IMMEDIATE, 2);
-	NESCPU::RegisterOpMapping(NES_OP_CPX_ZEROPAGE, &NESCPU::ExecuteOpCPX, NESCPUOpAddressingMode::ZEROPAGE, 3);
-	NESCPU::RegisterOpMapping(NES_OP_CPX_ABSOLUTE, &NESCPU::ExecuteOpCPX, NESCPUOpAddressingMode::ABSOLUTE, 4);
+	NESCPU::RegisterOpMapping(NES_OP_CPX_NAME, NES_OP_CPX_IMMEDIATE, &NESCPU::ExecuteOpCPX, NESCPUOpAddressingMode::IMMEDIATE, 2);
+	NESCPU::RegisterOpMapping(NES_OP_CPX_NAME, NES_OP_CPX_ZEROPAGE, &NESCPU::ExecuteOpCPX, NESCPUOpAddressingMode::ZEROPAGE, 3);
+	NESCPU::RegisterOpMapping(NES_OP_CPX_NAME, NES_OP_CPX_ABSOLUTE, &NESCPU::ExecuteOpCPX, NESCPUOpAddressingMode::ABSOLUTE, 4);
 
 	// CPY
-	NESCPU::RegisterOpMapping(NES_OP_CPY_IMMEDIATE, &NESCPU::ExecuteOpCPY, NESCPUOpAddressingMode::IMMEDIATE, 2);
-	NESCPU::RegisterOpMapping(NES_OP_CPY_ZEROPAGE, &NESCPU::ExecuteOpCPY, NESCPUOpAddressingMode::ZEROPAGE, 3);
-	NESCPU::RegisterOpMapping(NES_OP_CPY_ABSOLUTE, &NESCPU::ExecuteOpCPY, NESCPUOpAddressingMode::ABSOLUTE, 4);
+	NESCPU::RegisterOpMapping(NES_OP_CPY_NAME, NES_OP_CPY_IMMEDIATE, &NESCPU::ExecuteOpCPY, NESCPUOpAddressingMode::IMMEDIATE, 2);
+	NESCPU::RegisterOpMapping(NES_OP_CPY_NAME, NES_OP_CPY_ZEROPAGE, &NESCPU::ExecuteOpCPY, NESCPUOpAddressingMode::ZEROPAGE, 3);
+	NESCPU::RegisterOpMapping(NES_OP_CPY_NAME, NES_OP_CPY_ABSOLUTE, &NESCPU::ExecuteOpCPY, NESCPUOpAddressingMode::ABSOLUTE, 4);
 
 	// DEC
-	NESCPU::RegisterOpMapping(NES_OP_DEC_ZEROPAGE, &NESCPU::ExecuteOpDEC, NESCPUOpAddressingMode::ZEROPAGE, 5);
-	NESCPU::RegisterOpMapping(NES_OP_DEC_ZEROPAGE_X, &NESCPU::ExecuteOpDEC, NESCPUOpAddressingMode::ZEROPAGE_X, 6);
-	NESCPU::RegisterOpMapping(NES_OP_DEC_ABSOLUTE, &NESCPU::ExecuteOpDEC, NESCPUOpAddressingMode::ABSOLUTE, 6);
-	NESCPU::RegisterOpMapping(NES_OP_DEC_ABSOLUTE_X, &NESCPU::ExecuteOpDEC, NESCPUOpAddressingMode::ABSOLUTE_X, 7);
+	NESCPU::RegisterOpMapping(NES_OP_DEC_NAME, NES_OP_DEC_ZEROPAGE, &NESCPU::ExecuteOpDEC, NESCPUOpAddressingMode::ZEROPAGE, 5);
+	NESCPU::RegisterOpMapping(NES_OP_DEC_NAME, NES_OP_DEC_ZEROPAGE_X, &NESCPU::ExecuteOpDEC, NESCPUOpAddressingMode::ZEROPAGE_X, 6);
+	NESCPU::RegisterOpMapping(NES_OP_DEC_NAME, NES_OP_DEC_ABSOLUTE, &NESCPU::ExecuteOpDEC, NESCPUOpAddressingMode::ABSOLUTE, 6);
+	NESCPU::RegisterOpMapping(NES_OP_DEC_NAME, NES_OP_DEC_ABSOLUTE_X, &NESCPU::ExecuteOpDEC, NESCPUOpAddressingMode::ABSOLUTE_X, 7);
 
 	// DEX
-	NESCPU::RegisterOpMapping(NES_OP_DEX_IMPLIED, &NESCPU::ExecuteOpDEX, NESCPUOpAddressingMode::IMPLIED, 2);
+	NESCPU::RegisterOpMapping(NES_OP_DEX_NAME, NES_OP_DEX_IMPLIED, &NESCPU::ExecuteOpDEX, NESCPUOpAddressingMode::IMPLIED, 2);
 
 	// DEY
-	NESCPU::RegisterOpMapping(NES_OP_DEY_IMPLIED, &NESCPU::ExecuteOpDEY, NESCPUOpAddressingMode::IMPLIED, 2);
+	NESCPU::RegisterOpMapping(NES_OP_DEY_NAME, NES_OP_DEY_IMPLIED, &NESCPU::ExecuteOpDEY, NESCPUOpAddressingMode::IMPLIED, 2);
 
 	// EOR
-	NESCPU::RegisterOpMapping(NES_OP_EOR_IMMEDIATE, &NESCPU::ExecuteOpEOR, NESCPUOpAddressingMode::IMMEDIATE, 2);
-	NESCPU::RegisterOpMapping(NES_OP_EOR_ABSOLUTE, &NESCPU::ExecuteOpEOR, NESCPUOpAddressingMode::ABSOLUTE, 4);
-	NESCPU::RegisterOpMapping(NES_OP_EOR_ABSOLUTE_X, &NESCPU::ExecuteOpEOR, NESCPUOpAddressingMode::ABSOLUTE_X, 4);
-	NESCPU::RegisterOpMapping(NES_OP_EOR_ABSOLUTE_Y, &NESCPU::ExecuteOpEOR, NESCPUOpAddressingMode::ABSOLUTE_Y, 4);
-	NESCPU::RegisterOpMapping(NES_OP_EOR_ZEROPAGE, &NESCPU::ExecuteOpEOR, NESCPUOpAddressingMode::ZEROPAGE, 3);
-	NESCPU::RegisterOpMapping(NES_OP_EOR_ZEROPAGE_X, &NESCPU::ExecuteOpEOR, NESCPUOpAddressingMode::ZEROPAGE_X, 4);
-	NESCPU::RegisterOpMapping(NES_OP_EOR_INDIRECT_X, &NESCPU::ExecuteOpEOR, NESCPUOpAddressingMode::INDIRECT_X, 6);
-	NESCPU::RegisterOpMapping(NES_OP_EOR_INDIRECT_Y, &NESCPU::ExecuteOpEOR, NESCPUOpAddressingMode::INDIRECT_Y, 5);
+	NESCPU::RegisterOpMapping(NES_OP_EOR_NAME, NES_OP_EOR_IMMEDIATE, &NESCPU::ExecuteOpEOR, NESCPUOpAddressingMode::IMMEDIATE, 2);
+	NESCPU::RegisterOpMapping(NES_OP_EOR_NAME, NES_OP_EOR_ABSOLUTE, &NESCPU::ExecuteOpEOR, NESCPUOpAddressingMode::ABSOLUTE, 4);
+	NESCPU::RegisterOpMapping(NES_OP_EOR_NAME, NES_OP_EOR_ABSOLUTE_X, &NESCPU::ExecuteOpEOR, NESCPUOpAddressingMode::ABSOLUTE_X, 4);
+	NESCPU::RegisterOpMapping(NES_OP_EOR_NAME, NES_OP_EOR_ABSOLUTE_Y, &NESCPU::ExecuteOpEOR, NESCPUOpAddressingMode::ABSOLUTE_Y, 4);
+	NESCPU::RegisterOpMapping(NES_OP_EOR_NAME, NES_OP_EOR_ZEROPAGE, &NESCPU::ExecuteOpEOR, NESCPUOpAddressingMode::ZEROPAGE, 3);
+	NESCPU::RegisterOpMapping(NES_OP_EOR_NAME, NES_OP_EOR_ZEROPAGE_X, &NESCPU::ExecuteOpEOR, NESCPUOpAddressingMode::ZEROPAGE_X, 4);
+	NESCPU::RegisterOpMapping(NES_OP_EOR_NAME, NES_OP_EOR_INDIRECT_X, &NESCPU::ExecuteOpEOR, NESCPUOpAddressingMode::INDIRECT_X, 6);
+	NESCPU::RegisterOpMapping(NES_OP_EOR_NAME, NES_OP_EOR_INDIRECT_Y, &NESCPU::ExecuteOpEOR, NESCPUOpAddressingMode::INDIRECT_Y, 5);
 
 	// INC
-	NESCPU::RegisterOpMapping(NES_OP_INC_ZEROPAGE, &NESCPU::ExecuteOpINC, NESCPUOpAddressingMode::ZEROPAGE, 5);
-	NESCPU::RegisterOpMapping(NES_OP_INC_ZEROPAGE_X, &NESCPU::ExecuteOpINC, NESCPUOpAddressingMode::ZEROPAGE_X, 6);
-	NESCPU::RegisterOpMapping(NES_OP_INC_ABSOLUTE, &NESCPU::ExecuteOpINC, NESCPUOpAddressingMode::ABSOLUTE, 6);
-	NESCPU::RegisterOpMapping(NES_OP_INC_ABSOLUTE_X, &NESCPU::ExecuteOpINC, NESCPUOpAddressingMode::ABSOLUTE_X, 7);
+	NESCPU::RegisterOpMapping(NES_OP_INC_NAME, NES_OP_INC_ZEROPAGE, &NESCPU::ExecuteOpINC, NESCPUOpAddressingMode::ZEROPAGE, 5);
+	NESCPU::RegisterOpMapping(NES_OP_INC_NAME, NES_OP_INC_ZEROPAGE_X, &NESCPU::ExecuteOpINC, NESCPUOpAddressingMode::ZEROPAGE_X, 6);
+	NESCPU::RegisterOpMapping(NES_OP_INC_NAME, NES_OP_INC_ABSOLUTE, &NESCPU::ExecuteOpINC, NESCPUOpAddressingMode::ABSOLUTE, 6);
+	NESCPU::RegisterOpMapping(NES_OP_INC_NAME, NES_OP_INC_ABSOLUTE_X, &NESCPU::ExecuteOpINC, NESCPUOpAddressingMode::ABSOLUTE_X, 7);
 
 	// INX
-	NESCPU::RegisterOpMapping(NES_OP_INX_IMPLIED, &NESCPU::ExecuteOpINX, NESCPUOpAddressingMode::IMPLIED, 2);
+	NESCPU::RegisterOpMapping(NES_OP_INX_NAME, NES_OP_INX_IMPLIED, &NESCPU::ExecuteOpINX, NESCPUOpAddressingMode::IMPLIED, 2);
 
 	// INY
-	NESCPU::RegisterOpMapping(NES_OP_INY_IMPLIED, &NESCPU::ExecuteOpINY, NESCPUOpAddressingMode::IMPLIED, 2);
+	NESCPU::RegisterOpMapping(NES_OP_INY_NAME, NES_OP_INY_IMPLIED, &NESCPU::ExecuteOpINY, NESCPUOpAddressingMode::IMPLIED, 2);
 
 	// JMP
-	NESCPU::RegisterOpMapping(NES_OP_JMP_ABSOLUTE, &NESCPU::ExecuteOpJMP, NESCPUOpAddressingMode::ABSOLUTE, 3);
-	NESCPU::RegisterOpMapping(NES_OP_JMP_INDIRECT, &NESCPU::ExecuteOpJMP, NESCPUOpAddressingMode::INDIRECT, 5);
+	NESCPU::RegisterOpMapping(NES_OP_JMP_NAME, NES_OP_JMP_ABSOLUTE, &NESCPU::ExecuteOpJMP, NESCPUOpAddressingMode::ABSOLUTE, 3);
+	NESCPU::RegisterOpMapping(NES_OP_JMP_NAME, NES_OP_JMP_INDIRECT, &NESCPU::ExecuteOpJMP, NESCPUOpAddressingMode::INDIRECT, 5);
 
 	// JSR
-	NESCPU::RegisterOpMapping(NES_OP_JSR_ABSOLUTE, &NESCPU::ExecuteOpJSR, NESCPUOpAddressingMode::ABSOLUTE, 6);
+	NESCPU::RegisterOpMapping(NES_OP_JSR_NAME, NES_OP_JSR_ABSOLUTE, &NESCPU::ExecuteOpJSR, NESCPUOpAddressingMode::ABSOLUTE, 6);
 
 	// LDA
-	NESCPU::RegisterOpMapping(NES_OP_LDA_IMMEDIATE, &NESCPU::ExecuteOpLDA, NESCPUOpAddressingMode::IMMEDIATE, 2);
-	NESCPU::RegisterOpMapping(NES_OP_LDA_ABSOLUTE, &NESCPU::ExecuteOpLDA, NESCPUOpAddressingMode::ABSOLUTE, 4);
-	NESCPU::RegisterOpMapping(NES_OP_LDA_ABSOLUTE_X, &NESCPU::ExecuteOpLDA, NESCPUOpAddressingMode::ABSOLUTE_X, 4);
-	NESCPU::RegisterOpMapping(NES_OP_LDA_ABSOLUTE_Y, &NESCPU::ExecuteOpLDA, NESCPUOpAddressingMode::ABSOLUTE_Y, 4);
-	NESCPU::RegisterOpMapping(NES_OP_LDA_ZEROPAGE, &NESCPU::ExecuteOpLDA, NESCPUOpAddressingMode::ZEROPAGE, 3);
-	NESCPU::RegisterOpMapping(NES_OP_LDA_ZEROPAGE_X, &NESCPU::ExecuteOpLDA, NESCPUOpAddressingMode::ZEROPAGE_X, 4);
-	NESCPU::RegisterOpMapping(NES_OP_LDA_INDIRECT_X, &NESCPU::ExecuteOpLDA, NESCPUOpAddressingMode::INDIRECT_X, 6);
-	NESCPU::RegisterOpMapping(NES_OP_LDA_INDIRECT_Y, &NESCPU::ExecuteOpLDA, NESCPUOpAddressingMode::INDIRECT_Y, 5);
+	NESCPU::RegisterOpMapping(NES_OP_LDA_NAME, NES_OP_LDA_IMMEDIATE, &NESCPU::ExecuteOpLDA, NESCPUOpAddressingMode::IMMEDIATE, 2);
+	NESCPU::RegisterOpMapping(NES_OP_LDA_NAME, NES_OP_LDA_ABSOLUTE, &NESCPU::ExecuteOpLDA, NESCPUOpAddressingMode::ABSOLUTE, 4);
+	NESCPU::RegisterOpMapping(NES_OP_LDA_NAME, NES_OP_LDA_ABSOLUTE_X, &NESCPU::ExecuteOpLDA, NESCPUOpAddressingMode::ABSOLUTE_X, 4);
+	NESCPU::RegisterOpMapping(NES_OP_LDA_NAME, NES_OP_LDA_ABSOLUTE_Y, &NESCPU::ExecuteOpLDA, NESCPUOpAddressingMode::ABSOLUTE_Y, 4);
+	NESCPU::RegisterOpMapping(NES_OP_LDA_NAME, NES_OP_LDA_ZEROPAGE, &NESCPU::ExecuteOpLDA, NESCPUOpAddressingMode::ZEROPAGE, 3);
+	NESCPU::RegisterOpMapping(NES_OP_LDA_NAME, NES_OP_LDA_ZEROPAGE_X, &NESCPU::ExecuteOpLDA, NESCPUOpAddressingMode::ZEROPAGE_X, 4);
+	NESCPU::RegisterOpMapping(NES_OP_LDA_NAME, NES_OP_LDA_INDIRECT_X, &NESCPU::ExecuteOpLDA, NESCPUOpAddressingMode::INDIRECT_X, 6);
+	NESCPU::RegisterOpMapping(NES_OP_LDA_NAME, NES_OP_LDA_INDIRECT_Y, &NESCPU::ExecuteOpLDA, NESCPUOpAddressingMode::INDIRECT_Y, 5);
 
 	// LDX
-	NESCPU::RegisterOpMapping(NES_OP_LDX_IMMEDIATE, &NESCPU::ExecuteOpLDX, NESCPUOpAddressingMode::IMMEDIATE, 2);
-	NESCPU::RegisterOpMapping(NES_OP_LDX_ZEROPAGE, &NESCPU::ExecuteOpLDX, NESCPUOpAddressingMode::ZEROPAGE, 3);
-	NESCPU::RegisterOpMapping(NES_OP_LDX_ZEROPAGE_Y, &NESCPU::ExecuteOpLDX, NESCPUOpAddressingMode::ZEROPAGE_Y, 4);
-	NESCPU::RegisterOpMapping(NES_OP_LDX_ABSOLUTE, &NESCPU::ExecuteOpLDX, NESCPUOpAddressingMode::ABSOLUTE, 4);
-	NESCPU::RegisterOpMapping(NES_OP_LDX_ABSOLUTE_Y, &NESCPU::ExecuteOpLDX, NESCPUOpAddressingMode::ABSOLUTE_Y, 4);
+	NESCPU::RegisterOpMapping(NES_OP_LDX_NAME, NES_OP_LDX_IMMEDIATE, &NESCPU::ExecuteOpLDX, NESCPUOpAddressingMode::IMMEDIATE, 2);
+	NESCPU::RegisterOpMapping(NES_OP_LDX_NAME, NES_OP_LDX_ZEROPAGE, &NESCPU::ExecuteOpLDX, NESCPUOpAddressingMode::ZEROPAGE, 3);
+	NESCPU::RegisterOpMapping(NES_OP_LDX_NAME, NES_OP_LDX_ZEROPAGE_Y, &NESCPU::ExecuteOpLDX, NESCPUOpAddressingMode::ZEROPAGE_Y, 4);
+	NESCPU::RegisterOpMapping(NES_OP_LDX_NAME, NES_OP_LDX_ABSOLUTE, &NESCPU::ExecuteOpLDX, NESCPUOpAddressingMode::ABSOLUTE, 4);
+	NESCPU::RegisterOpMapping(NES_OP_LDX_NAME, NES_OP_LDX_ABSOLUTE_Y, &NESCPU::ExecuteOpLDX, NESCPUOpAddressingMode::ABSOLUTE_Y, 4);
 
 	// LDY
-	NESCPU::RegisterOpMapping(NES_OP_LDY_IMMEDIATE, &NESCPU::ExecuteOpLDY, NESCPUOpAddressingMode::IMMEDIATE, 2);
-	NESCPU::RegisterOpMapping(NES_OP_LDY_ZEROPAGE, &NESCPU::ExecuteOpLDY, NESCPUOpAddressingMode::ZEROPAGE, 3);
-	NESCPU::RegisterOpMapping(NES_OP_LDY_ZEROPAGE_X, &NESCPU::ExecuteOpLDY, NESCPUOpAddressingMode::ZEROPAGE_X, 4);
-	NESCPU::RegisterOpMapping(NES_OP_LDY_ABSOLUTE, &NESCPU::ExecuteOpLDY, NESCPUOpAddressingMode::ABSOLUTE, 4);
-	NESCPU::RegisterOpMapping(NES_OP_LDY_ABSOLUTE_X, &NESCPU::ExecuteOpLDY, NESCPUOpAddressingMode::ABSOLUTE_X, 4);
+	NESCPU::RegisterOpMapping(NES_OP_LDY_NAME, NES_OP_LDY_IMMEDIATE, &NESCPU::ExecuteOpLDY, NESCPUOpAddressingMode::IMMEDIATE, 2);
+	NESCPU::RegisterOpMapping(NES_OP_LDY_NAME, NES_OP_LDY_ZEROPAGE, &NESCPU::ExecuteOpLDY, NESCPUOpAddressingMode::ZEROPAGE, 3);
+	NESCPU::RegisterOpMapping(NES_OP_LDY_NAME, NES_OP_LDY_ZEROPAGE_X, &NESCPU::ExecuteOpLDY, NESCPUOpAddressingMode::ZEROPAGE_X, 4);
+	NESCPU::RegisterOpMapping(NES_OP_LDY_NAME, NES_OP_LDY_ABSOLUTE, &NESCPU::ExecuteOpLDY, NESCPUOpAddressingMode::ABSOLUTE, 4);
+	NESCPU::RegisterOpMapping(NES_OP_LDY_NAME, NES_OP_LDY_ABSOLUTE_X, &NESCPU::ExecuteOpLDY, NESCPUOpAddressingMode::ABSOLUTE_X, 4);
 
 	// LSR
-	NESCPU::RegisterOpMapping(NES_OP_LSR_ACCUMULATOR, &NESCPU::ExecuteOpLSR, NESCPUOpAddressingMode::ACCUMULATOR, 2);
-	NESCPU::RegisterOpMapping(NES_OP_LSR_ZEROPAGE, &NESCPU::ExecuteOpLSR, NESCPUOpAddressingMode::ZEROPAGE, 5);
-	NESCPU::RegisterOpMapping(NES_OP_LSR_ZEROPAGE_X, &NESCPU::ExecuteOpLSR, NESCPUOpAddressingMode::ZEROPAGE_X, 6);
-	NESCPU::RegisterOpMapping(NES_OP_LSR_ABSOLUTE, &NESCPU::ExecuteOpLSR, NESCPUOpAddressingMode::ABSOLUTE, 6);
-	NESCPU::RegisterOpMapping(NES_OP_LSR_ABSOLUTE_X, &NESCPU::ExecuteOpLSR, NESCPUOpAddressingMode::ABSOLUTE_X, 7);
+	NESCPU::RegisterOpMapping(NES_OP_LSR_NAME, NES_OP_LSR_ACCUMULATOR, &NESCPU::ExecuteOpLSR, NESCPUOpAddressingMode::ACCUMULATOR, 2);
+	NESCPU::RegisterOpMapping(NES_OP_LSR_NAME, NES_OP_LSR_ZEROPAGE, &NESCPU::ExecuteOpLSR, NESCPUOpAddressingMode::ZEROPAGE, 5);
+	NESCPU::RegisterOpMapping(NES_OP_LSR_NAME, NES_OP_LSR_ZEROPAGE_X, &NESCPU::ExecuteOpLSR, NESCPUOpAddressingMode::ZEROPAGE_X, 6);
+	NESCPU::RegisterOpMapping(NES_OP_LSR_NAME, NES_OP_LSR_ABSOLUTE, &NESCPU::ExecuteOpLSR, NESCPUOpAddressingMode::ABSOLUTE, 6);
+	NESCPU::RegisterOpMapping(NES_OP_LSR_NAME, NES_OP_LSR_ABSOLUTE_X, &NESCPU::ExecuteOpLSR, NESCPUOpAddressingMode::ABSOLUTE_X, 7);
 
 	// NOP
-	NESCPU::RegisterOpMapping(NES_OP_NOP_IMPLIED, &NESCPU::ExecuteOpNOP, NESCPUOpAddressingMode::IMPLIED, 2);
+	NESCPU::RegisterOpMapping(NES_OP_NOP_NAME, NES_OP_NOP_IMPLIED, &NESCPU::ExecuteOpNOP, NESCPUOpAddressingMode::IMPLIED, 2);
 
 	// ORA
-	NESCPU::RegisterOpMapping(NES_OP_ORA_IMMEDIATE, &NESCPU::ExecuteOpORA, NESCPUOpAddressingMode::IMMEDIATE, 2);
-	NESCPU::RegisterOpMapping(NES_OP_ORA_ABSOLUTE, &NESCPU::ExecuteOpORA, NESCPUOpAddressingMode::ABSOLUTE, 4);
-	NESCPU::RegisterOpMapping(NES_OP_ORA_ABSOLUTE_X, &NESCPU::ExecuteOpORA, NESCPUOpAddressingMode::ABSOLUTE_X, 4);
-	NESCPU::RegisterOpMapping(NES_OP_ORA_ABSOLUTE_Y, &NESCPU::ExecuteOpORA, NESCPUOpAddressingMode::ABSOLUTE_Y, 4);
-	NESCPU::RegisterOpMapping(NES_OP_ORA_ZEROPAGE, &NESCPU::ExecuteOpORA, NESCPUOpAddressingMode::ZEROPAGE, 3);
-	NESCPU::RegisterOpMapping(NES_OP_ORA_ZEROPAGE_X, &NESCPU::ExecuteOpORA, NESCPUOpAddressingMode::ZEROPAGE_X, 4);
-	NESCPU::RegisterOpMapping(NES_OP_ORA_INDIRECT_X, &NESCPU::ExecuteOpORA, NESCPUOpAddressingMode::INDIRECT_X, 6);
-	NESCPU::RegisterOpMapping(NES_OP_ORA_INDIRECT_Y, &NESCPU::ExecuteOpORA, NESCPUOpAddressingMode::INDIRECT_Y, 5);
+	NESCPU::RegisterOpMapping(NES_OP_ORA_NAME, NES_OP_ORA_IMMEDIATE, &NESCPU::ExecuteOpORA, NESCPUOpAddressingMode::IMMEDIATE, 2);
+	NESCPU::RegisterOpMapping(NES_OP_ORA_NAME, NES_OP_ORA_ABSOLUTE, &NESCPU::ExecuteOpORA, NESCPUOpAddressingMode::ABSOLUTE, 4);
+	NESCPU::RegisterOpMapping(NES_OP_ORA_NAME, NES_OP_ORA_ABSOLUTE_X, &NESCPU::ExecuteOpORA, NESCPUOpAddressingMode::ABSOLUTE_X, 4);
+	NESCPU::RegisterOpMapping(NES_OP_ORA_NAME, NES_OP_ORA_ABSOLUTE_Y, &NESCPU::ExecuteOpORA, NESCPUOpAddressingMode::ABSOLUTE_Y, 4);
+	NESCPU::RegisterOpMapping(NES_OP_ORA_NAME, NES_OP_ORA_ZEROPAGE, &NESCPU::ExecuteOpORA, NESCPUOpAddressingMode::ZEROPAGE, 3);
+	NESCPU::RegisterOpMapping(NES_OP_ORA_NAME, NES_OP_ORA_ZEROPAGE_X, &NESCPU::ExecuteOpORA, NESCPUOpAddressingMode::ZEROPAGE_X, 4);
+	NESCPU::RegisterOpMapping(NES_OP_ORA_NAME, NES_OP_ORA_INDIRECT_X, &NESCPU::ExecuteOpORA, NESCPUOpAddressingMode::INDIRECT_X, 6);
+	NESCPU::RegisterOpMapping(NES_OP_ORA_NAME, NES_OP_ORA_INDIRECT_Y, &NESCPU::ExecuteOpORA, NESCPUOpAddressingMode::INDIRECT_Y, 5);
 
 	// PHA
-	NESCPU::RegisterOpMapping(NES_OP_PHA_IMPLIED, &NESCPU::ExecuteOpPHA, NESCPUOpAddressingMode::IMPLIED, 3);
+	NESCPU::RegisterOpMapping(NES_OP_PHA_NAME, NES_OP_PHA_IMPLIED, &NESCPU::ExecuteOpPHA, NESCPUOpAddressingMode::IMPLIED, 3);
 
 	// PHP
-	NESCPU::RegisterOpMapping(NES_OP_PHP_IMPLIED, &NESCPU::ExecuteOpPHP, NESCPUOpAddressingMode::IMPLIED, 3);
+	NESCPU::RegisterOpMapping(NES_OP_PHP_NAME, NES_OP_PHP_IMPLIED, &NESCPU::ExecuteOpPHP, NESCPUOpAddressingMode::IMPLIED, 3);
 
 	// PLA
-	NESCPU::RegisterOpMapping(NES_OP_PLA_IMPLIED, &NESCPU::ExecuteOpPLA, NESCPUOpAddressingMode::IMPLIED, 4);
+	NESCPU::RegisterOpMapping(NES_OP_PLA_NAME, NES_OP_PLA_IMPLIED, &NESCPU::ExecuteOpPLA, NESCPUOpAddressingMode::IMPLIED, 4);
 
 	// PLP
-	NESCPU::RegisterOpMapping(NES_OP_PLP_IMPLIED, &NESCPU::ExecuteOpPLP, NESCPUOpAddressingMode::IMPLIED, 4);
+	NESCPU::RegisterOpMapping(NES_OP_PLP_NAME, NES_OP_PLP_IMPLIED, &NESCPU::ExecuteOpPLP, NESCPUOpAddressingMode::IMPLIED, 4);
 
 	// ROL
-	NESCPU::RegisterOpMapping(NES_OP_ROL_ACCUMULATOR, &NESCPU::ExecuteOpROL, NESCPUOpAddressingMode::ACCUMULATOR, 2);
-	NESCPU::RegisterOpMapping(NES_OP_ROL_ZEROPAGE, &NESCPU::ExecuteOpROL, NESCPUOpAddressingMode::ZEROPAGE, 5);
-	NESCPU::RegisterOpMapping(NES_OP_ROL_ZEROPAGE_X, &NESCPU::ExecuteOpROL, NESCPUOpAddressingMode::ZEROPAGE_X, 6);
-	NESCPU::RegisterOpMapping(NES_OP_ROL_ABSOLUTE, &NESCPU::ExecuteOpROL, NESCPUOpAddressingMode::ABSOLUTE, 6);
-	NESCPU::RegisterOpMapping(NES_OP_ROL_ABSOLUTE_X, &NESCPU::ExecuteOpROL, NESCPUOpAddressingMode::ABSOLUTE_X, 7);
+	NESCPU::RegisterOpMapping(NES_OP_ROL_NAME, NES_OP_ROL_ACCUMULATOR, &NESCPU::ExecuteOpROL, NESCPUOpAddressingMode::ACCUMULATOR, 2);
+	NESCPU::RegisterOpMapping(NES_OP_ROL_NAME, NES_OP_ROL_ZEROPAGE, &NESCPU::ExecuteOpROL, NESCPUOpAddressingMode::ZEROPAGE, 5);
+	NESCPU::RegisterOpMapping(NES_OP_ROL_NAME, NES_OP_ROL_ZEROPAGE_X, &NESCPU::ExecuteOpROL, NESCPUOpAddressingMode::ZEROPAGE_X, 6);
+	NESCPU::RegisterOpMapping(NES_OP_ROL_NAME, NES_OP_ROL_ABSOLUTE, &NESCPU::ExecuteOpROL, NESCPUOpAddressingMode::ABSOLUTE, 6);
+	NESCPU::RegisterOpMapping(NES_OP_ROL_NAME, NES_OP_ROL_ABSOLUTE_X, &NESCPU::ExecuteOpROL, NESCPUOpAddressingMode::ABSOLUTE_X, 7);
 
 	// ROR
-	NESCPU::RegisterOpMapping(NES_OP_ROR_ACCUMULATOR, &NESCPU::ExecuteOpROR, NESCPUOpAddressingMode::ACCUMULATOR, 2);
-	NESCPU::RegisterOpMapping(NES_OP_ROR_ZEROPAGE, &NESCPU::ExecuteOpROR, NESCPUOpAddressingMode::ZEROPAGE, 5);
-	NESCPU::RegisterOpMapping(NES_OP_ROR_ZEROPAGE_X, &NESCPU::ExecuteOpROR, NESCPUOpAddressingMode::ZEROPAGE_X, 6);
-	NESCPU::RegisterOpMapping(NES_OP_ROR_ABSOLUTE, &NESCPU::ExecuteOpROR, NESCPUOpAddressingMode::ABSOLUTE, 6);
-	NESCPU::RegisterOpMapping(NES_OP_ROR_ABSOLUTE_X, &NESCPU::ExecuteOpROR, NESCPUOpAddressingMode::ABSOLUTE_X, 7);
+	NESCPU::RegisterOpMapping(NES_OP_ROR_NAME, NES_OP_ROR_ACCUMULATOR, &NESCPU::ExecuteOpROR, NESCPUOpAddressingMode::ACCUMULATOR, 2);
+	NESCPU::RegisterOpMapping(NES_OP_ROR_NAME, NES_OP_ROR_ZEROPAGE, &NESCPU::ExecuteOpROR, NESCPUOpAddressingMode::ZEROPAGE, 5);
+	NESCPU::RegisterOpMapping(NES_OP_ROR_NAME, NES_OP_ROR_ZEROPAGE_X, &NESCPU::ExecuteOpROR, NESCPUOpAddressingMode::ZEROPAGE_X, 6);
+	NESCPU::RegisterOpMapping(NES_OP_ROR_NAME, NES_OP_ROR_ABSOLUTE, &NESCPU::ExecuteOpROR, NESCPUOpAddressingMode::ABSOLUTE, 6);
+	NESCPU::RegisterOpMapping(NES_OP_ROR_NAME, NES_OP_ROR_ABSOLUTE_X, &NESCPU::ExecuteOpROR, NESCPUOpAddressingMode::ABSOLUTE_X, 7);
 
 	// RTI
-	NESCPU::RegisterOpMapping(NES_OP_RTI_IMPLIED, &NESCPU::ExecuteOpRTI, NESCPUOpAddressingMode::IMPLIED, 6);
+	NESCPU::RegisterOpMapping(NES_OP_RTI_NAME, NES_OP_RTI_IMPLIED, &NESCPU::ExecuteOpRTI, NESCPUOpAddressingMode::IMPLIED, 6);
 
 	// RTS
-	NESCPU::RegisterOpMapping(NES_OP_RTS_IMPLIED, &NESCPU::ExecuteOpRTS, NESCPUOpAddressingMode::IMPLIED, 6);
+	NESCPU::RegisterOpMapping(NES_OP_RTS_NAME, NES_OP_RTS_IMPLIED, &NESCPU::ExecuteOpRTS, NESCPUOpAddressingMode::IMPLIED, 6);
 
 	// SBC
-	NESCPU::RegisterOpMapping(NES_OP_SBC_IMMEDIATE, &NESCPU::ExecuteOpSBC, NESCPUOpAddressingMode::IMMEDIATE, 2);
-	NESCPU::RegisterOpMapping(NES_OP_SBC_ABSOLUTE, &NESCPU::ExecuteOpSBC, NESCPUOpAddressingMode::ABSOLUTE, 4);
-	NESCPU::RegisterOpMapping(NES_OP_SBC_ABSOLUTE_X, &NESCPU::ExecuteOpSBC, NESCPUOpAddressingMode::ABSOLUTE_X, 4);
-	NESCPU::RegisterOpMapping(NES_OP_SBC_ABSOLUTE_Y, &NESCPU::ExecuteOpSBC, NESCPUOpAddressingMode::ABSOLUTE_Y, 4);
-	NESCPU::RegisterOpMapping(NES_OP_SBC_ZEROPAGE, &NESCPU::ExecuteOpSBC, NESCPUOpAddressingMode::ZEROPAGE, 3);
-	NESCPU::RegisterOpMapping(NES_OP_SBC_ZEROPAGE_X, &NESCPU::ExecuteOpSBC, NESCPUOpAddressingMode::ZEROPAGE_X, 4);
-	NESCPU::RegisterOpMapping(NES_OP_SBC_INDIRECT_X, &NESCPU::ExecuteOpSBC, NESCPUOpAddressingMode::INDIRECT_X, 6);
-	NESCPU::RegisterOpMapping(NES_OP_SBC_INDIRECT_Y, &NESCPU::ExecuteOpSBC, NESCPUOpAddressingMode::INDIRECT_Y, 5);
+	NESCPU::RegisterOpMapping(NES_OP_SBC_NAME, NES_OP_SBC_IMMEDIATE, &NESCPU::ExecuteOpSBC, NESCPUOpAddressingMode::IMMEDIATE, 2);
+	NESCPU::RegisterOpMapping(NES_OP_SBC_NAME, NES_OP_SBC_ABSOLUTE, &NESCPU::ExecuteOpSBC, NESCPUOpAddressingMode::ABSOLUTE, 4);
+	NESCPU::RegisterOpMapping(NES_OP_SBC_NAME, NES_OP_SBC_ABSOLUTE_X, &NESCPU::ExecuteOpSBC, NESCPUOpAddressingMode::ABSOLUTE_X, 4);
+	NESCPU::RegisterOpMapping(NES_OP_SBC_NAME, NES_OP_SBC_ABSOLUTE_Y, &NESCPU::ExecuteOpSBC, NESCPUOpAddressingMode::ABSOLUTE_Y, 4);
+	NESCPU::RegisterOpMapping(NES_OP_SBC_NAME, NES_OP_SBC_ZEROPAGE, &NESCPU::ExecuteOpSBC, NESCPUOpAddressingMode::ZEROPAGE, 3);
+	NESCPU::RegisterOpMapping(NES_OP_SBC_NAME, NES_OP_SBC_ZEROPAGE_X, &NESCPU::ExecuteOpSBC, NESCPUOpAddressingMode::ZEROPAGE_X, 4);
+	NESCPU::RegisterOpMapping(NES_OP_SBC_NAME, NES_OP_SBC_INDIRECT_X, &NESCPU::ExecuteOpSBC, NESCPUOpAddressingMode::INDIRECT_X, 6);
+	NESCPU::RegisterOpMapping(NES_OP_SBC_NAME, NES_OP_SBC_INDIRECT_Y, &NESCPU::ExecuteOpSBC, NESCPUOpAddressingMode::INDIRECT_Y, 5);
 
 	// SEC
-	NESCPU::RegisterOpMapping(NES_OP_SEC_IMPLIED, &NESCPU::ExecuteOpSEC, NESCPUOpAddressingMode::IMPLIED, 2);
+	NESCPU::RegisterOpMapping(NES_OP_SEC_NAME, NES_OP_SEC_IMPLIED, &NESCPU::ExecuteOpSEC, NESCPUOpAddressingMode::IMPLIED, 2);
 
 	// SED
-	NESCPU::RegisterOpMapping(NES_OP_SED_IMPLIED, &NESCPU::ExecuteOpSED, NESCPUOpAddressingMode::IMPLIED, 2);
+	NESCPU::RegisterOpMapping(NES_OP_SED_NAME, NES_OP_SED_IMPLIED, &NESCPU::ExecuteOpSED, NESCPUOpAddressingMode::IMPLIED, 2);
 
 	// SEI
-	NESCPU::RegisterOpMapping(NES_OP_SEI_IMPLIED, &NESCPU::ExecuteOpSEI, NESCPUOpAddressingMode::IMPLIED, 2);
+	NESCPU::RegisterOpMapping(NES_OP_SEI_NAME, NES_OP_SEI_IMPLIED, &NESCPU::ExecuteOpSEI, NESCPUOpAddressingMode::IMPLIED, 2);
 
 	// STA
-	NESCPU::RegisterOpMapping(NES_OP_STA_ABSOLUTE, &NESCPU::ExecuteOpSTA, NESCPUOpAddressingMode::ABSOLUTE, 4);
-	NESCPU::RegisterOpMapping(NES_OP_STA_ABSOLUTE_X, &NESCPU::ExecuteOpSTA, NESCPUOpAddressingMode::ABSOLUTE_X, 5);
-	NESCPU::RegisterOpMapping(NES_OP_STA_ABSOLUTE_Y, &NESCPU::ExecuteOpSTA, NESCPUOpAddressingMode::ABSOLUTE_Y, 5);
-	NESCPU::RegisterOpMapping(NES_OP_STA_ZEROPAGE, &NESCPU::ExecuteOpSTA, NESCPUOpAddressingMode::ZEROPAGE, 3);
-	NESCPU::RegisterOpMapping(NES_OP_STA_ZEROPAGE_X, &NESCPU::ExecuteOpSTA, NESCPUOpAddressingMode::ZEROPAGE_X, 4);
-	NESCPU::RegisterOpMapping(NES_OP_STA_INDIRECT_X, &NESCPU::ExecuteOpSTA, NESCPUOpAddressingMode::INDIRECT_X, 6);
-	NESCPU::RegisterOpMapping(NES_OP_STA_INDIRECT_Y, &NESCPU::ExecuteOpSTA, NESCPUOpAddressingMode::INDIRECT_Y, 6);
+	NESCPU::RegisterOpMapping(NES_OP_STA_NAME, NES_OP_STA_ABSOLUTE, &NESCPU::ExecuteOpSTA, NESCPUOpAddressingMode::ABSOLUTE, 4);
+	NESCPU::RegisterOpMapping(NES_OP_STA_NAME, NES_OP_STA_ABSOLUTE_X, &NESCPU::ExecuteOpSTA, NESCPUOpAddressingMode::ABSOLUTE_X, 5);
+	NESCPU::RegisterOpMapping(NES_OP_STA_NAME, NES_OP_STA_ABSOLUTE_Y, &NESCPU::ExecuteOpSTA, NESCPUOpAddressingMode::ABSOLUTE_Y, 5);
+	NESCPU::RegisterOpMapping(NES_OP_STA_NAME, NES_OP_STA_ZEROPAGE, &NESCPU::ExecuteOpSTA, NESCPUOpAddressingMode::ZEROPAGE, 3);
+	NESCPU::RegisterOpMapping(NES_OP_STA_NAME, NES_OP_STA_ZEROPAGE_X, &NESCPU::ExecuteOpSTA, NESCPUOpAddressingMode::ZEROPAGE_X, 4);
+	NESCPU::RegisterOpMapping(NES_OP_STA_NAME, NES_OP_STA_INDIRECT_X, &NESCPU::ExecuteOpSTA, NESCPUOpAddressingMode::INDIRECT_X, 6);
+	NESCPU::RegisterOpMapping(NES_OP_STA_NAME, NES_OP_STA_INDIRECT_Y, &NESCPU::ExecuteOpSTA, NESCPUOpAddressingMode::INDIRECT_Y, 6);
 
 	// STX
-	NESCPU::RegisterOpMapping(NES_OP_STX_ZEROPAGE, &NESCPU::ExecuteOpSTX, NESCPUOpAddressingMode::ZEROPAGE, 3);
-	NESCPU::RegisterOpMapping(NES_OP_STX_ZEROPAGE_Y, &NESCPU::ExecuteOpSTX, NESCPUOpAddressingMode::ZEROPAGE_Y, 4);
-	NESCPU::RegisterOpMapping(NES_OP_STX_ABSOLUTE, &NESCPU::ExecuteOpSTX, NESCPUOpAddressingMode::ABSOLUTE, 4);
+	NESCPU::RegisterOpMapping(NES_OP_STX_NAME, NES_OP_STX_ZEROPAGE, &NESCPU::ExecuteOpSTX, NESCPUOpAddressingMode::ZEROPAGE, 3);
+	NESCPU::RegisterOpMapping(NES_OP_STX_NAME, NES_OP_STX_ZEROPAGE_Y, &NESCPU::ExecuteOpSTX, NESCPUOpAddressingMode::ZEROPAGE_Y, 4);
+	NESCPU::RegisterOpMapping(NES_OP_STX_NAME, NES_OP_STX_ABSOLUTE, &NESCPU::ExecuteOpSTX, NESCPUOpAddressingMode::ABSOLUTE, 4);
 
 	// STY
-	NESCPU::RegisterOpMapping(NES_OP_STY_ZEROPAGE, &NESCPU::ExecuteOpSTY, NESCPUOpAddressingMode::ZEROPAGE, 3);
-	NESCPU::RegisterOpMapping(NES_OP_STY_ZEROPAGE_X, &NESCPU::ExecuteOpSTY, NESCPUOpAddressingMode::ZEROPAGE_X, 4);
-	NESCPU::RegisterOpMapping(NES_OP_STY_ABSOLUTE, &NESCPU::ExecuteOpSTY, NESCPUOpAddressingMode::ABSOLUTE, 4);
+	NESCPU::RegisterOpMapping(NES_OP_STY_NAME, NES_OP_STY_ZEROPAGE, &NESCPU::ExecuteOpSTY, NESCPUOpAddressingMode::ZEROPAGE, 3);
+	NESCPU::RegisterOpMapping(NES_OP_STY_NAME, NES_OP_STY_ZEROPAGE_X, &NESCPU::ExecuteOpSTY, NESCPUOpAddressingMode::ZEROPAGE_X, 4);
+	NESCPU::RegisterOpMapping(NES_OP_STY_NAME, NES_OP_STY_ABSOLUTE, &NESCPU::ExecuteOpSTY, NESCPUOpAddressingMode::ABSOLUTE, 4);
 
 	// TAX
-	NESCPU::RegisterOpMapping(NES_OP_TAX_IMPLIED, &NESCPU::ExecuteOpTAX, NESCPUOpAddressingMode::IMPLIED, 2);
+	NESCPU::RegisterOpMapping(NES_OP_TAX_NAME, NES_OP_TAX_IMPLIED, &NESCPU::ExecuteOpTAX, NESCPUOpAddressingMode::IMPLIED, 2);
 
 	// TAY
-	NESCPU::RegisterOpMapping(NES_OP_TAY_IMPLIED, &NESCPU::ExecuteOpTAY, NESCPUOpAddressingMode::IMPLIED, 2);
+	NESCPU::RegisterOpMapping(NES_OP_TAY_NAME, NES_OP_TAY_IMPLIED, &NESCPU::ExecuteOpTAY, NESCPUOpAddressingMode::IMPLIED, 2);
 
 	// TSX
-	NESCPU::RegisterOpMapping(NES_OP_TSX_IMPLIED, &NESCPU::ExecuteOpTSX, NESCPUOpAddressingMode::IMPLIED, 2);
+	NESCPU::RegisterOpMapping(NES_OP_TSX_NAME, NES_OP_TSX_IMPLIED, &NESCPU::ExecuteOpTSX, NESCPUOpAddressingMode::IMPLIED, 2);
 
 	// TXA
-	NESCPU::RegisterOpMapping(NES_OP_TXA_IMPLIED, &NESCPU::ExecuteOpTXA, NESCPUOpAddressingMode::IMPLIED, 2);
+	NESCPU::RegisterOpMapping(NES_OP_TXA_NAME, NES_OP_TXA_IMPLIED, &NESCPU::ExecuteOpTXA, NESCPUOpAddressingMode::IMPLIED, 2);
 
 	// TXS
-	NESCPU::RegisterOpMapping(NES_OP_TXS_IMPLIED, &NESCPU::ExecuteOpTXS, NESCPUOpAddressingMode::IMPLIED, 2);
+	NESCPU::RegisterOpMapping(NES_OP_TXS_NAME, NES_OP_TXS_IMPLIED, &NESCPU::ExecuteOpTXS, NESCPUOpAddressingMode::IMPLIED, 2);
 
 	// TYA
-	NESCPU::RegisterOpMapping(NES_OP_TYA_IMPLIED, &NESCPU::ExecuteOpTYA, NESCPUOpAddressingMode::IMPLIED, 2);
+	NESCPU::RegisterOpMapping(NES_OP_TYA_NAME, NES_OP_TYA_IMPLIED, &NESCPU::ExecuteOpTYA, NESCPUOpAddressingMode::IMPLIED, 2);
 }
 
-
-// Defines variables argVal and crossedPageBoundary.
-// @NOTE: Safe to end with a semi-colon after using this macro.
-#define OP_READ_ARG() \
-		const auto valPair = ReadOpArgValue(); \
-		const u8& argVal = valPair.first; \
-		const bool crossedPageBoundary = valPair.second; \
-
-
 NESCPU::NESCPU(NESCPUMemoryMapper& mem) :
-mem_(mem)
+mem_(mem),
+intReset_(true),
+intNmi_(false),
+intIrq_(false)
 {
-	Initialize();
 }
 
 
 NESCPU::~NESCPU()
 {
-}
-
-
-void NESCPU::Initialize()
-{
-	// Reset current op status.
-	currentOp_.op = NES_OP_INVALID;
-	currentOp_.opCycleCount = 0;
-	currentOp_.opChangedPC = false;
-
-	reg_ = {}; // Zero the registers.
-	reg_.P = 0x20; // Unused status register D (Decimal Mode) bit should always be 1.
-	reg_.PC = 0xC000; // Start on the upper PRG-ROM bank.
-	reg_.SP = 0xFF; // Set stack pointer to the top of the stack.
-
-	intReset_ = true; // Trigger a reset when we first run.
-	intNmi_ = intIrq_ = false;
 }
 
 
@@ -449,6 +425,70 @@ void NESCPU::Run(unsigned int numCycles)
 }
 
 
+std::string NESCPU::OpAsAsm(const std::string& opName, NESCPUOpAddressingMode addrMode, u16 val)
+{
+	std::ostringstream oss;
+	oss << opName << " ";
+
+	switch (addrMode)
+	{
+	case NESCPUOpAddressingMode::IMPLIED:
+		break; // No operand in implied instructions.
+
+	case NESCPUOpAddressingMode::ACCUMULATOR:
+		oss << "A";
+		break;
+
+	case NESCPUOpAddressingMode::IMMEDIATE:
+		oss << "#$" << std::hex << val;
+		break;
+
+	case NESCPUOpAddressingMode::ZEROPAGE:
+		oss << "$" << std::hex << val;
+		break;
+
+	case NESCPUOpAddressingMode::ZEROPAGE_X:
+		oss << "$" << std::hex << val << ",X";
+		break;
+
+	case NESCPUOpAddressingMode::ZEROPAGE_Y:
+		oss << "$" << std::hex << val << ",Y";
+		break;
+
+	case NESCPUOpAddressingMode::RELATIVE:
+	case NESCPUOpAddressingMode::ABSOLUTE:
+		oss << "$" << std::hex << val;
+		break;
+
+	case NESCPUOpAddressingMode::ABSOLUTE_X:
+		oss << "$" << std::hex << val << ",X";
+		break;
+
+	case NESCPUOpAddressingMode::ABSOLUTE_Y:
+		oss << "$" << std::hex << val << ",Y";
+		break;
+
+	case NESCPUOpAddressingMode::INDIRECT:
+		oss << "($" << std::hex << val << ")";
+		break;
+
+	case NESCPUOpAddressingMode::INDIRECT_X:
+		oss << "($" << std::hex << val << ",X)";
+		break;
+
+	case NESCPUOpAddressingMode::INDIRECT_Y:
+		oss << "($" << std::hex << val << "),Y";
+		break;
+
+	default:
+		oss << "[???]";
+		break;
+	}
+
+	return oss.str();
+}
+
+
 NESCPUOpAddressingMode NESCPU::GetOpAddressingMode(u8 op)
 {
 	const auto it = opInfos_.find(op);
@@ -484,17 +524,18 @@ u16 NESCPU::GetOpSizeFromAddressingMode(NESCPUOpAddressingMode addrMode)
 	case NESCPUOpAddressingMode::ABSOLUTE_Y:
 	case NESCPUOpAddressingMode::INDIRECT:
 		return 3;
-	}
 
 	// Unknown addressing mode.
-	assert("Unknown addressing mode supplied!" && false);
-	return 0;
+	default:
+		assert("Unknown addressing mode supplied!" && false);
+		return 0;
+	}
 }
 
 
 NESCPUInterruptType NESCPU::HandleInterrupts()
 {
-	NESCPUInterruptType handledInt = NESCPUInterruptType::NONE;
+	auto handledInt = NESCPUInterruptType::NONE;
 
 	// Handle interrupts while accounting for priority.
 	// Only IRQ's check for the interrupt disable flag (I).
@@ -527,7 +568,7 @@ NESCPUInterruptType NESCPU::HandleInterrupts()
 		if (handledInt != NESCPUInterruptType::RESET)
 		{
 			StackPush16(reg_.PC + 1);
-			StackPush8(reg_.P); // Make sure unused 5 is set in the copy we push.
+			StackPush8(reg_.P);
 		}
 
 		// Make sure the interrupt disable flag is set if we interrupted.
@@ -540,11 +581,10 @@ NESCPUInterruptType NESCPU::HandleInterrupts()
 
 void NESCPU::ExecuteNextOp()
 {
-	// Get the next opcode.
 	try
 	{
-		currentOp_.op = mem_.Read8(reg_.PC);
-		std::cout << "op " << std::hex << +currentOp_.op << ", pc: " << std::hex << reg_.PC << std::endl; // @TODO Debug!
+		// Get the next opcode.
+		currentOp_ = NESCPUExecutingOpInfo(mem_.Read8(reg_.PC));
 	}
 	catch (const NESMemoryException&)
 	{
@@ -560,10 +600,26 @@ void NESCPU::ExecuteNextOp()
 		throw NESCPUExecutionException(oss.str(), reg_);
 	}
 
-	currentOp_.opMappingIt = it;
+	auto argInfo = ReadOpArgInfo(it->second.addrMode);
 	currentOp_.opCycleCount = it->second.cycleCount;
 	currentOp_.opChangedPC = false;
-	(this->*it->second.opFunc)(); // Execute opcode func.
+
+	// Execute opcode func.
+	u16 val;
+	if (argInfo.addrMode == NESCPUOpAddressingMode::IMMEDIATE)
+		val = mem_.Read8(argInfo.argAddr);
+	else if (argInfo.addrMode == NESCPUOpAddressingMode::ACCUMULATOR)
+		val = 0;
+	else
+		val = argInfo.argAddr;
+
+	std::cout << "SP: $" << std::hex << +reg_.SP << ",  " << OpAsAsm(it->second.opName, it->second.addrMode, val) << std::endl;
+	std::cout << "stack: ";
+	for (auto i = 0xFF; i >= 0 && i > reg_.SP; --i)
+		std::cout << std::hex << +mem_.Read8(NES_CPU_STACK_START + i) << ", ";
+	std::cout << std::endl;
+
+	(this->*it->second.opFunc)(argInfo);
 
 	// Go to the next instruction.
 	if (!currentOp_.opChangedPC)
@@ -571,81 +627,82 @@ void NESCPU::ExecuteNextOp()
 }
 
 
-std::pair<u8, bool> NESCPU::ReadOpArgValue()
+NESCPUOpArgInfo NESCPU::ReadOpArgInfo(NESCPUOpAddressingMode addrMode)
 {
-	u16 addr;
-	bool crossedPageBoundary;
+	NESCPUOpArgInfo argInfo(addrMode);
 
-	switch (currentOp_.opMappingIt->second.addrMode)
+	switch (argInfo.addrMode)
 	{
-	case NESCPUOpAddressingMode::ACCUMULATOR:
-		return std::make_pair(reg_.A, false); // Read from accumulator instead.
+	case NESCPUOpAddressingMode::ACCUMULATOR: // Instruction will need to read the register.
+	case NESCPUOpAddressingMode::IMPLIED: // No operand.
+		break;
 
 	case NESCPUOpAddressingMode::IMMEDIATE:
+		argInfo.argAddr = reg_.PC + 1;
+		break;
+
 	case NESCPUOpAddressingMode::RELATIVE:
-		crossedPageBoundary = false;
-		addr = reg_.PC + 1;
+		// We add an extra 2 to the PC to cover the size of the rest of the instruction.
+		// The offset is signed.
+		argInfo.argAddr = reg_.PC + 2 + static_cast<s8>(mem_.Read8(reg_.PC + 1));
+		break;
+
+	case NESCPUOpAddressingMode::INDIRECT: // @TODO: Handle indirect addressing bug.
+		argInfo.argAddr = NESHelper::MemoryRead16(mem_, reg_.PC + 1);
+		break;
+
+	case NESCPUOpAddressingMode::INDIRECT_X: // @TODO: Handle indirect addressing bug.
+		argInfo.argAddr = NESHelper::MemoryRead16(mem_, (mem_.Read8(reg_.PC + 1) + reg_.X) & 0xFF);
+		break;
+
+	case NESCPUOpAddressingMode::INDIRECT_Y: // @TODO: Handle indirect addressing bug.
+		argInfo.argAddr = NESHelper::MemoryRead16(mem_, mem_.Read8(reg_.PC + 1));
+		argInfo.crossedPage = !NESHelper::IsInSamePage(argInfo.argAddr, argInfo.argAddr + reg_.Y);
+		argInfo.argAddr += reg_.Y;
 		break;
 
 	case NESCPUOpAddressingMode::ABSOLUTE:
-	case NESCPUOpAddressingMode::INDIRECT:
-		crossedPageBoundary = false;
-		addr = NESHelper::MemoryRead16(mem_, reg_.PC + 1);
+		argInfo.argAddr = NESHelper::MemoryRead16(mem_, reg_.PC + 1);
 		break;
 
 	case NESCPUOpAddressingMode::ABSOLUTE_X:
-		addr = NESHelper::MemoryRead16(mem_, reg_.PC + 1);
-		crossedPageBoundary = !NESHelper::IsInSamePage(addr, addr + reg_.X);
-		addr += reg_.X;
+		argInfo.argAddr = NESHelper::MemoryRead16(mem_, reg_.PC + 1);
+		argInfo.crossedPage = !NESHelper::IsInSamePage(argInfo.argAddr, argInfo.argAddr + reg_.X);
+		argInfo.argAddr += reg_.X;
 		break;
 
 	case NESCPUOpAddressingMode::ABSOLUTE_Y:
-		addr = NESHelper::MemoryRead16(mem_, reg_.PC + 1);
-		crossedPageBoundary = !NESHelper::IsInSamePage(addr, addr + reg_.Y);
-		addr += reg_.Y;
+		argInfo.argAddr = NESHelper::MemoryRead16(mem_, reg_.PC + 1);
+		argInfo.crossedPage = !NESHelper::IsInSamePage(argInfo.argAddr, argInfo.argAddr + reg_.Y);
+		argInfo.argAddr += reg_.Y;
 		break;
 
 	case NESCPUOpAddressingMode::ZEROPAGE:
-		addr = mem_.Read8(reg_.PC + 1);
-		crossedPageBoundary = false;
+		argInfo.argAddr = mem_.Read8(reg_.PC + 1);
 		break;
 
 	case NESCPUOpAddressingMode::ZEROPAGE_X:
-		crossedPageBoundary = false;
-		addr = (mem_.Read8(reg_.PC + 1) + reg_.X) & 0xFF;
+		argInfo.argAddr = (mem_.Read8(reg_.PC + 1) + reg_.X) & 0xFF;
 		break;
 
 	case NESCPUOpAddressingMode::ZEROPAGE_Y:
-		crossedPageBoundary = false;
-		addr = (mem_.Read8(reg_.PC + 1) + reg_.Y) & 0xFF;
-		break;
-
-	case NESCPUOpAddressingMode::INDIRECT_X:
-		crossedPageBoundary = false;
-		addr = NESHelper::MemoryRead16(mem_, (mem_.Read8(reg_.PC + 1) + reg_.X) & 0xFF);
-		break;
-
-	case NESCPUOpAddressingMode::INDIRECT_Y:
-		addr = NESHelper::MemoryRead16(mem_, mem_.Read8(reg_.PC + 1));
-		crossedPageBoundary = !NESHelper::IsInSamePage(addr, addr + reg_.Y);
-		addr += reg_.Y;
+		argInfo.argAddr = (mem_.Read8(reg_.PC + 1) + reg_.Y) & 0xFF;
 		break;
 
 	default:
 		// Unhandled addressing mode!
 		assert("Unknown addressing mode supplied!" && false);
-		return std::make_pair(0, false);
+		break;
 	}
 
-	// Assume reading from main memory.
-	return std::make_pair(mem_.Read8(addr), crossedPageBoundary);
+	return argInfo;
 }
 
 
-void NESCPU::WriteOpResult(u8 result)
+void NESCPU::WriteOpResult(NESCPUOpAddressingMode addrMode, u8 result)
 {
 	u16 addr;
-	switch (currentOp_.opMappingIt->second.addrMode)
+	switch (addrMode)
 	{
 	case NESCPUOpAddressingMode::ACCUMULATOR:
 		reg_.A = result; // Write to accumulator instead.
@@ -678,35 +735,34 @@ void NESCPU::WriteOpResult(u8 result)
 }
 
 
-void NESCPU::ExecuteOpADC()
+void NESCPU::ExecuteOpADC(NESCPUOpArgInfo& argInfo)
 {
-	OP_READ_ARG()
-
 	// ADC takes 1 extra CPU cycle if a page boundary was crossed.
-	if (crossedPageBoundary)
+	if (argInfo.crossedPage)
 		OpAddCycles(1);
 
 	// A + M + C -> A, C
 	// @NOTE: NES 6502 variant has no BCD mode.
+	const u8 argVal = mem_.Read8(argInfo.argAddr);
 	const u16 res = reg_.A + argVal + (NESHelper::IsBitSet(reg_.P, NES_CPU_REG_P_C_BIT) ? 1 : 0);
 
+	// Check if the sign has changed due to overflow.
+	NESHelper::EditBit(reg_.P, NES_CPU_REG_P_V_BIT, ((~(reg_.A ^ argVal) & (reg_.A ^ res)) & 0x80) == 0x80);
+
 	NESHelper::EditBit(reg_.P, NES_CPU_REG_P_C_BIT, res > 0xFF);
-	NESHelper::EditBit(reg_.P, NES_CPU_REG_P_V_BIT, ((~(reg_.A ^ argVal) & (reg_.A ^ res)) & 0x80) == 0x80); // Check if the sign has changed due to overflow.
 	UpdateRegN(static_cast<u8>(res));
 	reg_.A = static_cast<u8>(res);
 }
 
 
-void NESCPU::ExecuteOpAND()
+void NESCPU::ExecuteOpAND(NESCPUOpArgInfo& argInfo)
 {
-	OP_READ_ARG()
-
 	// AND takes 1 extra CPU cycle if a page boundary was crossed.
-	if (crossedPageBoundary)
+	if (argInfo.crossedPage)
 		OpAddCycles(1);
 
 	// A AND M -> A
-	const u8 res = reg_.A & argVal;
+	const u8 res = reg_.A & mem_.Read8(argInfo.argAddr);
 
 	UpdateRegZ(res);
 	UpdateRegN(res);
@@ -714,13 +770,12 @@ void NESCPU::ExecuteOpAND()
 }
 
 
-void NESCPU::ExecuteOpASL()
+void NESCPU::ExecuteOpASL(NESCPUOpArgInfo& argInfo)
 {
-	OP_READ_ARG()
-
 	// C <- [76543210] <- 0
+	const u8 argVal = (argInfo.addrMode == NESCPUOpAddressingMode::ACCUMULATOR ? reg_.A : mem_.Read8(argInfo.argAddr));
 	const u8 res = argVal << 1;
-	WriteOpResult(res);
+	WriteOpResult(argInfo.addrMode, res);
 
 	NESHelper::EditBit(reg_.P, NES_CPU_REG_P_C_BIT, (argVal & 0x80) == 0x80); // Set carry bit if bit 7 was originally 1.
 	UpdateRegZ(res);
@@ -728,39 +783,33 @@ void NESCPU::ExecuteOpASL()
 }
 
 
-void NESCPU::ExecuteOpAsBranch(bool shouldBranch, int branchSamePageCycleExtra, int branchDiffPageCycleExtra)
+void NESCPU::ExecuteOpAsBranch(NESCPUOpArgInfo& argInfo, bool shouldBranch, int branchSamePageCycleExtra, int branchDiffPageCycleExtra)
 {
 	if (!shouldBranch)
 		return;
 
-	OP_READ_ARG()
+	// Add extra cycles depending on whether or not the new PC will cross a page boundary.
+	OpAddCycles(NESHelper::IsInSamePage(reg_.PC, argInfo.argAddr) ? branchSamePageCycleExtra : branchDiffPageCycleExtra);
 
-	// If bit 7 is set in argVal, it's a negative number (not 2's complement!)
-	// We add an extra 1 to the PC to cover the size of the rest of the instruction.
-	const u16 jumpPC = reg_.PC + ((argVal & 0x80) == 0x80 ? -argVal : argVal) + 1;
-
-	// Check if the branch will cross a page boundary.
-	OpAddCycles(NESHelper::IsInSamePage(reg_.PC, jumpPC) ? branchSamePageCycleExtra : branchDiffPageCycleExtra);
-
-	UpdateRegPC(jumpPC);
+	UpdateRegPC(argInfo.argAddr);
 }
 
 
-void NESCPU::ExecuteOpBIT()
+void NESCPU::ExecuteOpBIT(NESCPUOpArgInfo& argInfo)
 {
-	OP_READ_ARG()
-
 	// A /\ M, M7 -> N, M6 -> V
+	const u8 argVal = mem_.Read8(argInfo.argAddr);
+
 	UpdateRegN(argVal);
 	UpdateRegZ(argVal & reg_.A);
 	NESHelper::EditBit(reg_.P, NES_CPU_REG_P_V_BIT, (argVal & 0x40) == 0x40);
 }
 
 
-void NESCPU::ExecuteOpBRK()
+void NESCPU::ExecuteOpBRK(NESCPUOpArgInfo& argInfo)
 {
 	// Forced Interrupt PC + 2 toS P toS 
-	StackPush16(reg_.PC + 1);
+	StackPush16(reg_.PC + 2);
 	StackPush8(reg_.P | 0x10);
 	NESHelper::SetBit(reg_.P, NES_CPU_REG_P_I_BIT);
 
@@ -768,16 +817,14 @@ void NESCPU::ExecuteOpBRK()
 }
 
 
-void NESCPU::ExecuteOpCMP()
+void NESCPU::ExecuteOpCMP(NESCPUOpArgInfo& argInfo)
 {
-	OP_READ_ARG()
-
 	// CMP takes 1 extra CPU cycle if a page boundary was crossed.
-	if (crossedPageBoundary)
+	if (argInfo.crossedPage)
 		OpAddCycles(1);
 
 	// A - M
-	const u16 res = reg_.A - argVal;
+	const u16 res = reg_.A - mem_.Read8(argInfo.argAddr);
 
 	NESHelper::EditBit(reg_.P, NES_CPU_REG_P_C_BIT, res < 0x100);
 	UpdateRegN(static_cast<u8>(res));
@@ -785,12 +832,10 @@ void NESCPU::ExecuteOpCMP()
 }
 
 
-void NESCPU::ExecuteOpCPX()
+void NESCPU::ExecuteOpCPX(NESCPUOpArgInfo& argInfo)
 {
-	OP_READ_ARG()
-
 	// X - M
-	const u16 res = reg_.X - argVal;
+	const u16 res = reg_.X - mem_.Read8(argInfo.argAddr);
 
 	NESHelper::EditBit(reg_.P, NES_CPU_REG_P_C_BIT, res < 0x100);
 	UpdateRegN(static_cast<u8>(res));
@@ -798,12 +843,10 @@ void NESCPU::ExecuteOpCPX()
 }
 
 
-void NESCPU::ExecuteOpCPY()
+void NESCPU::ExecuteOpCPY(NESCPUOpArgInfo& argInfo)
 {
-	OP_READ_ARG()
-
 	// Y - M
-	const u16 res = reg_.Y - argVal;
+	const u16 res = reg_.Y - mem_.Read8(argInfo.argAddr);
 
 	NESHelper::EditBit(reg_.P, NES_CPU_REG_P_C_BIT, res < 0x100);
 	UpdateRegN(static_cast<u8>(res));
@@ -811,47 +854,25 @@ void NESCPU::ExecuteOpCPY()
 }
 
 
-void NESCPU::ExecuteOpDEC()
+void NESCPU::ExecuteOpDEC(NESCPUOpArgInfo& argInfo)
 {
-	OP_READ_ARG()
-
 	// M - 1 -> M
-	const u8 res = argVal - 1;
-	WriteOpResult(res);
+	const u8 res = mem_.Read8(argInfo.argAddr) - 1;
+	WriteOpResult(argInfo.addrMode, res);
 
 	UpdateRegN(res);
 	UpdateRegZ(res);
 }
 
 
-void NESCPU::ExecuteOpDEX()
+void NESCPU::ExecuteOpEOR(NESCPUOpArgInfo& argInfo)
 {
-	// X - 1 -> X
-	--reg_.X;
-	UpdateRegN(reg_.X);
-	UpdateRegZ(reg_.X);
-}
-
-
-void NESCPU::ExecuteOpDEY()
-{
-	// Y - 1 -> Y
-	--reg_.Y;
-	UpdateRegN(reg_.Y);
-	UpdateRegZ(reg_.Y);
-}
-
-
-void NESCPU::ExecuteOpEOR()
-{
-	OP_READ_ARG()
-
 	// EOR takes 1 extra CPU cycle if a page boundary was crossed.
-	if (crossedPageBoundary)
+	if (argInfo.crossedPage)
 		OpAddCycles(1);
-
+	
 	// A EOR M -> A
-	const u8 res = reg_.A ^ argVal;
+	const u8 res = reg_.A ^ mem_.Read8(argInfo.argAddr);
 
 	UpdateRegN(res);
 	UpdateRegZ(res);
@@ -859,110 +880,68 @@ void NESCPU::ExecuteOpEOR()
 }
 
 
-void NESCPU::ExecuteOpINC()
+void NESCPU::ExecuteOpINC(NESCPUOpArgInfo& argInfo)
 {
-	OP_READ_ARG()
-	
 	// M + 1 -> M
-	const u8 res = argVal + 1;
-	WriteOpResult(res);
+	const u8 res = mem_.Read8(argInfo.argAddr) + 1;
+	WriteOpResult(argInfo.addrMode, res);
 
 	UpdateRegN(res);
 	UpdateRegZ(res);
 }
 
 
-void NESCPU::ExecuteOpINX()
+void NESCPU::ExecuteOpLDA(NESCPUOpArgInfo& argInfo)
 {
-	// X + 1 -> X
-	++reg_.X;
-	UpdateRegN(reg_.X);
-	UpdateRegZ(reg_.X);
-}
-
-
-void NESCPU::ExecuteOpINY()
-{
-	// Y + 1 -> Y
-	++reg_.Y;
-	UpdateRegN(reg_.Y);
-	UpdateRegZ(reg_.Y);
-}
-
-
-void NESCPU::ExecuteOpJMP()
-{
-	OP_READ_ARG()
-
-	// (PC + 1) -> PCL
-	// (PC + 2) -> PCH
-	UpdateRegPC(argVal);
-}
-
-
-void NESCPU::ExecuteOpJSR()
-{
-	OP_READ_ARG()
-
-	// PC + 2 toS, (PC + 1) -> PCL
-	//             (PC + 2) -> PCH
-	StackPush16(reg_.PC - 1);
-	UpdateRegPC(argVal);
-}
-
-
-void NESCPU::ExecuteOpLDA()
-{
-	OP_READ_ARG()
-
 	// LDA takes 1 extra CPU cycle if a page boundary was crossed.
-	if (crossedPageBoundary)
+	if (argInfo.crossedPage)
 		OpAddCycles(1);
 
 	// M -> A
+	const u8 argVal = mem_.Read8(argInfo.argAddr);
+
 	UpdateRegN(argVal);
 	UpdateRegZ(argVal);
 	reg_.A = argVal;
 }
 
 
-void NESCPU::ExecuteOpLDX()
+void NESCPU::ExecuteOpLDX(NESCPUOpArgInfo& argInfo)
 {
-	OP_READ_ARG()
-
 	// LDX takes 1 extra CPU cycle if a page boundary was crossed.
-	if (crossedPageBoundary)
+	if (argInfo.crossedPage)
 		OpAddCycles(1);
 
 	// M -> X
+	const u8 argVal = mem_.Read8(argInfo.argAddr);
+
 	UpdateRegN(argVal);
 	UpdateRegZ(argVal);
 	reg_.X = argVal;
 }
 
 
-void NESCPU::ExecuteOpLDY()
+void NESCPU::ExecuteOpLDY(NESCPUOpArgInfo& argInfo)
 {
-	OP_READ_ARG()
-
 	// LDY takes 1 extra CPU cycle if a page boundary was crossed.
-	if (crossedPageBoundary)
+	if (argInfo.crossedPage)
 		OpAddCycles(1);
 
 	// M -> Y
+	const u8 argVal = mem_.Read8(argInfo.argAddr);
+
 	UpdateRegN(argVal);
 	UpdateRegZ(argVal);
 	reg_.Y = argVal;
 }
 
 
-void NESCPU::ExecuteOpLSR()
+void NESCPU::ExecuteOpLSR(NESCPUOpArgInfo& argInfo)
 {
-	OP_READ_ARG()
-
 	// 0 -> [76543210] -> C
+	const u8 argVal = (argInfo.addrMode == NESCPUOpAddressingMode::ACCUMULATOR ? reg_.A : mem_.Read8(argInfo.argAddr));
 	const u8 res = argVal >> 1;
-	WriteOpResult(res);
+	WriteOpResult(argInfo.addrMode, res);
 
 	NESHelper::EditBit(reg_.P, NES_CPU_REG_P_C_BIT, (argVal & 1) == 1);
 	UpdateRegZ(res);
@@ -970,16 +949,14 @@ void NESCPU::ExecuteOpLSR()
 }
 
 
-void NESCPU::ExecuteOpORA()
+void NESCPU::ExecuteOpORA(NESCPUOpArgInfo& argInfo)
 {
-	OP_READ_ARG()
-
 	// ORA takes 1 extra CPU cycle if a page boundary was crossed.
-	if (crossedPageBoundary)
+	if (argInfo.crossedPage)
 		OpAddCycles(1);
 
 	// A OR M -> A
-	const u8 res = argVal | reg_.A;
+	const u8 res = mem_.Read8(argInfo.argAddr) | reg_.A;
 
 	UpdateRegZ(res);
 	UpdateRegN(res);
@@ -987,7 +964,7 @@ void NESCPU::ExecuteOpORA()
 }
 
 
-void NESCPU::ExecuteOpPLA()
+void NESCPU::ExecuteOpPLA(NESCPUOpArgInfo& argInfo)
 {
 	// A fromS.
 	const u8 val = StackPull8();
@@ -998,16 +975,12 @@ void NESCPU::ExecuteOpPLA()
 }
 
 
-void NESCPU::ExecuteOpROL()
+void NESCPU::ExecuteOpROL(NESCPUOpArgInfo& argInfo)
 {
-	OP_READ_ARG()
-
 	// C <- [7654321] <- C
-	u16 res = argVal << 1;
-	if (NESHelper::IsBitSet(reg_.P, NES_CPU_REG_P_C_BIT))
-		res |= 1;
-
-	WriteOpResult(static_cast<u8>(res));
+	const u8 argVal = (argInfo.addrMode == NESCPUOpAddressingMode::ACCUMULATOR ? reg_.A : mem_.Read8(argInfo.argAddr));
+	const u16 res = (argVal << 1) | (NESHelper::IsBitSet(reg_.P, NES_CPU_REG_P_C_BIT) ? 1 : 0);
+	WriteOpResult(argInfo.addrMode, static_cast<u8>(res));
 
 	NESHelper::EditBit(reg_.P, NES_CPU_REG_P_C_BIT, res > 0xFF);
 	UpdateRegZ(static_cast<u8>(res));
@@ -1015,66 +988,36 @@ void NESCPU::ExecuteOpROL()
 }
 
 
-void NESCPU::ExecuteOpROR()
+void NESCPU::ExecuteOpROR(NESCPUOpArgInfo& argInfo)
 {
-	OP_READ_ARG()
-
 	// C -> [7654321] -> C
-	u16 res = argVal;
-	if (NESHelper::IsBitSet(reg_.P, NES_CPU_REG_P_C_BIT))
-		res |= 0x100;
-
+	const u8 argVal = (argInfo.addrMode == NESCPUOpAddressingMode::ACCUMULATOR ? reg_.A : mem_.Read8(argInfo.argAddr));
+	const u16 res = argVal | (NESHelper::IsBitSet(reg_.P, NES_CPU_REG_P_C_BIT) ? 0x100 : 0);
 	NESHelper::EditBit(reg_.P, NES_CPU_REG_P_C_BIT, (res & 1) == 1);
 
-	res >>= 1;
-	WriteOpResult(static_cast<u8>(res));
+	const u16 resShifted = res >> 1;
+	WriteOpResult(argInfo.addrMode, static_cast<u8>(resShifted));
 
-	UpdateRegZ(static_cast<u8>(res));
-	UpdateRegN(static_cast<u8>(res));
+	UpdateRegZ(static_cast<u8>(resShifted));
+	UpdateRegN(static_cast<u8>(resShifted));
 }
 
 
-void NESCPU::ExecuteOpSBC()
+void NESCPU::ExecuteOpSBC(NESCPUOpArgInfo& argInfo)
 {
-	OP_READ_ARG()
-
 	// SBC takes 1 extra CPU cycle if a page boundary was crossed.
-	if (crossedPageBoundary)
+	if (argInfo.crossedPage)
 		OpAddCycles(1);
 
 	// A - M - C -> A
+	const u8 argVal = mem_.Read8(argInfo.argAddr);
 	const u16 res = reg_.A - argVal - 1 + (NESHelper::IsBitSet(reg_.P, NES_CPU_REG_P_C_BIT) ? 1 : 0);
 
+	// Check if the sign has changed due to overflow.
+	NESHelper::EditBit(reg_.P, NES_CPU_REG_P_V_BIT, ((~(reg_.A ^ argVal) & (reg_.A ^ res)) & 0x80) == 0x80);
+
 	NESHelper::EditBit(reg_.P, NES_CPU_REG_P_C_BIT, res < 0x100);
-	NESHelper::EditBit(reg_.P, NES_CPU_REG_P_V_BIT, ((~(reg_.A ^ argVal) & (reg_.A ^ res)) & 0x80) == 0x80); // Check if the sign has changed due to overflow.
 	UpdateRegN(static_cast<u8>(res));
 	UpdateRegZ(static_cast<u8>(res));
 	reg_.A = static_cast<u8>(res);
-}
-
-
-void NESCPU::ExecuteOpSTA()
-{
-	OP_READ_ARG()
-
-	// A -> M
-	mem_.Write8(argVal, reg_.A);
-}
-
-
-void NESCPU::ExecuteOpSTX()
-{
-	OP_READ_ARG()
-
-	// X -> M
-	mem_.Write8(argVal, reg_.X);
-}
-
-
-void NESCPU::ExecuteOpSTY()
-{
-	OP_READ_ARG()
-
-	// Y -> M
-	mem_.Write8(argVal, reg_.Y);
 }
