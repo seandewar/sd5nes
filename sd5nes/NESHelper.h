@@ -66,7 +66,7 @@ namespace NESHelper
 
 	/**
 	* Reads 16-bits (little-endian) from a memory interface while accounting for the 6502 indirect addressing bug.
-	* The bug causes the high byte to not increment when the low byte wraps due to the increment.
+	* The bug causes the high byte of addr to not increment when the low byte wraps due to the increment in addr.
 	*/
 	inline u16 MemoryIndirectRead16(const INESMemoryInterface& mem, u16 addr) 
 	{ 

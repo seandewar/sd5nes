@@ -672,7 +672,7 @@ NESCPUOpArgInfo NESCPU::ReadOpArgInfo(NESCPUOpAddressingMode addrMode)
 
 	case NESCPUOpAddressingMode::RELATIVE:
 		// We add an extra 2 to the PC to cover the size of the rest of the instruction.
-		// The offset is signed.
+		// The offset is a signed 2s complement number.
 		argInfo.argAddr = reg_.PC + 2 + static_cast<s8>(mem_.Read8(reg_.PC + 1));
 		break;
 
