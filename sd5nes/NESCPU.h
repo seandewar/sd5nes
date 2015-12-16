@@ -341,12 +341,42 @@ private:
 	* Executes the current op as a branch instruction if shouldBranch is true.
 	* Adds 1 to the current op's cycle count if branched to same page, 2 if branched to a different page.
 	*/
-	void ExecuteOpAsBranch(u16 jumpAddr, bool shouldBranch);
+	inline void ExecuteOpAsBranch(u16 jumpAddr, bool shouldBranch)
+	{
+		if (!shouldBranch)
+			return;
+
+		// 1 cycle if same page, 2 cycles if different pages.
+		OpAddCycles(NESHelper::IsInSamePage(reg_.PC, jumpAddr) ? 1 : 2);
+
+		// Jump to new PC.
+		UpdateRegPC(jumpAddr);
+	}
 
 	/** 
 	* Executes an op as an add with carry. Affects N, Z, V and C.
 	*/
-	void ExecuteOpAsAddWithCarry(bool crossedPage, u8 argVal);
+	inline void ExecuteOpAsAddWithCarry(bool crossedPage, u8 argVal)
+	{
+		// 1 extra CPU cycle if a page boundary was crossed.
+		if (crossedPage)
+			OpAddCycles(1);
+
+		// A + M + C -> A, C
+		// @NOTE: NES 6502 variant has no BCD mode.
+		const u16 res = reg_.A + argVal + (NESHelper::IsBitSet(reg_.P, NES_CPU_REG_P_C_BIT) ? 1 : 0);
+
+		// If A and argVal have the same sign, then we have the potential to overflow (when considering 2s complement).
+		// If this is the case, and the sign has changed in the result (compare res with either A or argVal), 
+		// then we have overflowed. Set V.
+		NESHelper::EditBit(reg_.P, NES_CPU_REG_P_V_BIT, ((~(reg_.A ^ argVal) & (reg_.A ^ res)) & 0x80) == 0x80);
+
+		// Set carry if we can't represent this number using 8-bits (regardless of 2s complement).
+		NESHelper::EditBit(reg_.P, NES_CPU_REG_P_C_BIT, res > 0xFF);
+		UpdateRegN(static_cast<u8>(res));
+		UpdateRegZ(static_cast<u8>(res));
+		reg_.A = static_cast<u8>(res);
+	}
 
 	/****************************************/
 	/****** Instruction Implementation ******/
@@ -356,10 +386,35 @@ private:
 	inline void ExecuteOpADC(NESCPUOpArgInfo& argInfo) { /* A + M + C -> A, C */ ExecuteOpAsAddWithCarry(argInfo.crossedPage, mem_.Read8(argInfo.argAddr)); }
 
 	// Execute AND with Accumulator (AND).
-	void ExecuteOpAND(NESCPUOpArgInfo& argInfo);
+	inline void ExecuteOpAND(NESCPUOpArgInfo& argInfo)
+	{
+		// AND takes 1 extra CPU cycle if a page boundary was crossed.
+		if (argInfo.crossedPage)
+			OpAddCycles(1);
+
+		// A AND M -> A
+		const u8 res = reg_.A & mem_.Read8(argInfo.argAddr);
+
+		UpdateRegZ(res);
+		UpdateRegN(res);
+		reg_.A = res;
+	}
 
 	// Execute Shift Left One Bit (Memory or Accumulator) (ASL).
-	void ExecuteOpASL(NESCPUOpArgInfo& argInfo);
+	inline void ExecuteOpASL(NESCPUOpArgInfo& argInfo)
+	{
+		// C <- [76543210] <- 0
+		const u8 argVal = (argInfo.addrMode == NESCPUOpAddressingMode::ACCUMULATOR ? reg_.A : mem_.Read8(argInfo.argAddr));
+
+		// Shift to the left. Bit now in position 0 should be 0. Bit originally in pos 8 is lost.
+		const u8 res = (argVal << 1) & 0xFF;
+		WriteOpResult(argInfo.addrMode, res);
+
+		// Set carry bit if bit 7 (which was lost after the shift) was originally 1.
+		NESHelper::EditBit(reg_.P, NES_CPU_REG_P_C_BIT, (argVal & 0x80) == 0x80);
+		UpdateRegZ(res);
+		UpdateRegN(res);
+	}
 
 	// Execute Branch on Carry Clear (BCC).
 	inline void ExecuteOpBCC(NESCPUOpArgInfo& argInfo) { /* Branch on C = 0 */ ExecuteOpAsBranch(argInfo.argAddr, !NESHelper::IsBitSet(reg_.P, NES_CPU_REG_P_C_BIT)); }
@@ -371,7 +426,15 @@ private:
 	inline void ExecuteOpBEQ(NESCPUOpArgInfo& argInfo) { /* Branch on Z = 1 */ ExecuteOpAsBranch(argInfo.argAddr, NESHelper::IsBitSet(reg_.P, NES_CPU_REG_P_Z_BIT)); }
 
 	// Execute Test Bits in Memory with Accumulator (BIT).
-	void ExecuteOpBIT(NESCPUOpArgInfo& argInfo);
+	inline void ExecuteOpBIT(NESCPUOpArgInfo& argInfo)
+	{
+		// A /\ M, M7 -> N, M6 -> V
+		const u8 argVal = mem_.Read8(argInfo.argAddr);
+
+		UpdateRegN(argVal);
+		UpdateRegZ(argVal & reg_.A);
+		NESHelper::EditBit(reg_.P, NES_CPU_REG_P_V_BIT, (argVal & 0x40) == 0x40);
+	}
 
 	// Execute Branch on Result Minus (BMI).
 	inline void ExecuteOpBMI(NESCPUOpArgInfo& argInfo) { /* Branch on N = 1 */ ExecuteOpAsBranch(argInfo.argAddr, NESHelper::IsBitSet(reg_.P, NES_CPU_REG_P_N_BIT)); }
@@ -383,7 +446,15 @@ private:
 	inline void ExecuteOpBPL(NESCPUOpArgInfo& argInfo) { /* Branch on N = 0 */ ExecuteOpAsBranch(argInfo.argAddr, !NESHelper::IsBitSet(reg_.P, NES_CPU_REG_P_N_BIT)); }
 
 	// Execute Force Break (BRK).
-	void ExecuteOpBRK(NESCPUOpArgInfo& argInfo);
+	inline void ExecuteOpBRK(NESCPUOpArgInfo& argInfo)
+	{
+		// Forced Interrupt PC + 2 toS P toS 
+		StackPush16(reg_.PC + 2); // There is a padding byte after the opcode, hence the +2.
+		StackPush8(reg_.P | 0x10);
+		NESHelper::SetBit(reg_.P, NES_CPU_REG_P_I_BIT);
+
+		UpdateRegPC(NESHelper::MemoryRead16(mem_, 0xFFFE));
+	}
 
 	// Execute Branch on Overflow Clear (BVC).
 	inline void ExecuteOpBVC(NESCPUOpArgInfo& argInfo) { /* Branch on V = 0 */ ExecuteOpAsBranch(argInfo.argAddr, !NESHelper::IsBitSet(reg_.P, NES_CPU_REG_P_V_BIT)); }
@@ -404,16 +475,52 @@ private:
 	inline void ExecuteOpCLV(NESCPUOpArgInfo& argInfo) { /* 0 -> V */ NESHelper::ClearBit(reg_.P, NES_CPU_REG_P_V_BIT); }
 
 	// Execute Compare Memory and Accumulator (CMP).
-	void ExecuteOpCMP(NESCPUOpArgInfo& argInfo);
+	inline void ExecuteOpCMP(NESCPUOpArgInfo& argInfo)
+	{
+		// CMP takes 1 extra CPU cycle if a page boundary was crossed.
+		if (argInfo.crossedPage)
+			OpAddCycles(1);
+
+		// A - M
+		const u16 res = reg_.A - mem_.Read8(argInfo.argAddr);
+
+		NESHelper::EditBit(reg_.P, NES_CPU_REG_P_C_BIT, res < 0x100);
+		UpdateRegN(static_cast<u8>(res));
+		UpdateRegZ(res & 0xFF); // Check first 8-bits.
+	}
 
 	// Execute Compare Memory and Index X (CPX).
-	void ExecuteOpCPX(NESCPUOpArgInfo& argInfo);
+	inline void ExecuteOpCPX(NESCPUOpArgInfo& argInfo)
+	{
+		// X - M
+		const u16 res = reg_.X - mem_.Read8(argInfo.argAddr);
+
+		NESHelper::EditBit(reg_.P, NES_CPU_REG_P_C_BIT, res < 0x100);
+		UpdateRegN(static_cast<u8>(res));
+		UpdateRegZ(res & 0xFF); // Check first 8-bits.
+	}
 
 	// Execute Compare Memory and Index Y (CPY).
-	void ExecuteOpCPY(NESCPUOpArgInfo& argInfo);
+	inline void ExecuteOpCPY(NESCPUOpArgInfo& argInfo)
+	{
+		// Y - M
+		const u16 res = reg_.Y - mem_.Read8(argInfo.argAddr);
+
+		NESHelper::EditBit(reg_.P, NES_CPU_REG_P_C_BIT, res < 0x100);
+		UpdateRegN(static_cast<u8>(res));
+		UpdateRegZ(res & 0xFF); // Check first 8-bits.
+	}
 
 	// Execute Decrement Memory by One (DEC).
-	void ExecuteOpDEC(NESCPUOpArgInfo& argInfo);
+	inline void ExecuteOpDEC(NESCPUOpArgInfo& argInfo)
+	{
+		// M - 1 -> M
+		const u8 res = mem_.Read8(argInfo.argAddr) - 1;
+		WriteOpResult(argInfo.addrMode, res);
+
+		UpdateRegN(res);
+		UpdateRegZ(res);
+	}
 
 	// Execute Decrement Index X by One (DEX).
 	inline void ExecuteOpDEX(NESCPUOpArgInfo& argInfo)
@@ -434,10 +541,30 @@ private:
 	}
 
 	// Execute "Exclusive-Or" Memory with Accumulator (EOR).
-	void ExecuteOpEOR(NESCPUOpArgInfo& argInfo);
+	inline void ExecuteOpEOR(NESCPUOpArgInfo& argInfo)
+	{
+		// EOR takes 1 extra CPU cycle if a page boundary was crossed.
+		if (argInfo.crossedPage)
+			OpAddCycles(1);
+
+		// A EOR M -> A
+		const u8 res = reg_.A ^ mem_.Read8(argInfo.argAddr);
+
+		UpdateRegN(res);
+		UpdateRegZ(res);
+		reg_.A = res;
+	}
 
 	// Execute Increment Memory by One (INC).
-	void ExecuteOpINC(NESCPUOpArgInfo& argInfo);
+	inline void ExecuteOpINC(NESCPUOpArgInfo& argInfo)
+	{
+		// M + 1 -> M
+		const u8 res = mem_.Read8(argInfo.argAddr) + 1;
+		WriteOpResult(argInfo.addrMode, res);
+
+		UpdateRegN(res);
+		UpdateRegZ(res);
+	}
 
 	// Execute Increment Index X by One (INX).
 	inline void ExecuteOpINX(NESCPUOpArgInfo& argInfo)
@@ -475,22 +602,83 @@ private:
 	}
 
 	// Execute Load Accumulator with Memory (LDA).
-	void ExecuteOpLDA(NESCPUOpArgInfo& argInfo);
+	inline void ExecuteOpLDA(NESCPUOpArgInfo& argInfo)
+	{
+		// LDA takes 1 extra CPU cycle if a page boundary was crossed.
+		if (argInfo.crossedPage)
+			OpAddCycles(1);
+
+		// M -> A
+		const u8 argVal = mem_.Read8(argInfo.argAddr);
+
+		UpdateRegN(argVal);
+		UpdateRegZ(argVal);
+		reg_.A = argVal;
+	}
 
 	// Execute Load Index X with Memory (LDX).
-	void ExecuteOpLDX(NESCPUOpArgInfo& argInfo);
+	inline void ExecuteOpLDX(NESCPUOpArgInfo& argInfo)
+	{
+		// LDX takes 1 extra CPU cycle if a page boundary was crossed.
+		if (argInfo.crossedPage)
+			OpAddCycles(1);
+
+		// M -> X
+		const u8 argVal = mem_.Read8(argInfo.argAddr);
+
+		UpdateRegN(argVal);
+		UpdateRegZ(argVal);
+		reg_.X = argVal;
+	}
 
 	// Execute Load Index Y with Memory (LDY).
-	void ExecuteOpLDY(NESCPUOpArgInfo& argInfo);
+	inline void ExecuteOpLDY(NESCPUOpArgInfo& argInfo)
+	{
+		// LDY takes 1 extra CPU cycle if a page boundary was crossed.
+		if (argInfo.crossedPage)
+			OpAddCycles(1);
+
+		// M -> Y
+		const u8 argVal = mem_.Read8(argInfo.argAddr);
+
+		UpdateRegN(argVal);
+		UpdateRegZ(argVal);
+		reg_.Y = argVal;
+	}
 
 	// Execute Shift Right One Bit (Memory or Accumulator) (LSR).
-	void ExecuteOpLSR(NESCPUOpArgInfo& argInfo);
+	inline void ExecuteOpLSR(NESCPUOpArgInfo& argInfo)
+	{
+		// 0 -> [76543210] -> C
+		const u8 argVal = (argInfo.addrMode == NESCPUOpAddressingMode::ACCUMULATOR ? reg_.A : mem_.Read8(argInfo.argAddr));
+
+		// Shift to the right. We will lose bit 0 in the process, and bit 7 should become 0.
+		const u8 res = argVal >> 1;
+		WriteOpResult(argInfo.addrMode, res);
+
+		// Set the carry if the original bit 0 (that we lost) was 1.
+		NESHelper::EditBit(reg_.P, NES_CPU_REG_P_C_BIT, (argVal & 1) == 1);
+		UpdateRegZ(res);
+		UpdateRegN(res);
+	}
 
 	// Execute No Operation (Do Nothing) (NOP).
 	inline void ExecuteOpNOP(NESCPUOpArgInfo& argInfo) { /* Do nothing. */ }
 
 	// Execute "Or" Memory with Accumulator (ORA).
-	void ExecuteOpORA(NESCPUOpArgInfo& argInfo);
+	inline void ExecuteOpORA(NESCPUOpArgInfo& argInfo)
+	{
+		// ORA takes 1 extra CPU cycle if a page boundary was crossed.
+		if (argInfo.crossedPage)
+			OpAddCycles(1);
+
+		// A OR M -> A
+		const u8 res = mem_.Read8(argInfo.argAddr) | reg_.A;
+
+		UpdateRegZ(res);
+		UpdateRegN(res);
+		reg_.A = res;
+	}
 
 	// Execute Push Accumulator to Stack (PHA).
 	inline void ExecuteOpPHA(NESCPUOpArgInfo& argInfo) { /* A toS */ StackPush8(reg_.A); }
@@ -499,16 +687,54 @@ private:
 	inline void ExecuteOpPHP(NESCPUOpArgInfo& argInfo) { /* P toS - make sure bit 5 is set. */ StackPush8(reg_.P | 0x10); }
 
 	// Execute Pull Accumulator from Stack (PLA).
-	void ExecuteOpPLA(NESCPUOpArgInfo& argInfo);
+	inline void ExecuteOpPLA(NESCPUOpArgInfo& argInfo)
+	{
+		// A fromS.
+		const u8 val = StackPull8();
+
+		UpdateRegZ(val);
+		UpdateRegN(val);
+		reg_.A = val;
+	}
 
 	// Execute Pull Processor Status from Stack (PLP).
 	inline void ExecuteOpPLP(NESCPUOpArgInfo& argInfo) { /* P fromS. */ UpdateRegP(StackPull8()); }
 
 	// Execute Rotate One Bit Left (ROL).
-	void ExecuteOpROL(NESCPUOpArgInfo& argInfo);
+	inline void ExecuteOpROL(NESCPUOpArgInfo& argInfo)
+	{
+		// C <- [7654321] <- C
+		const u8 argVal = (argInfo.addrMode == NESCPUOpAddressingMode::ACCUMULATOR ? reg_.A : mem_.Read8(argInfo.argAddr));
+
+		// Shift to the left and append the carry bit in position 0 if set.
+		const u16 res = (argVal << 1) | (NESHelper::IsBitSet(reg_.P, NES_CPU_REG_P_C_BIT) ? 1 : 0);
+		WriteOpResult(argInfo.addrMode, static_cast<u8>(res));
+
+		// Set the carry if there is a set bit in position 8 (which will be lost after we shift).
+		NESHelper::EditBit(reg_.P, NES_CPU_REG_P_C_BIT, (res & 0x100) == 0x100);
+		UpdateRegZ(static_cast<u8>(res));
+		UpdateRegN(static_cast<u8>(res));
+	}
 
 	// Execute Rotate One Bit Right (ROR).
-	void ExecuteOpROR(NESCPUOpArgInfo& argInfo);
+	inline void ExecuteOpROR(NESCPUOpArgInfo& argInfo)
+	{
+		// C -> [7654321] -> C
+		const u8 argVal = (argInfo.addrMode == NESCPUOpAddressingMode::ACCUMULATOR ? reg_.A : mem_.Read8(argInfo.argAddr));
+
+		// Append the carry bit to position 8 if it is set.
+		const u16 unshiftedRes = argVal | (NESHelper::IsBitSet(reg_.P, NES_CPU_REG_P_C_BIT) ? 0x100 : 0);
+
+		// Set the carry bit if there is a set bit in position 0 (which will be lost after we shift).
+		NESHelper::EditBit(reg_.P, NES_CPU_REG_P_C_BIT, (unshiftedRes & 1) == 1);
+
+		// Now we can shift to the right and safetly lose bit 0 (as it is recorded in the carry bit).
+		const u8 res = (unshiftedRes >> 1) & 0xFF;
+		WriteOpResult(argInfo.addrMode, res);
+
+		UpdateRegZ(res);
+		UpdateRegN(res);
+	}
 
 	// Execute Return from Interrupt (RTI).
 	inline void ExecuteOpRTI(NESCPUOpArgInfo& argInfo) { /* P fromS PC fromS */ UpdateRegP(StackPull8()); UpdateRegPC(StackPull16()); }
