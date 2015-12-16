@@ -62,8 +62,8 @@ struct NESCPURegisters
 
 	NESCPURegisters() :
 		PC(0xC000), 
-		P(0x20), // Unused status register D (Decimal Mode) bit should always be 1.
-		SP(0xFF),
+		P(0x34), // Unused status register D (Decimal Mode) bit should always be 1.
+		SP(0xFD),
 		A(0), X(0), Y(0)
 	{ }
 
@@ -236,13 +236,19 @@ private:
 	// Contains mapped opcode info.
 	static std::unordered_map<u8, NESCPUOpInfo> opInfos_;
 
-	// Registers an opcode mapping.
+	/**
+	* Registers an opcode mapping.
+	*/
 	static void RegisterOpMapping(const std::string& opName, u8 op, NESOpFuncPointer opFunc, NESCPUOpAddressingMode addrMode, int cycleCount);
 
-	// Gets the addressing mode of the specified opcode.
+	/**
+	* Gets the addressing mode of the specified opcode.
+	*/
 	static NESCPUOpAddressingMode GetOpAddressingMode(u8 op);
 
-	// Returns the size of the opcode's addressing mode in bytes.
+	/**
+	* Returns the size of the opcode's addressing mode in bytes.
+	*/
 	static u16 GetOpSizeFromAddressingMode(NESCPUOpAddressingMode addrMode);
 
 	/**
@@ -331,16 +337,23 @@ private:
 		return NESHelper::ConvertTo16(hi, lo);
 	}
 
-	// Executes the current op as a branch instruction if shouldBranch is true.
-	// Adds 1 to the current op's cycle count if branched to same page, 2 if branched to a different page.
-	void ExecuteOpAsBranch(NESCPUOpArgInfo& argInfo, bool shouldBranch, int branchSamePageCycleExtra = 1, int branchDiffPageCycleExtra = 2);
+	/**
+	* Executes the current op as a branch instruction if shouldBranch is true.
+	* Adds 1 to the current op's cycle count if branched to same page, 2 if branched to a different page.
+	*/
+	void ExecuteOpAsBranch(u16 jumpAddr, bool shouldBranch);
+
+	/** 
+	* Executes an op as an add with carry. Affects N, Z, V and C.
+	*/
+	void ExecuteOpAsAddWithCarry(bool crossedPage, u8 argVal);
 
 	/****************************************/
 	/****** Instruction Implementation ******/
 	/****************************************/
 
 	// Execute Add with Carry (ADC).
-	void ExecuteOpADC(NESCPUOpArgInfo& argInfo);
+	inline void ExecuteOpADC(NESCPUOpArgInfo& argInfo) { /* A + M + C -> A, C */ ExecuteOpAsAddWithCarry(argInfo.crossedPage, mem_.Read8(argInfo.argAddr)); }
 
 	// Execute AND with Accumulator (AND).
 	void ExecuteOpAND(NESCPUOpArgInfo& argInfo);
@@ -349,34 +362,34 @@ private:
 	void ExecuteOpASL(NESCPUOpArgInfo& argInfo);
 
 	// Execute Branch on Carry Clear (BCC).
-	inline void ExecuteOpBCC(NESCPUOpArgInfo& argInfo) { /* Branch on C = 0 */ ExecuteOpAsBranch(argInfo, !NESHelper::IsBitSet(reg_.P, NES_CPU_REG_P_C_BIT)); }
+	inline void ExecuteOpBCC(NESCPUOpArgInfo& argInfo) { /* Branch on C = 0 */ ExecuteOpAsBranch(argInfo.argAddr, !NESHelper::IsBitSet(reg_.P, NES_CPU_REG_P_C_BIT)); }
 
 	// Execute Branch on Carry Set (BCS).
-	inline void ExecuteOpBCS(NESCPUOpArgInfo& argInfo) { /* Branch on C = 1 */ ExecuteOpAsBranch(argInfo, NESHelper::IsBitSet(reg_.P, NES_CPU_REG_P_C_BIT)); }
+	inline void ExecuteOpBCS(NESCPUOpArgInfo& argInfo) { /* Branch on C = 1 */ ExecuteOpAsBranch(argInfo.argAddr, NESHelper::IsBitSet(reg_.P, NES_CPU_REG_P_C_BIT)); }
 
 	// Execute Branch on Result Zero (BEQ).
-	inline void ExecuteOpBEQ(NESCPUOpArgInfo& argInfo) { /* Branch on Z = 1 */ ExecuteOpAsBranch(argInfo, NESHelper::IsBitSet(reg_.P, NES_CPU_REG_P_Z_BIT)); }
+	inline void ExecuteOpBEQ(NESCPUOpArgInfo& argInfo) { /* Branch on Z = 1 */ ExecuteOpAsBranch(argInfo.argAddr, NESHelper::IsBitSet(reg_.P, NES_CPU_REG_P_Z_BIT)); }
 
 	// Execute Test Bits in Memory with Accumulator (BIT).
 	void ExecuteOpBIT(NESCPUOpArgInfo& argInfo);
 
 	// Execute Branch on Result Minus (BMI).
-	inline void ExecuteOpBMI(NESCPUOpArgInfo& argInfo) { /* Branch on N = 1 */ ExecuteOpAsBranch(argInfo, NESHelper::IsBitSet(reg_.P, NES_CPU_REG_P_N_BIT)); }
+	inline void ExecuteOpBMI(NESCPUOpArgInfo& argInfo) { /* Branch on N = 1 */ ExecuteOpAsBranch(argInfo.argAddr, NESHelper::IsBitSet(reg_.P, NES_CPU_REG_P_N_BIT)); }
 
 	// Execute Branch on Result Not Zero (BNE).
-	inline void ExecuteOpBNE(NESCPUOpArgInfo& argInfo) { /* Branch on Z = 0 */ ExecuteOpAsBranch(argInfo, !NESHelper::IsBitSet(reg_.P, NES_CPU_REG_P_Z_BIT)); }
+	inline void ExecuteOpBNE(NESCPUOpArgInfo& argInfo) { /* Branch on Z = 0 */ ExecuteOpAsBranch(argInfo.argAddr, !NESHelper::IsBitSet(reg_.P, NES_CPU_REG_P_Z_BIT)); }
 
 	// Execute Branch on Result Plus (BPL).
-	inline void ExecuteOpBPL(NESCPUOpArgInfo& argInfo) { /* Branch on N = 0 */ ExecuteOpAsBranch(argInfo, !NESHelper::IsBitSet(reg_.P, NES_CPU_REG_P_N_BIT)); }
+	inline void ExecuteOpBPL(NESCPUOpArgInfo& argInfo) { /* Branch on N = 0 */ ExecuteOpAsBranch(argInfo.argAddr, !NESHelper::IsBitSet(reg_.P, NES_CPU_REG_P_N_BIT)); }
 
 	// Execute Force Break (BRK).
 	void ExecuteOpBRK(NESCPUOpArgInfo& argInfo);
 
 	// Execute Branch on Overflow Clear (BVC).
-	inline void ExecuteOpBVC(NESCPUOpArgInfo& argInfo) { /* Branch on V = 0 */ ExecuteOpAsBranch(argInfo, !NESHelper::IsBitSet(reg_.P, NES_CPU_REG_P_V_BIT)); }
+	inline void ExecuteOpBVC(NESCPUOpArgInfo& argInfo) { /* Branch on V = 0 */ ExecuteOpAsBranch(argInfo.argAddr, !NESHelper::IsBitSet(reg_.P, NES_CPU_REG_P_V_BIT)); }
 
 	// Execute Branch on Overflow Set (BVS).
-	inline void ExecuteOpBVS(NESCPUOpArgInfo& argInfo) { /* Branch on V = 1 */ ExecuteOpAsBranch(argInfo, NESHelper::IsBitSet(reg_.P, NES_CPU_REG_P_V_BIT)); }
+	inline void ExecuteOpBVS(NESCPUOpArgInfo& argInfo) { /* Branch on V = 1 */ ExecuteOpAsBranch(argInfo.argAddr, NESHelper::IsBitSet(reg_.P, NES_CPU_REG_P_V_BIT)); }
 
 	// Execute Clear Carry Flag (CLC).
 	inline void ExecuteOpCLC(NESCPUOpArgInfo& argInfo) { /* 0 -> C */ NESHelper::ClearBit(reg_.P, NES_CPU_REG_P_C_BIT); }
@@ -504,7 +517,7 @@ private:
 	inline void ExecuteOpRTS(NESCPUOpArgInfo& argInfo) { /* PC fromS, PC + 1 -> PC */ UpdateRegPC(StackPull16() + 1); }
 
 	// Execute Subtract Memory from Accumulator with Borrow (SBC).
-	void ExecuteOpSBC(NESCPUOpArgInfo& argInfo);
+	inline void ExecuteOpSBC(NESCPUOpArgInfo& argInfo) { /* A - M - (1 - C) -> A, C */ ExecuteOpAsAddWithCarry(argInfo.crossedPage, mem_.Read8(argInfo.argAddr) ^ 0xFF); }
 
 	// Execute Set Carry Flag (SEC).
 	inline void ExecuteOpSEC(NESCPUOpArgInfo& argInfo) { /* 1 -> C */ NESHelper::SetBit(reg_.P, NES_CPU_REG_P_C_BIT); }
@@ -525,20 +538,50 @@ private:
 	inline void ExecuteOpSTY(NESCPUOpArgInfo& argInfo) { /* Y -> M */ mem_.Write8(argInfo.argAddr, reg_.Y); }
 
 	// Execute Transfer Accumulator to Index Y (TAY).
-	inline void ExecuteOpTAY(NESCPUOpArgInfo& argInfo) { /* A -> X */ reg_.X = reg_.A; }
+	inline void ExecuteOpTAY(NESCPUOpArgInfo& argInfo) 
+	{ 
+		// A -> Y 
+		reg_.Y = reg_.A;
+		UpdateRegN(reg_.Y);
+		UpdateRegZ(reg_.Y);
+	}
 
 	// Execute Transfer Accumulator to Index X (TAX).
-	inline void ExecuteOpTAX(NESCPUOpArgInfo& argInfo) { /* A -> Y */ reg_.Y = reg_.A; }
+	inline void ExecuteOpTAX(NESCPUOpArgInfo& argInfo) 
+	{ 
+		// A -> X 
+		reg_.X = reg_.A;
+		UpdateRegN(reg_.X);
+		UpdateRegZ(reg_.X);
+	}
 
 	// Execute Transfer Stack Pointer to Index X (TSX).
-	inline void ExecuteOpTSX(NESCPUOpArgInfo& argInfo) { /* S -> X */ reg_.X = reg_.SP; }
+	inline void ExecuteOpTSX(NESCPUOpArgInfo& argInfo) 
+	{ 
+		// S -> X 
+		reg_.X = reg_.SP;
+		UpdateRegN(reg_.X);
+		UpdateRegZ(reg_.X);
+	}
 
 	// Execute Transfer Index X to Accumulator (TXA).
-	inline void ExecuteOpTXA(NESCPUOpArgInfo& argInfo) { /* X -> A */ reg_.A = reg_.X; }
+	inline void ExecuteOpTXA(NESCPUOpArgInfo& argInfo) 
+	{ 
+		// X -> A
+		reg_.A = reg_.X; 
+		UpdateRegN(reg_.A);
+		UpdateRegZ(reg_.A);
+	}
 
 	// Execute Transfer Index X to Stack Pointer (TXS).
 	inline void ExecuteOpTXS(NESCPUOpArgInfo& argInfo) { /* X -> S */ reg_.SP = reg_.X; }
 
 	// Execute Transfer Index Y to Accumulator (TYA).
-	inline void ExecuteOpTYA(NESCPUOpArgInfo& argInfo) { /* Y -> A */ reg_.A = reg_.Y; }
+	inline void ExecuteOpTYA(NESCPUOpArgInfo& argInfo) 
+	{ 
+		// Y -> A 
+		reg_.A = reg_.Y; 
+		UpdateRegN(reg_.A);
+		UpdateRegZ(reg_.A);
+	}
 };

@@ -545,7 +545,8 @@ NESCPUInterruptType NESCPU::HandleInterrupts()
 		handledInt = NESCPUInterruptType::RESET;
 
 		UpdateRegPC(NESHelper::MemoryRead16(mem_, 0xFFFC));
-		reg_.SP = 0xFF;
+		reg_.SP = 0xFA;
+		reg_.P = 0x24;
 		intReset_ = false;
 	}
 	else if (intNmi_) // @TODO: Check for NMI Edge!
@@ -592,13 +593,31 @@ void NESCPU::ExecuteNextOp()
 		throw NESCPUExecutionException("Could not read the next opcode for program execution.", reg_);
 	}
 
+	// @TODO Debug!
+	if (mem_.Read8(0x6000) != 0x80 &&
+		mem_.Read8(0x6001) == 0xDE &&
+		mem_.Read8(0x6002) == 0xB0 &&
+		mem_.Read8(0x6003) == 0x61)
+	{
+		std::cout << "Test status: $" << std::hex << +mem_.Read8(0x6000) << std::endl;
+		std::cout << "Message: " << std::endl;
+		for (u16 i = 0x6004;; ++i)
+		{
+			const u8 c = mem_.Read8(i);
+			if (c == 0)
+				break;
+
+			std::cout << c;
+		}
+		std::cout << std::endl;
+		system("pause");
+		exit(0);
+	}
+
 	// Locate the mapping for this opcode.
 	const auto it = opInfos_.find(currentOp_.op);
 	if (it == opInfos_.end())
 	{
-		std::cout << "Test status: $" << std::hex << +mem_.Read8(0x6000) << std::endl;
-		std::cout << "$" << std::hex << +mem_.Read8(0x6001) << ", $" << std::hex << +mem_.Read8(0x6002) << ", $" << std::hex << +mem_.Read8(0x6003) << std::endl;
-
 		std::ostringstream oss;
 		oss << "Unknown opcode: 0x" << std::hex << +currentOp_.op;
 		throw NESCPUExecutionException(oss.str(), reg_);
@@ -608,24 +627,26 @@ void NESCPU::ExecuteNextOp()
 	currentOp_.opCycleCount = it->second.cycleCount;
 	currentOp_.opChangedPC = false;
 
-	// Execute opcode func.
-	u16 val;
-	if (argInfo.addrMode == NESCPUOpAddressingMode::IMMEDIATE)
-		val = mem_.Read8(argInfo.argAddr);
-	else if (argInfo.addrMode == NESCPUOpAddressingMode::ACCUMULATOR)
-		val = 0;
-	else
-		val = argInfo.argAddr;
-
+	//u16 val;
+	//if (argInfo.addrMode == NESCPUOpAddressingMode::IMMEDIATE)
+	//	val = mem_.Read8(argInfo.argAddr);
+	//else if (argInfo.addrMode == NESCPUOpAddressingMode::ACCUMULATOR)
+	//	val = 0;
+	//else
+	//	val = argInfo.argAddr;
+	//
 	//std::cout << "SP: $" << std::hex << +reg_.SP << ",  " <<  << std::endl;
 	//std::cout << "stack: ";
 	//for (u8 i = 0xFF; i >= 0 && i > reg_.SP; --i)
 	//	std::cout << std::hex << +mem_.Read8(NES_CPU_STACK_START + i) << ", ";
 	//std::cout << std::endl;
+	//
+	//static int a = 0;
+	//if (a < 50)
+	//	std::cout <<"Cyc: " << elapsedCycles_ << ", Reg: " << reg_.ToString() << "\t Ins: " << OpAsAsm(it->second.opName, it->second.addrMode, val) << std::endl;
+	//++a;
 
-	if (elapsedCycles_ >= 550000)
-		std::cout << "Cyc: " << elapsedCycles_ << ", Reg: " << reg_.ToString() << "\t Ins: " << OpAsAsm(it->second.opName, it->second.addrMode, val) << std::endl;
-
+	// Execute instruction.
 	(this->*it->second.opFunc)(argInfo);
 
 	// Go to the next instruction.
@@ -656,7 +677,7 @@ NESCPUOpArgInfo NESCPU::ReadOpArgInfo(NESCPUOpAddressingMode addrMode)
 		break;
 
 	case NESCPUOpAddressingMode::INDIRECT: // @TODO: Handle indirect addressing bug.
-		argInfo.argAddr = NESHelper::MemoryRead16(mem_, reg_.PC + 1);
+		argInfo.argAddr = NESHelper::MemoryRead16(mem_, NESHelper::MemoryRead16(mem_, reg_.PC + 1));
 		break;
 
 	case NESCPUOpAddressingMode::INDIRECT_X: // @TODO: Handle indirect addressing bug.
@@ -743,22 +764,25 @@ void NESCPU::WriteOpResult(NESCPUOpAddressingMode addrMode, u8 result)
 }
 
 
-void NESCPU::ExecuteOpADC(NESCPUOpArgInfo& argInfo)
+void NESCPU::ExecuteOpAsAddWithCarry(bool crossedPage, u8 argVal)
 {
 	// ADC takes 1 extra CPU cycle if a page boundary was crossed.
-	if (argInfo.crossedPage)
+	if (crossedPage)
 		OpAddCycles(1);
 
 	// A + M + C -> A, C
 	// @NOTE: NES 6502 variant has no BCD mode.
-	const u8 argVal = mem_.Read8(argInfo.argAddr);
 	const u16 res = reg_.A + argVal + (NESHelper::IsBitSet(reg_.P, NES_CPU_REG_P_C_BIT) ? 1 : 0);
 
-	// Check if the sign has changed due to overflow.
+	// If A and argVal have the same sign, then we have the potential to overflow (when considering 2s complement).
+	// If this is the case, and the sign has changed in the result (compare res with either A or argVal), 
+	// then we have overflowed. Set V.
 	NESHelper::EditBit(reg_.P, NES_CPU_REG_P_V_BIT, ((~(reg_.A ^ argVal) & (reg_.A ^ res)) & 0x80) == 0x80);
 
+	// Set carry if we can't represent this number using 8-bits (regardless of 2s complement).
 	NESHelper::EditBit(reg_.P, NES_CPU_REG_P_C_BIT, res > 0xFF);
 	UpdateRegN(static_cast<u8>(res));
+	UpdateRegZ(static_cast<u8>(res));
 	reg_.A = static_cast<u8>(res);
 }
 
@@ -782,24 +806,28 @@ void NESCPU::ExecuteOpASL(NESCPUOpArgInfo& argInfo)
 {
 	// C <- [76543210] <- 0
 	const u8 argVal = (argInfo.addrMode == NESCPUOpAddressingMode::ACCUMULATOR ? reg_.A : mem_.Read8(argInfo.argAddr));
-	const u8 res = argVal << 1;
+
+	// Shift to the left. Bit now in position 0 should be 0. Bit originally in pos 8 is lost.
+	const u8 res = (argVal << 1) & 0xFF;
 	WriteOpResult(argInfo.addrMode, res);
 
-	NESHelper::EditBit(reg_.P, NES_CPU_REG_P_C_BIT, (argVal & 0x80) == 0x80); // Set carry bit if bit 7 was originally 1.
+	// Set carry bit if bit 7 (which was lost after the shift) was originally 1.
+	NESHelper::EditBit(reg_.P, NES_CPU_REG_P_C_BIT, (argVal & 0x80) == 0x80);
 	UpdateRegZ(res);
 	UpdateRegN(res);
 }
 
 
-void NESCPU::ExecuteOpAsBranch(NESCPUOpArgInfo& argInfo, bool shouldBranch, int branchSamePageCycleExtra, int branchDiffPageCycleExtra)
+void NESCPU::ExecuteOpAsBranch(u16 jumpAddr, bool shouldBranch)
 {
 	if (!shouldBranch)
 		return;
 
-	// Add extra cycles depending on whether or not the new PC will cross a page boundary.
-	OpAddCycles(NESHelper::IsInSamePage(reg_.PC, argInfo.argAddr) ? branchSamePageCycleExtra : branchDiffPageCycleExtra);
+	// 1 cycle if same page, 2 cycles if different pages.
+	OpAddCycles(NESHelper::IsInSamePage(reg_.PC, jumpAddr) ? 1 : 2);
 
-	UpdateRegPC(argInfo.argAddr);
+	// Jump to new PC.
+	UpdateRegPC(jumpAddr);
 }
 
 
@@ -948,9 +976,12 @@ void NESCPU::ExecuteOpLSR(NESCPUOpArgInfo& argInfo)
 {
 	// 0 -> [76543210] -> C
 	const u8 argVal = (argInfo.addrMode == NESCPUOpAddressingMode::ACCUMULATOR ? reg_.A : mem_.Read8(argInfo.argAddr));
+
+	// Shift to the right. We will lose bit 0 in the process, and bit 7 should become 0.
 	const u8 res = argVal >> 1;
 	WriteOpResult(argInfo.addrMode, res);
 
+	// Set the carry if the original bit 0 (that we lost) was 1.
 	NESHelper::EditBit(reg_.P, NES_CPU_REG_P_C_BIT, (argVal & 1) == 1);
 	UpdateRegZ(res);
 	UpdateRegN(res);
@@ -987,10 +1018,13 @@ void NESCPU::ExecuteOpROL(NESCPUOpArgInfo& argInfo)
 {
 	// C <- [7654321] <- C
 	const u8 argVal = (argInfo.addrMode == NESCPUOpAddressingMode::ACCUMULATOR ? reg_.A : mem_.Read8(argInfo.argAddr));
+
+	// Shift to the left and append the carry bit in position 0 if set.
 	const u16 res = (argVal << 1) | (NESHelper::IsBitSet(reg_.P, NES_CPU_REG_P_C_BIT) ? 1 : 0);
 	WriteOpResult(argInfo.addrMode, static_cast<u8>(res));
 
-	NESHelper::EditBit(reg_.P, NES_CPU_REG_P_C_BIT, res > 0xFF);
+	// Set the carry if there is a set bit in position 8 (which will be lost after we shift).
+	NESHelper::EditBit(reg_.P, NES_CPU_REG_P_C_BIT, (res & 0x100) == 0x100);
 	UpdateRegZ(static_cast<u8>(res));
 	UpdateRegN(static_cast<u8>(res));
 }
@@ -1000,32 +1034,17 @@ void NESCPU::ExecuteOpROR(NESCPUOpArgInfo& argInfo)
 {
 	// C -> [7654321] -> C
 	const u8 argVal = (argInfo.addrMode == NESCPUOpAddressingMode::ACCUMULATOR ? reg_.A : mem_.Read8(argInfo.argAddr));
-	const u16 res = argVal | (NESHelper::IsBitSet(reg_.P, NES_CPU_REG_P_C_BIT) ? 0x100 : 0);
-	NESHelper::EditBit(reg_.P, NES_CPU_REG_P_C_BIT, (res & 1) == 1);
 
-	const u16 resShifted = res >> 1;
-	WriteOpResult(argInfo.addrMode, static_cast<u8>(resShifted));
+	// Append the carry bit to position 8 if it is set.
+	const u16 unshiftedRes = argVal | (NESHelper::IsBitSet(reg_.P, NES_CPU_REG_P_C_BIT) ? 0x100 : 0);
 
-	UpdateRegZ(static_cast<u8>(resShifted));
-	UpdateRegN(static_cast<u8>(resShifted));
-}
+	// Set the carry bit if there is a set bit in position 0 (which will be lost after we shift).
+	NESHelper::EditBit(reg_.P, NES_CPU_REG_P_C_BIT, (unshiftedRes & 1) == 1);
 
+	// Now we can shift to the right and safetly lose bit 0 (as it is recorded in the carry bit).
+	const u8 res = (unshiftedRes >> 1) & 0xFF;
+	WriteOpResult(argInfo.addrMode, res);
 
-void NESCPU::ExecuteOpSBC(NESCPUOpArgInfo& argInfo)
-{
-	// SBC takes 1 extra CPU cycle if a page boundary was crossed.
-	if (argInfo.crossedPage)
-		OpAddCycles(1);
-
-	// A - M - C -> A
-	const u8 argVal = mem_.Read8(argInfo.argAddr);
-	const u16 res = reg_.A - argVal - 1 + (NESHelper::IsBitSet(reg_.P, NES_CPU_REG_P_C_BIT) ? 1 : 0);
-
-	// Check if the sign has changed due to overflow.
-	NESHelper::EditBit(reg_.P, NES_CPU_REG_P_V_BIT, ((~(reg_.A ^ argVal) & (reg_.A ^ res)) & 0x80) == 0x80);
-
-	NESHelper::EditBit(reg_.P, NES_CPU_REG_P_C_BIT, res < 0x100);
-	UpdateRegN(static_cast<u8>(res));
-	UpdateRegZ(static_cast<u8>(res));
-	reg_.A = static_cast<u8>(res);
+	UpdateRegZ(res);
+	UpdateRegN(res);
 }

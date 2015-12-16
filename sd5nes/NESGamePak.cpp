@@ -1,6 +1,7 @@
 #include "NESGamePak.h"
 
 #include <fstream>
+#include <sstream>
 
 #include "NESReadBuffer.h"
 #include "NESMMC.h"
@@ -116,7 +117,8 @@ void NESGamePak::ParseROMFileData(const std::vector<u8>& data)
 	}
 
 	// Get the mapper number using bits 4-7 from ROM Control Byte 1 and 2.
-	switch ((romInfo[INES_ROM_CONTROL_2_INDEX] & 0xF0) | (romInfo[INES_ROM_CONTROL_1_INDEX] >> 4))
+	const u8 mapperNum = (romInfo[INES_ROM_CONTROL_2_INDEX] & 0xF0) | (romInfo[INES_ROM_CONTROL_1_INDEX] >> 4);
+	switch (mapperNum)
 	{
 	// @TODO init mmc_
 	case 0:
@@ -130,8 +132,10 @@ void NESGamePak::ParseROMFileData(const std::vector<u8>& data)
 
 	// Unknown mapper type!
 	default:
-		//mapperType_ = NESMapperType::UNKNOWN;
-		throw NESGamePakLoadException("Unsupported ROM memory mapper!");
+		std::ostringstream oss;
+		oss << "Unsupported ROM memory mapper! (" << mapperNum << ")";
+
+		throw NESGamePakLoadException(oss.str());
 	}
 }
 
