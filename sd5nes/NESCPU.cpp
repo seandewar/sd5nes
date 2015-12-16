@@ -676,16 +676,16 @@ NESCPUOpArgInfo NESCPU::ReadOpArgInfo(NESCPUOpAddressingMode addrMode)
 		argInfo.argAddr = reg_.PC + 2 + static_cast<s8>(mem_.Read8(reg_.PC + 1));
 		break;
 
-	case NESCPUOpAddressingMode::INDIRECT: // @TODO: Handle indirect addressing bug.
-		argInfo.argAddr = NESHelper::MemoryRead16(mem_, NESHelper::MemoryRead16(mem_, reg_.PC + 1));
+	case NESCPUOpAddressingMode::INDIRECT:
+		argInfo.argAddr = NESHelper::MemoryIndirectRead16(mem_, NESHelper::MemoryRead16(mem_, reg_.PC + 1));
 		break;
 
-	case NESCPUOpAddressingMode::INDIRECT_X: // @TODO: Handle indirect addressing bug.
-		argInfo.argAddr = NESHelper::MemoryRead16(mem_, (mem_.Read8(reg_.PC + 1) + reg_.X) & 0xFF);
+	case NESCPUOpAddressingMode::INDIRECT_X:
+		argInfo.argAddr = NESHelper::MemoryIndirectRead16(mem_, (mem_.Read8(reg_.PC + 1) + reg_.X) & 0xFF);
 		break;
 
-	case NESCPUOpAddressingMode::INDIRECT_Y: // @TODO: Handle indirect addressing bug.
-		argInfo.argAddr = NESHelper::MemoryRead16(mem_, mem_.Read8(reg_.PC + 1));
+	case NESCPUOpAddressingMode::INDIRECT_Y:
+		argInfo.argAddr = NESHelper::MemoryIndirectRead16(mem_, mem_.Read8(reg_.PC + 1));
 		argInfo.crossedPage = !NESHelper::IsInSamePage(argInfo.argAddr, argInfo.argAddr + reg_.Y);
 		argInfo.argAddr += reg_.Y;
 		break;
@@ -766,7 +766,7 @@ void NESCPU::WriteOpResult(NESCPUOpAddressingMode addrMode, u8 result)
 
 void NESCPU::ExecuteOpAsAddWithCarry(bool crossedPage, u8 argVal)
 {
-	// ADC takes 1 extra CPU cycle if a page boundary was crossed.
+	// 1 extra CPU cycle if a page boundary was crossed.
 	if (crossedPage)
 		OpAddCycles(1);
 

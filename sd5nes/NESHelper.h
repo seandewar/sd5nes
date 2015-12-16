@@ -14,22 +14,40 @@ namespace NESHelper
 	/**
 	* Gets the value of a bit in the specified position of an 8-bit value.
 	*/
-	inline bool IsBitSet(u8 val, u8 pos) { assert(pos < 8); return (((val >> pos) & 1) == 1); }
+	inline bool IsBitSet(u8 val, u8 pos) 
+	{
+		assert(pos < 8); 
+		return (((val >> pos) & 1) == 1); 
+	}
 
 	/**
 	* Sets the bit at the specified position of an 8-bit value.
 	*/
-	inline void SetBit(u8& val, u8 pos) { assert(pos < 8); val |= (1 << pos); }
+	inline void SetBit(u8& val, u8 pos) 
+	{ 
+		assert(pos < 8); 
+		val |= (1 << pos); 
+	}
 
 	/**
 	* Clear the bit at the specified position of an 8-bit value.
 	*/
-	inline void ClearBit(u8& val, u8 pos) { assert(pos < 8); val &= ~(1 << pos); }
+	inline void ClearBit(u8& val, u8 pos) 
+	{ 
+		assert(pos < 8); 
+		val &= ~(1 << pos); 
+	}
 
 	/**
 	* Sets/clears the bit at the specified position of an 8-bit value.
 	*/
-	inline void EditBit(u8& val, u8 pos, bool setBit) { (setBit ? SetBit(val, pos) : ClearBit(val, pos)); }
+	inline void EditBit(u8& val, u8 pos, bool setBit) 
+	{ 
+		if (setBit)
+			SetBit(val, pos);
+		else
+			ClearBit(val, pos); 
+	}
 
 	/**
 	* Checks whether or not addr1 and addr2 are in the same page of memory.
@@ -45,4 +63,13 @@ namespace NESHelper
 	* Reads 16-bits (little-endian) from a memory interface at the specified address.
 	*/
 	inline u16 MemoryRead16(const INESMemoryInterface& mem, u16 addr) { return ConvertTo16(mem.Read8(addr + 1), mem.Read8(addr)); }
+
+	/**
+	* Reads 16-bits (little-endian) from a memory interface while accounting for the 6502 indirect addressing bug.
+	* The bug causes the high byte to not increment when the low byte wraps due to the increment.
+	*/
+	inline u16 MemoryIndirectRead16(const INESMemoryInterface& mem, u16 addr) 
+	{ 
+		return ConvertTo16(mem.Read8((addr & 0xFF00) | ((addr + 1) & 0xFF)), mem.Read8(addr)); 
+	}
 };
