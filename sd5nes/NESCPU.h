@@ -57,15 +57,21 @@ struct NESCPURegisters
 	/* Accumulator (A) and Index Registers X and Y */
 	u8 A, X, Y;
 
-	/* Processor Status (P) */
-	u8 P;
-
 	NESCPURegisters() :
 		PC(0xC000), 
-		P(0x34), // Unused status register D (Decimal Mode) bit should always be 1.
+		P_(0x34), // I, B (and bit 5) are set on power.
 		SP(0xFD),
 		A(0), X(0), Y(0)
 	{ }
+
+	/**
+	* Sets the current value of Processor Status (P) to val.
+	* Makes sure that bit 5 of P is always 1, regardless of val.
+	*/
+	inline void SetP(u8 val) { P_ = val | 0x20; }
+
+	/* Gets the current value of Processor Status (P) flag. */
+	inline u8 GetP() const { return P_; }
 
 	/**
 	* Returns a string representation of the value of the registers.
@@ -75,10 +81,14 @@ struct NESCPURegisters
 		std::ostringstream oss;
 		oss << "PC: $" << std::hex << PC << ", SP: $" << std::hex << +SP
 			<< ", A: $" << std::hex << +A << ", X: $" << std::hex << +X << ", Y: $" << std::hex << +Y
-			<< ", P: $" << std::hex << +P;
+			<< ", P: $" << std::hex << +P_;
 
 		return oss.str();
 	}
+
+private:
+	/* Processor Status (P) */
+	u8 P_;
 };
 
 /**
@@ -263,13 +273,10 @@ private:
 	unsigned int elapsedCycles_;
 
 	// Updates the Z bit of the P register. Sets to 1 if val is zero. Sets to 0 otherwise.
-	inline void UpdateRegZ(u8 val) { NESHelper::EditBit(reg_.P, NES_CPU_REG_P_Z_BIT, val == 0); }
+	inline void UpdateRegZ(u8 val) { reg_.SetP(NESHelper::EditBit(reg_.GetP(), NES_CPU_REG_P_Z_BIT, val == 0)); }
 
 	// Updates the N bit of the P register. Sets to the value of val's 7th bit (sign bit).
-	inline void UpdateRegN(u8 val) { reg_.P = (reg_.P & 0x7F) | (val & 0x80); }
-
-	// Updates the P register. Ensures that unused bit 5 is 1 and unused bit B is 0 regardless of val.
-	inline void UpdateRegP(u8 val) { reg_.P = (val & 0xCF) | 0x20; }
+	inline void UpdateRegN(u8 val) { reg_.SetP((reg_.GetP() & 0x7F) | (val & 0x80)); }
 
 	// Updates the PC register. Sets PC to val. currentOpChangedPC_ is set to true so PC is not automatically changed afterwards.
 	inline void UpdateRegPC(u16 val) { reg_.PC = val; currentOp_.opChangedPC = true; }
@@ -364,15 +371,15 @@ private:
 
 		// A + M + C -> A, C
 		// @NOTE: NES 6502 variant has no BCD mode.
-		const u16 res = reg_.A + argVal + (NESHelper::IsBitSet(reg_.P, NES_CPU_REG_P_C_BIT) ? 1 : 0);
+		const u16 res = reg_.A + argVal + (NESHelper::IsBitSet(reg_.GetP(), NES_CPU_REG_P_C_BIT) ? 1 : 0);
 
 		// If A and argVal have the same sign, then we have the potential to overflow (when considering 2s complement).
 		// If this is the case, and the sign has changed in the result (compare res with either A or argVal), 
 		// then we have overflowed. Set V.
-		NESHelper::EditBit(reg_.P, NES_CPU_REG_P_V_BIT, ((~(reg_.A ^ argVal) & (reg_.A ^ res)) & 0x80) == 0x80);
+		reg_.SetP(NESHelper::EditBit(reg_.GetP(), NES_CPU_REG_P_V_BIT, ((~(reg_.A ^ argVal) & (reg_.A ^ res)) & 0x80) == 0x80));
 
 		// Set carry if we can't represent this number using 8-bits (regardless of 2s complement).
-		NESHelper::EditBit(reg_.P, NES_CPU_REG_P_C_BIT, res > 0xFF);
+		reg_.SetP(NESHelper::EditBit(reg_.GetP(), NES_CPU_REG_P_C_BIT, res > 0xFF));
 		UpdateRegN(static_cast<u8>(res));
 		UpdateRegZ(static_cast<u8>(res));
 		reg_.A = static_cast<u8>(res);
@@ -411,19 +418,19 @@ private:
 		WriteOpResult(argInfo.addrMode, res);
 
 		// Set carry bit if bit 7 (which was lost after the shift) was originally 1.
-		NESHelper::EditBit(reg_.P, NES_CPU_REG_P_C_BIT, (argVal & 0x80) == 0x80);
+		reg_.SetP(NESHelper::EditBit(reg_.GetP(), NES_CPU_REG_P_C_BIT, (argVal & 0x80) == 0x80));
 		UpdateRegZ(res);
 		UpdateRegN(res);
 	}
 
 	// Execute Branch on Carry Clear (BCC).
-	inline void ExecuteOpBCC(NESCPUOpArgInfo& argInfo) { /* Branch on C = 0 */ ExecuteOpAsBranch(argInfo.argAddr, !NESHelper::IsBitSet(reg_.P, NES_CPU_REG_P_C_BIT)); }
+	inline void ExecuteOpBCC(NESCPUOpArgInfo& argInfo) { /* Branch on C = 0 */ ExecuteOpAsBranch(argInfo.argAddr, !NESHelper::IsBitSet(reg_.GetP(), NES_CPU_REG_P_C_BIT)); }
 
 	// Execute Branch on Carry Set (BCS).
-	inline void ExecuteOpBCS(NESCPUOpArgInfo& argInfo) { /* Branch on C = 1 */ ExecuteOpAsBranch(argInfo.argAddr, NESHelper::IsBitSet(reg_.P, NES_CPU_REG_P_C_BIT)); }
+	inline void ExecuteOpBCS(NESCPUOpArgInfo& argInfo) { /* Branch on C = 1 */ ExecuteOpAsBranch(argInfo.argAddr, NESHelper::IsBitSet(reg_.GetP(), NES_CPU_REG_P_C_BIT)); }
 
 	// Execute Branch on Result Zero (BEQ).
-	inline void ExecuteOpBEQ(NESCPUOpArgInfo& argInfo) { /* Branch on Z = 1 */ ExecuteOpAsBranch(argInfo.argAddr, NESHelper::IsBitSet(reg_.P, NES_CPU_REG_P_Z_BIT)); }
+	inline void ExecuteOpBEQ(NESCPUOpArgInfo& argInfo) { /* Branch on Z = 1 */ ExecuteOpAsBranch(argInfo.argAddr, NESHelper::IsBitSet(reg_.GetP(), NES_CPU_REG_P_Z_BIT)); }
 
 	// Execute Test Bits in Memory with Accumulator (BIT).
 	inline void ExecuteOpBIT(NESCPUOpArgInfo& argInfo)
@@ -433,46 +440,46 @@ private:
 
 		UpdateRegN(argVal);
 		UpdateRegZ(argVal & reg_.A);
-		NESHelper::EditBit(reg_.P, NES_CPU_REG_P_V_BIT, (argVal & 0x40) == 0x40);
+		reg_.SetP(NESHelper::EditBit(reg_.GetP(), NES_CPU_REG_P_V_BIT, (argVal & 0x40) == 0x40));
 	}
 
 	// Execute Branch on Result Minus (BMI).
-	inline void ExecuteOpBMI(NESCPUOpArgInfo& argInfo) { /* Branch on N = 1 */ ExecuteOpAsBranch(argInfo.argAddr, NESHelper::IsBitSet(reg_.P, NES_CPU_REG_P_N_BIT)); }
+	inline void ExecuteOpBMI(NESCPUOpArgInfo& argInfo) { /* Branch on N = 1 */ ExecuteOpAsBranch(argInfo.argAddr, NESHelper::IsBitSet(reg_.GetP(), NES_CPU_REG_P_N_BIT)); }
 
 	// Execute Branch on Result Not Zero (BNE).
-	inline void ExecuteOpBNE(NESCPUOpArgInfo& argInfo) { /* Branch on Z = 0 */ ExecuteOpAsBranch(argInfo.argAddr, !NESHelper::IsBitSet(reg_.P, NES_CPU_REG_P_Z_BIT)); }
+	inline void ExecuteOpBNE(NESCPUOpArgInfo& argInfo) { /* Branch on Z = 0 */ ExecuteOpAsBranch(argInfo.argAddr, !NESHelper::IsBitSet(reg_.GetP(), NES_CPU_REG_P_Z_BIT)); }
 
 	// Execute Branch on Result Plus (BPL).
-	inline void ExecuteOpBPL(NESCPUOpArgInfo& argInfo) { /* Branch on N = 0 */ ExecuteOpAsBranch(argInfo.argAddr, !NESHelper::IsBitSet(reg_.P, NES_CPU_REG_P_N_BIT)); }
+	inline void ExecuteOpBPL(NESCPUOpArgInfo& argInfo) { /* Branch on N = 0 */ ExecuteOpAsBranch(argInfo.argAddr, !NESHelper::IsBitSet(reg_.GetP(), NES_CPU_REG_P_N_BIT)); }
 
 	// Execute Force Break (BRK).
 	inline void ExecuteOpBRK(NESCPUOpArgInfo& argInfo)
 	{
 		// Forced Interrupt PC + 2 toS P toS 
 		StackPush16(reg_.PC + 2); // There is a padding byte after the opcode, hence the +2.
-		StackPush8(reg_.P | 0x10);
-		NESHelper::SetBit(reg_.P, NES_CPU_REG_P_I_BIT);
+		StackPush8(reg_.GetP() | 0x10); // Make sure bit 5 is set on the copy we push.
+		reg_.SetP(NESHelper::SetBit(reg_.GetP(), NES_CPU_REG_P_I_BIT));
 
 		UpdateRegPC(NESHelper::MemoryRead16(mem_, 0xFFFE));
 	}
 
 	// Execute Branch on Overflow Clear (BVC).
-	inline void ExecuteOpBVC(NESCPUOpArgInfo& argInfo) { /* Branch on V = 0 */ ExecuteOpAsBranch(argInfo.argAddr, !NESHelper::IsBitSet(reg_.P, NES_CPU_REG_P_V_BIT)); }
+	inline void ExecuteOpBVC(NESCPUOpArgInfo& argInfo) { /* Branch on V = 0 */ ExecuteOpAsBranch(argInfo.argAddr, !NESHelper::IsBitSet(reg_.GetP(), NES_CPU_REG_P_V_BIT)); }
 
 	// Execute Branch on Overflow Set (BVS).
-	inline void ExecuteOpBVS(NESCPUOpArgInfo& argInfo) { /* Branch on V = 1 */ ExecuteOpAsBranch(argInfo.argAddr, NESHelper::IsBitSet(reg_.P, NES_CPU_REG_P_V_BIT)); }
+	inline void ExecuteOpBVS(NESCPUOpArgInfo& argInfo) { /* Branch on V = 1 */ ExecuteOpAsBranch(argInfo.argAddr, NESHelper::IsBitSet(reg_.GetP(), NES_CPU_REG_P_V_BIT)); }
 
 	// Execute Clear Carry Flag (CLC).
-	inline void ExecuteOpCLC(NESCPUOpArgInfo& argInfo) { /* 0 -> C */ NESHelper::ClearBit(reg_.P, NES_CPU_REG_P_C_BIT); }
+	inline void ExecuteOpCLC(NESCPUOpArgInfo& argInfo) { /* 0 -> C */ reg_.SetP(NESHelper::ClearBit(reg_.GetP(), NES_CPU_REG_P_C_BIT)); }
 
 	// Execute Clear Decimal Mode (CLD).
-	inline void ExecuteOpCLD(NESCPUOpArgInfo& argInfo) { /* 0 -> D */ NESHelper::ClearBit(reg_.P, NES_CPU_REG_P_D_BIT); }
+	inline void ExecuteOpCLD(NESCPUOpArgInfo& argInfo) { /* 0 -> D */ reg_.SetP(NESHelper::ClearBit(reg_.GetP(), NES_CPU_REG_P_D_BIT)); }
 
 	// Execute Clear Interrupt Disable Bit (CLI).
-	inline void ExecuteOpCLI(NESCPUOpArgInfo& argInfo) { /* 0 -> I */ NESHelper::ClearBit(reg_.P, NES_CPU_REG_P_I_BIT); }
+	inline void ExecuteOpCLI(NESCPUOpArgInfo& argInfo) { /* 0 -> I */ reg_.SetP(NESHelper::ClearBit(reg_.GetP(), NES_CPU_REG_P_I_BIT)); }
 
 	// Execute Clear Overflow Flag (CLV).
-	inline void ExecuteOpCLV(NESCPUOpArgInfo& argInfo) { /* 0 -> V */ NESHelper::ClearBit(reg_.P, NES_CPU_REG_P_V_BIT); }
+	inline void ExecuteOpCLV(NESCPUOpArgInfo& argInfo) { /* 0 -> V */ reg_.SetP(NESHelper::ClearBit(reg_.GetP(), NES_CPU_REG_P_V_BIT)); }
 
 	// Execute Compare Memory and Accumulator (CMP).
 	inline void ExecuteOpCMP(NESCPUOpArgInfo& argInfo)
@@ -484,7 +491,7 @@ private:
 		// A - M
 		const u16 res = reg_.A - mem_.Read8(argInfo.argAddr);
 
-		NESHelper::EditBit(reg_.P, NES_CPU_REG_P_C_BIT, res < 0x100);
+		reg_.SetP(NESHelper::EditBit(reg_.GetP(), NES_CPU_REG_P_C_BIT, res < 0x100));
 		UpdateRegN(static_cast<u8>(res));
 		UpdateRegZ(res & 0xFF); // Check first 8-bits.
 	}
@@ -495,7 +502,7 @@ private:
 		// X - M
 		const u16 res = reg_.X - mem_.Read8(argInfo.argAddr);
 
-		NESHelper::EditBit(reg_.P, NES_CPU_REG_P_C_BIT, res < 0x100);
+		reg_.SetP(NESHelper::EditBit(reg_.GetP(), NES_CPU_REG_P_C_BIT, res < 0x100));
 		UpdateRegN(static_cast<u8>(res));
 		UpdateRegZ(res & 0xFF); // Check first 8-bits.
 	}
@@ -506,7 +513,7 @@ private:
 		// Y - M
 		const u16 res = reg_.Y - mem_.Read8(argInfo.argAddr);
 
-		NESHelper::EditBit(reg_.P, NES_CPU_REG_P_C_BIT, res < 0x100);
+		reg_.SetP(NESHelper::EditBit(reg_.GetP(), NES_CPU_REG_P_C_BIT, res < 0x100));
 		UpdateRegN(static_cast<u8>(res));
 		UpdateRegZ(res & 0xFF); // Check first 8-bits.
 	}
@@ -657,7 +664,7 @@ private:
 		WriteOpResult(argInfo.addrMode, res);
 
 		// Set the carry if the original bit 0 (that we lost) was 1.
-		NESHelper::EditBit(reg_.P, NES_CPU_REG_P_C_BIT, (argVal & 1) == 1);
+		reg_.SetP(NESHelper::EditBit(reg_.GetP(), NES_CPU_REG_P_C_BIT, (argVal & 1) == 1));
 		UpdateRegZ(res);
 		UpdateRegN(res);
 	}
@@ -684,7 +691,12 @@ private:
 	inline void ExecuteOpPHA(NESCPUOpArgInfo& argInfo) { /* A toS */ StackPush8(reg_.A); }
 
 	// Execute Push Processor Status to Stack (PHP).
-	inline void ExecuteOpPHP(NESCPUOpArgInfo& argInfo) { /* P toS - make sure bit 5 is set. */ StackPush8(reg_.P | 0x10); }
+	inline void ExecuteOpPHP(NESCPUOpArgInfo& argInfo) 
+	{ 
+		// P toS 
+		// Make sure bit 5 is set on the copy we push.
+		StackPush8(reg_.GetP() | 0x10); 
+	}
 
 	// Execute Pull Accumulator from Stack (PLA).
 	inline void ExecuteOpPLA(NESCPUOpArgInfo& argInfo)
@@ -698,7 +710,12 @@ private:
 	}
 
 	// Execute Pull Processor Status from Stack (PLP).
-	inline void ExecuteOpPLP(NESCPUOpArgInfo& argInfo) { /* P fromS. */ UpdateRegP(StackPull8()); }
+	inline void ExecuteOpPLP(NESCPUOpArgInfo& argInfo) 
+	{ 
+		// P fromS.
+		// Make sure we unset bit 5 from the copy we fetch.
+		reg_.SetP(StackPull8() & 0xEF);
+	}
 
 	// Execute Rotate One Bit Left (ROL).
 	inline void ExecuteOpROL(NESCPUOpArgInfo& argInfo)
@@ -707,11 +724,11 @@ private:
 		const u8 argVal = (argInfo.addrMode == NESCPUOpAddressingMode::ACCUMULATOR ? reg_.A : mem_.Read8(argInfo.argAddr));
 
 		// Shift to the left and append the carry bit in position 0 if set.
-		const u16 res = (argVal << 1) | (NESHelper::IsBitSet(reg_.P, NES_CPU_REG_P_C_BIT) ? 1 : 0);
+		const u16 res = (argVal << 1) | (NESHelper::IsBitSet(reg_.GetP(), NES_CPU_REG_P_C_BIT) ? 1 : 0);
 		WriteOpResult(argInfo.addrMode, static_cast<u8>(res));
 
 		// Set the carry if there is a set bit in position 8 (which will be lost after we shift).
-		NESHelper::EditBit(reg_.P, NES_CPU_REG_P_C_BIT, (res & 0x100) == 0x100);
+		reg_.SetP(NESHelper::EditBit(reg_.GetP(), NES_CPU_REG_P_C_BIT, (res & 0x100) == 0x100));
 		UpdateRegZ(static_cast<u8>(res));
 		UpdateRegN(static_cast<u8>(res));
 	}
@@ -723,10 +740,10 @@ private:
 		const u8 argVal = (argInfo.addrMode == NESCPUOpAddressingMode::ACCUMULATOR ? reg_.A : mem_.Read8(argInfo.argAddr));
 
 		// Append the carry bit to position 8 if it is set.
-		const u16 unshiftedRes = argVal | (NESHelper::IsBitSet(reg_.P, NES_CPU_REG_P_C_BIT) ? 0x100 : 0);
+		const u16 unshiftedRes = argVal | (NESHelper::IsBitSet(reg_.GetP(), NES_CPU_REG_P_C_BIT) ? 0x100 : 0);
 
 		// Set the carry bit if there is a set bit in position 0 (which will be lost after we shift).
-		NESHelper::EditBit(reg_.P, NES_CPU_REG_P_C_BIT, (unshiftedRes & 1) == 1);
+		reg_.SetP(NESHelper::EditBit(reg_.GetP(), NES_CPU_REG_P_C_BIT, (unshiftedRes & 1) == 1));
 
 		// Now we can shift to the right and safetly lose bit 0 (as it is recorded in the carry bit).
 		const u8 res = (unshiftedRes >> 1) & 0xFF;
@@ -737,7 +754,13 @@ private:
 	}
 
 	// Execute Return from Interrupt (RTI).
-	inline void ExecuteOpRTI(NESCPUOpArgInfo& argInfo) { /* P fromS PC fromS */ UpdateRegP(StackPull8()); UpdateRegPC(StackPull16()); }
+	inline void ExecuteOpRTI(NESCPUOpArgInfo& argInfo) 
+	{ 
+		// P fromS PC fromS
+		// Make sure we unset bit 5 in the copy we fetch.
+		reg_.SetP(StackPull8() & 0xEF); 
+		UpdateRegPC(StackPull16()); 
+	}
 
 	// Execute Return from Subroutine (RTS).
 	inline void ExecuteOpRTS(NESCPUOpArgInfo& argInfo) { /* PC fromS, PC + 1 -> PC */ UpdateRegPC(StackPull16() + 1); }
@@ -746,13 +769,13 @@ private:
 	inline void ExecuteOpSBC(NESCPUOpArgInfo& argInfo) { /* A - M - (1 - C) -> A, C */ ExecuteOpAsAddWithCarry(argInfo.crossedPage, mem_.Read8(argInfo.argAddr) ^ 0xFF); }
 
 	// Execute Set Carry Flag (SEC).
-	inline void ExecuteOpSEC(NESCPUOpArgInfo& argInfo) { /* 1 -> C */ NESHelper::SetBit(reg_.P, NES_CPU_REG_P_C_BIT); }
+	inline void ExecuteOpSEC(NESCPUOpArgInfo& argInfo) { /* 1 -> C */ reg_.SetP(NESHelper::SetBit(reg_.GetP(), NES_CPU_REG_P_C_BIT)); }
 
 	// Execute Set Decimal Mode (SED).
-	inline void ExecuteOpSED(NESCPUOpArgInfo& argInfo) { /* 1 -> D */ NESHelper::SetBit(reg_.P, NES_CPU_REG_P_D_BIT); }
+	inline void ExecuteOpSED(NESCPUOpArgInfo& argInfo) { /* 1 -> D */ reg_.SetP(NESHelper::SetBit(reg_.GetP(), NES_CPU_REG_P_D_BIT)); }
 
 	// Execute Set Interrupt Disable Status (SEI).
-	inline void ExecuteOpSEI(NESCPUOpArgInfo& argInfo) { /* 1 -> I */ NESHelper::SetBit(reg_.P, NES_CPU_REG_P_I_BIT); }
+	inline void ExecuteOpSEI(NESCPUOpArgInfo& argInfo) { /* 1 -> I */ reg_.SetP(NESHelper::SetBit(reg_.GetP(), NES_CPU_REG_P_I_BIT)); }
 
 	// Execute Store Accumulator in Memory (STA).
 	inline void ExecuteOpSTA(NESCPUOpArgInfo& argInfo) { /* A -> M */ mem_.Write8(argInfo.argAddr, reg_.A); }

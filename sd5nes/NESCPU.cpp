@@ -408,18 +408,25 @@ void NESCPU::Run(unsigned int numCycles)
 {
 	// @TODO Need to compensate for going over the specified amount of
 	// numCycles for the next Run()
-	while (elapsedCycles_ < numCycles)
+	const auto maxCycles = numCycles + elapsedCycles_;
+	while (elapsedCycles_ < maxCycles)
 	{
 		// Check for interrupts. Return if it's a reset.
 		const auto handledInt = HandleInterrupts();
-		if (handledInt == NESCPUInterruptType::RESET)
-			return;
+		if (handledInt != NESCPUInterruptType::NONE)
+		{
+			// Interrupts take 7 cycles to execute.
+			elapsedCycles_ += 7;
+
+			// Terminate the loop if we handle a reset.
+			if (handledInt == NESCPUInterruptType::RESET)
+				break;
+		}
 
 		// Execute next instruction.
 		ExecuteNextOp();
 
-		// Add 7 extra cycles if an interrupt was handled.
-		elapsedCycles_ += currentOp_.opCycleCount + (handledInt != NESCPUInterruptType::NONE ? 7 : 0);
+		elapsedCycles_ += currentOp_.opCycleCount;
 	}
 }
 
@@ -546,7 +553,7 @@ NESCPUInterruptType NESCPU::HandleInterrupts()
 
 		UpdateRegPC(NESHelper::MemoryRead16(mem_, 0xFFFC));
 		reg_.SP = 0xFA;
-		reg_.P = 0x24;
+		reg_.SetP(0x24);
 		intReset_ = false;
 	}
 	else if (intNmi_) // @TODO: Check for NMI Edge!
@@ -556,7 +563,7 @@ NESCPUInterruptType NESCPU::HandleInterrupts()
 		UpdateRegPC(NESHelper::MemoryRead16(mem_, 0xFFFA));
 		intNmi_ = false;
 	}
-	else if (intIrq_ && !NESHelper::IsBitSet(reg_.P, NES_CPU_REG_P_I_BIT))
+	else if (intIrq_ && !NESHelper::IsBitSet(reg_.GetP(), NES_CPU_REG_P_I_BIT))
 	{
 		handledInt = NESCPUInterruptType::IRQ;
 
@@ -570,11 +577,11 @@ NESCPUInterruptType NESCPU::HandleInterrupts()
 		if (handledInt != NESCPUInterruptType::RESET)
 		{
 			StackPush16(reg_.PC + 1);
-			StackPush8(reg_.P);
+			StackPush8(reg_.GetP());
 		}
 
 		// Make sure the interrupt disable flag is set if we interrupted.
-		NESHelper::SetBit(reg_.P, NES_CPU_REG_P_I_BIT);
+		reg_.SetP(NESHelper::SetBit(reg_.GetP(), NES_CPU_REG_P_I_BIT));
 	}
 
 	return handledInt;
@@ -594,25 +601,25 @@ void NESCPU::ExecuteNextOp()
 	}
 
 	// @TODO Debug!
-	if (mem_.Read8(0x6000) != 0x80 &&
-		mem_.Read8(0x6001) == 0xDE &&
-		mem_.Read8(0x6002) == 0xB0 &&
-		mem_.Read8(0x6003) == 0x61)
-	{
-		std::cout << "Test status: $" << std::hex << +mem_.Read8(0x6000) << std::endl;
-		std::cout << "Message: " << std::endl;
-		for (u16 i = 0x6004;; ++i)
-		{
-			const u8 c = mem_.Read8(i);
-			if (c == 0)
-				break;
+	//if (mem_.Read8(0x6000) != 0x80 &&
+	//	mem_.Read8(0x6001) == 0xDE &&
+	//	mem_.Read8(0x6002) == 0xB0 &&
+	//	mem_.Read8(0x6003) == 0x61)
+	//{
+	//	std::cout << "Test status: $" << std::hex << +mem_.Read8(0x6000) << std::endl;
+	//	std::cout << "Message: " << std::endl;
+	//	for (u16 i = 0x6004;; ++i)
+	//	{
+	//		const u8 c = mem_.Read8(i);
+	//		if (c == 0)
+	//			break;
 
-			std::cout << c;
-		}
-		std::cout << std::endl;
-		system("pause");
-		exit(0);
-	}
+	//		std::cout << c;
+	//	}
+	//	std::cout << std::endl;
+	//	system("pause");
+	//	exit(0);
+	//}
 
 	// Locate the mapping for this opcode.
 	const auto it = opInfos_.find(currentOp_.op);
@@ -643,7 +650,7 @@ void NESCPU::ExecuteNextOp()
 	//
 	//static int a = 0;
 	//if (a < 50)
-	//	std::cout <<"Cyc: " << elapsedCycles_ << ", Reg: " << reg_.ToString() << "\t Ins: " << OpAsAsm(it->second.opName, it->second.addrMode, val) << std::endl;
+	// std::cout <<"Cyc: " << elapsedCycles_ << ", Reg: " << reg_.ToString() << "\t Ins: " << OpAsAsm(it->second.opName, it->second.addrMode, val) << std::endl;
 	//++a;
 
 	// Execute instruction.

@@ -23,30 +23,60 @@ namespace NESHelper
 	/**
 	* Sets the bit at the specified position of an 8-bit value.
 	*/
-	inline void SetBit(u8& val, u8 pos) 
+	inline void SetRefBit(u8& val, u8 pos) 
 	{ 
 		assert(pos < 8); 
 		val |= (1 << pos); 
 	}
 
 	/**
+	* Sets the bit at the specified position of an 8-bit value.
+	* Returns the result and does not modify val.
+	*/
+	inline u8 SetBit(u8 val, u8 pos)
+	{
+		SetRefBit(val, pos);
+		return val;
+	}
+
+	/**
 	* Clear the bit at the specified position of an 8-bit value.
 	*/
-	inline void ClearBit(u8& val, u8 pos) 
+	inline void ClearRefBit(u8& val, u8 pos) 
 	{ 
 		assert(pos < 8); 
 		val &= ~(1 << pos); 
 	}
 
 	/**
+	* Clear the bit at the specified position of an 8-bit value.
+	* Returns the result and does not modify val.
+	*/
+	inline u8 ClearBit(u8 val, u8 pos)
+	{
+		ClearRefBit(val, pos);
+		return val;
+	}
+
+	/**
 	* Sets/clears the bit at the specified position of an 8-bit value.
 	*/
-	inline void EditBit(u8& val, u8 pos, bool setBit) 
+	inline void EditRefBit(u8& val, u8 pos, bool setBit) 
 	{ 
 		if (setBit)
-			SetBit(val, pos);
+			SetRefBit(val, pos);
 		else
-			ClearBit(val, pos); 
+			ClearRefBit(val, pos); 
+	}
+
+	/**
+	* Sets/clears the bit at the specified position of an 8-bit value.
+	* Returns the result and does not modify val.
+	*/
+	inline u8 EditBit(u8 val, u8 pos, bool setBit)
+	{
+		EditRefBit(val, pos, setBit);
+		return val;
 	}
 
 	/**

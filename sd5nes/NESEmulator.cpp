@@ -36,9 +36,9 @@ void NESEmulator::Frame()
 	sf::Texture tex;
 
 	// @TODO DEBUG!!
-	debug_.create(32 * 8, 240, sf::Color::Black);
+	debug_.create(256, 240, sf::Color::Black);
 
-	cpu_->Run(99999999); // @TODO DEBUG!!
+	cpu_->Run(20480); // @TODO DEBUG!!
 	ppu_->Frame();
 
 	tex.loadFromImage(debug_);

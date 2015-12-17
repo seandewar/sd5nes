@@ -192,7 +192,7 @@ u8 NESPPU::ReadRegister(NESPPURegisterType reg)
 	{
 	case NESPPURegisterType::PPUSTATUS:
 		returnVal = reg_.PPUSTATUS;
-		NESHelper::ClearBit(reg_.PPUSTATUS, NES_PPU_REG_PPUSTATUS_V_BIT); // The V-Blank flag is cleared upon read.
+		NESHelper::ClearRefBit(reg_.PPUSTATUS, NES_PPU_REG_PPUSTATUS_V_BIT); // The V-Blank flag is cleared upon read.
 		latches_.isAddressLatchOn = false; // Reading PPUSTATUS resets the address latch.
 		break;
 
@@ -216,7 +216,7 @@ u8 NESPPU::ReadRegister(NESPPURegisterType reg)
 
 void NESPPU::HandleScanline(unsigned int scanline)
 {
-	NESHelper::SetBit(reg_.PPUSTATUS, NES_PPU_REG_PPUSTATUS_V_BIT); // @TODO debug!!!!
+	NESHelper::SetRefBit(reg_.PPUSTATUS, NES_PPU_REG_PPUSTATUS_V_BIT); // @TODO debug!!!!
 
 	if (scanline < 20)
 	{
