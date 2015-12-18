@@ -130,7 +130,7 @@ enum class NESCPUInterruptType
 /**
 * Enum containing the different addressing modes of operands.
 */
-enum class NESCPUOpAddressingMode
+enum class NESCPUOpAddrMode
 {
 	IMMEDIATE,
 	ZEROPAGE,
@@ -164,9 +164,9 @@ struct NESCPUOpArgInfo
 {
 	u16 argAddr;
 	bool crossedPage;
-	const NESCPUOpAddressingMode addrMode;
+	const NESCPUOpAddrMode addrMode;
 
-	NESCPUOpArgInfo(NESCPUOpAddressingMode addrMode) :
+	NESCPUOpArgInfo(NESCPUOpAddrMode addrMode) :
 		addrMode(addrMode),
 		argAddr(0),
 		crossedPage(false)
@@ -185,12 +185,14 @@ typedef void (NESCPU::*NESOpFuncPointer)(NESCPUOpArgInfo& argInfo);
 struct NESCPUOpInfo
 {
 	const std::string opName;
+	const bool isOfficialOp;
 	const NESOpFuncPointer opFunc;
-	const NESCPUOpAddressingMode addrMode;
+	const NESCPUOpAddrMode addrMode;
 	const int cycleCount;
 
-	NESCPUOpInfo(const std::string& opName, NESOpFuncPointer opFunc, NESCPUOpAddressingMode addrMode, int cycleCount) :
+	NESCPUOpInfo(const std::string& opName, bool isOfficialOp, NESOpFuncPointer opFunc, NESCPUOpAddrMode addrMode, int cycleCount) :
 		opName(opName),
+		isOfficialOp(isOfficialOp),
 		opFunc(opFunc),
 		addrMode(addrMode),
 		cycleCount(cycleCount)
@@ -206,7 +208,7 @@ struct NESCPUExecutingOpInfo
 	int opCycleCount;
 	bool opChangedPC;
 
-	NESCPUExecutingOpInfo(u8 op = NES_OP_INVALID) :
+	NESCPUExecutingOpInfo(u8 op = NES_OP_KIL_IMPLIED1) :
 		op(op),
 		opCycleCount(0),
 		opChangedPC(false)
@@ -247,24 +249,24 @@ private:
 	static std::unordered_map<u8, NESCPUOpInfo> opInfos_;
 
 	/**
-	* Registers an opcode mapping.
+	* Registers an official opcode mapping.
 	*/
-	static void RegisterOpMapping(const std::string& opName, u8 op, NESOpFuncPointer opFunc, NESCPUOpAddressingMode addrMode, int cycleCount);
+	static void RegisterOp(const std::string& opName, u8 op, bool isOfficialOp, NESOpFuncPointer opFunc, NESCPUOpAddrMode addrMode, int cycleCount);
 
 	/**
 	* Gets the addressing mode of the specified opcode.
 	*/
-	static NESCPUOpAddressingMode GetOpAddressingMode(u8 op);
+	static NESCPUOpAddrMode GetOpAddrMode(u8 op);
 
 	/**
 	* Returns the size of the opcode's addressing mode in bytes.
 	*/
-	static u16 GetOpSizeFromAddressingMode(NESCPUOpAddressingMode addrMode);
+	static u16 GetOpSizeFromAddrMode(NESCPUOpAddrMode addrMode);
 
 	/**
 	* Return an assembly string representation of an instruction.
 	*/
-	static std::string OpAsAsm(const std::string& opName, NESCPUOpAddressingMode addrMode, u16 val);
+	static std::string OpAsAsm(const std::string& opName, NESCPUOpAddrMode addrMode, u16 val);
 
 	NESCPURegisters reg_;
 	NESCPUMemoryMapper& mem_;
@@ -290,12 +292,12 @@ private:
 	* Returns the addr of the arg's value as the first member of the pair, and whether or not a page
 	* boundary was crossed as second.
 	*/
-	NESCPUOpArgInfo ReadOpArgInfo(NESCPUOpAddressingMode addrMode);
+	NESCPUOpArgInfo ReadOpArgInfo(NESCPUOpAddrMode addrMode);
 
 	/**
 	* Writes an op's result to the intended piece of memory / register.
 	*/
-	void WriteOpResult(NESCPUOpAddressingMode addrMode, u8 result);
+	void WriteOpResult(NESCPUOpAddrMode addrMode, u8 result);
 
 	/**
 	* Handles the execution of pending interrupts while accounting for interrupt priority.
@@ -344,6 +346,10 @@ private:
 		return NESHelper::ConvertTo16(hi, lo);
 	}
 
+	/****************************************/
+	/****** Instruction Implementation ******/
+	/****************************************/
+
 	/**
 	* Executes the current op as a branch instruction if shouldBranch is true.
 	* Adds 1 to the current op's cycle count if branched to same page, 2 if branched to a different page.
@@ -360,7 +366,7 @@ private:
 		UpdateRegPC(jumpAddr);
 	}
 
-	/** 
+	/**
 	* Executes an op as an add with carry. Affects N, Z, V and C.
 	*/
 	inline void ExecuteOpAsAddWithCarry(bool crossedPage, u8 argVal)
@@ -385,10 +391,6 @@ private:
 		reg_.A = static_cast<u8>(res);
 	}
 
-	/****************************************/
-	/****** Instruction Implementation ******/
-	/****************************************/
-
 	// Execute Add with Carry (ADC).
 	inline void ExecuteOpADC(NESCPUOpArgInfo& argInfo) { /* A + M + C -> A, C */ ExecuteOpAsAddWithCarry(argInfo.crossedPage, mem_.Read8(argInfo.argAddr)); }
 
@@ -411,7 +413,7 @@ private:
 	inline void ExecuteOpASL(NESCPUOpArgInfo& argInfo)
 	{
 		// C <- [76543210] <- 0
-		const u8 argVal = (argInfo.addrMode == NESCPUOpAddressingMode::ACCUMULATOR ? reg_.A : mem_.Read8(argInfo.argAddr));
+		const u8 argVal = (argInfo.addrMode == NESCPUOpAddrMode::ACCUMULATOR ? reg_.A : mem_.Read8(argInfo.argAddr));
 
 		// Shift to the left. Bit now in position 0 should be 0. Bit originally in pos 8 is lost.
 		const u8 res = (argVal << 1) & 0xFF;
@@ -657,7 +659,7 @@ private:
 	inline void ExecuteOpLSR(NESCPUOpArgInfo& argInfo)
 	{
 		// 0 -> [76543210] -> C
-		const u8 argVal = (argInfo.addrMode == NESCPUOpAddressingMode::ACCUMULATOR ? reg_.A : mem_.Read8(argInfo.argAddr));
+		const u8 argVal = (argInfo.addrMode == NESCPUOpAddrMode::ACCUMULATOR ? reg_.A : mem_.Read8(argInfo.argAddr));
 
 		// Shift to the right. We will lose bit 0 in the process, and bit 7 should become 0.
 		const u8 res = argVal >> 1;
@@ -670,7 +672,15 @@ private:
 	}
 
 	// Execute No Operation (Do Nothing) (NOP).
-	inline void ExecuteOpNOP(NESCPUOpArgInfo& argInfo) { /* Do nothing. */ }
+	inline void ExecuteOpNOP(NESCPUOpArgInfo& argInfo) 
+	{ 
+		// Do nothing.
+
+		// Burn an extra cycle if page crossed
+		// from use of an unofficial opcode.
+		if (argInfo.crossedPage)
+			OpAddCycles(1);
+	}
 
 	// Execute "Or" Memory with Accumulator (ORA).
 	inline void ExecuteOpORA(NESCPUOpArgInfo& argInfo)
@@ -721,7 +731,7 @@ private:
 	inline void ExecuteOpROL(NESCPUOpArgInfo& argInfo)
 	{
 		// C <- [7654321] <- C
-		const u8 argVal = (argInfo.addrMode == NESCPUOpAddressingMode::ACCUMULATOR ? reg_.A : mem_.Read8(argInfo.argAddr));
+		const u8 argVal = (argInfo.addrMode == NESCPUOpAddrMode::ACCUMULATOR ? reg_.A : mem_.Read8(argInfo.argAddr));
 
 		// Shift to the left and append the carry bit in position 0 if set.
 		const u16 res = (argVal << 1) | (NESHelper::IsBitSet(reg_.GetP(), NES_CPU_REG_P_C_BIT) ? 1 : 0);
@@ -737,7 +747,7 @@ private:
 	inline void ExecuteOpROR(NESCPUOpArgInfo& argInfo)
 	{
 		// C -> [7654321] -> C
-		const u8 argVal = (argInfo.addrMode == NESCPUOpAddressingMode::ACCUMULATOR ? reg_.A : mem_.Read8(argInfo.argAddr));
+		const u8 argVal = (argInfo.addrMode == NESCPUOpAddrMode::ACCUMULATOR ? reg_.A : mem_.Read8(argInfo.argAddr));
 
 		// Append the carry bit to position 8 if it is set.
 		const u16 unshiftedRes = argVal | (NESHelper::IsBitSet(reg_.GetP(), NES_CPU_REG_P_C_BIT) ? 0x100 : 0);
@@ -766,7 +776,15 @@ private:
 	inline void ExecuteOpRTS(NESCPUOpArgInfo& argInfo) { /* PC fromS, PC + 1 -> PC */ UpdateRegPC(StackPull16() + 1); }
 
 	// Execute Subtract Memory from Accumulator with Borrow (SBC).
-	inline void ExecuteOpSBC(NESCPUOpArgInfo& argInfo) { /* A - M - (1 - C) -> A, C */ ExecuteOpAsAddWithCarry(argInfo.crossedPage, mem_.Read8(argInfo.argAddr) ^ 0xFF); }
+	inline void ExecuteOpSBC(NESCPUOpArgInfo& argInfo) 
+	{ 
+		// A - M - (1 - C) -> A, C
+
+		// Simply just execute ADC with the bitwise complement of argVal.
+		// In 2s complement, this will = (-argVal) - 1.
+		// If the carry flag is set, 1 will be added to make it -argVal as intended.
+		ExecuteOpAsAddWithCarry(argInfo.crossedPage, ~mem_.Read8(argInfo.argAddr)); 
+	}
 
 	// Execute Set Carry Flag (SEC).
 	inline void ExecuteOpSEC(NESCPUOpArgInfo& argInfo) { /* 1 -> C */ reg_.SetP(NESHelper::SetBit(reg_.GetP(), NES_CPU_REG_P_C_BIT)); }
