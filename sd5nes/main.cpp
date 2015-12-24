@@ -35,7 +35,7 @@ int main(int argc, char* argv[])
 	//sf::Sprite spr;
 
 	NESEmulator emu(window);
-	emu.LoadROM("smb.nes");
+	emu.LoadROM("07.nes");
 
 	// Main loop.
 	while (window.isOpen())

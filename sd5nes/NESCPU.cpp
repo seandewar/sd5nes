@@ -102,7 +102,7 @@ void NESCPU::RegisterOp(const std::string& opName, u8 op, bool isOfficialOp, NES
 
 // This is needed because Intellisense will give errors
 // saying that NESCPU::RegisterOp() is inacessible (which is true for most contexts
-// but not true inside of NESCPUStaticInit()!
+// but not true inside of NESCPUStaticInit())!
 #ifndef __INTELLISENSE__
 
 /**
@@ -140,9 +140,9 @@ void NESCPU::RegisterOp(const std::string& opName, u8 op, bool isOfficialOp, NES
 
 NESCPUStaticInit::NESCPUStaticInit()
 {
-	/****************************************/
-	/********* Instruction Mappings *********/
-	/****************************************/
+	/*************************************************/
+	/********* Official Instruction Mappings *********/
+	/*************************************************/
 
 	// ADC
 	OP(NES_OP_ADC_NAME, NES_OP_ADC_IMMEDIATE, ExecuteOpADC, IMMEDIATE, 2);
@@ -411,6 +411,42 @@ NESCPUStaticInit::NESCPUStaticInit()
 	/********* Unofficial Instruction Mappings *********/
 	/***************************************************/
 
+	// ANC
+	UOP(NES_OP_ANC_NAME, NES_OP_ANC_IMMEDIATE1, ExecuteOpANC, IMMEDIATE, 2);
+	UOP(NES_OP_ANC_NAME, NES_OP_ANC_IMMEDIATE2, ExecuteOpANC, IMMEDIATE, 2);
+
+	// SAX
+	UOP(NES_OP_SAX_NAME, NES_OP_SAX_ZEROPAGE, ExecuteOpSAX, ZEROPAGE, 3);
+	UOP(NES_OP_SAX_NAME, NES_OP_SAX_ZEROPAGE_Y, ExecuteOpSAX, ZEROPAGE_Y, 4);
+	UOP(NES_OP_SAX_NAME, NES_OP_SAX_INDIRECT_X, ExecuteOpSAX, INDIRECT_X, 6);
+	UOP(NES_OP_SAX_NAME, NES_OP_SAX_ABSOLUTE, ExecuteOpSAX, ABSOLUTE, 4);
+
+	// ARR
+	UOP(NES_OP_ARR_NAME, NES_OP_ARR_IMMEDIATE, ExecuteOpARR, IMMEDIATE, 2);
+
+	// ASR
+	UOP(NES_OP_ASR_NAME, NES_OP_ASR_IMMEDIATE, ExecuteOpASR, IMMEDIATE, 2);
+
+	// @NOTE: Testing shows that this is an LAX #i instead?
+	// LXA
+	// UOP(NES_OP_LXA_NAME, NES_OP_LXA_IMMEDIATE, ExecuteOpLXA, IMMEDIATE, 2);
+
+	// AHX
+	UOP(NES_OP_AHX_NAME, NES_OP_AHX_ABSOLUTE_Y, ExecuteOpAHX, ABSOLUTE_Y, 5);
+	UOP(NES_OP_AHX_NAME, NES_OP_AHX_INDIRECT_Y, ExecuteOpAHX, INDIRECT_Y, 6);
+
+	// AXS
+	UOP(NES_OP_AXS_NAME, NES_OP_AXS_IMMEDIATE, ExecuteOpAXS, IMMEDIATE, 2);
+
+	// DCP
+	UOP(NES_OP_DCP_NAME, NES_OP_DCP_ZEROPAGE, ExecuteOpDCP, ZEROPAGE, 5);
+	UOP(NES_OP_DCP_NAME, NES_OP_DCP_ZEROPAGE_X, ExecuteOpDCP, ZEROPAGE_X, 6);
+	UOP(NES_OP_DCP_NAME, NES_OP_DCP_ABSOLUTE, ExecuteOpDCP, ABSOLUTE, 6);
+	UOP(NES_OP_DCP_NAME, NES_OP_DCP_ABSOLUTE_X, ExecuteOpDCP, ABSOLUTE_X, 7);
+	UOP(NES_OP_DCP_NAME, NES_OP_DCP_ABSOLUTE_Y, ExecuteOpDCP, ABSOLUTE_Y, 7);
+	UOP(NES_OP_DCP_NAME, NES_OP_DCP_INDIRECT_X, ExecuteOpDCP, INDIRECT_X, 8);
+	UOP(NES_OP_DCP_NAME, NES_OP_DCP_INDIRECT_Y, ExecuteOpDCP, INDIRECT_Y, 8);
+
 	// DOP (Double NOP)
 	UOP(NES_OP_DOP_NAME, NES_OP_DOP_ZEROPAGE1, ExecuteOpNOP, ZEROPAGE, 3);
 	UOP(NES_OP_DOP_NAME, NES_OP_DOP_ZEROPAGE_X1, ExecuteOpNOP, ZEROPAGE_X, 4);
@@ -427,6 +463,41 @@ NESCPUStaticInit::NESCPUStaticInit()
 	UOP(NES_OP_DOP_NAME, NES_OP_DOP_IMMEDIATE5, ExecuteOpNOP, IMMEDIATE, 2);
 	UOP(NES_OP_DOP_NAME, NES_OP_DOP_ZEROPAGE_X6, ExecuteOpNOP, ZEROPAGE_X, 4);
 
+	// ISC
+	UOP(NES_OP_ISC_NAME, NES_OP_ISC_ZEROPAGE, ExecuteOpISC, ZEROPAGE, 5);
+	UOP(NES_OP_ISC_NAME, NES_OP_ISC_ZEROPAGE_X, ExecuteOpISC, ZEROPAGE_X, 6);
+	UOP(NES_OP_ISC_NAME, NES_OP_ISC_ABSOLUTE, ExecuteOpISC, ABSOLUTE, 6);
+	UOP(NES_OP_ISC_NAME, NES_OP_ISC_ABSOLUTE_X, ExecuteOpISC, ABSOLUTE_X, 7);
+	UOP(NES_OP_ISC_NAME, NES_OP_ISC_ABSOLUTE_Y, ExecuteOpISC, ABSOLUTE_Y, 7);
+	UOP(NES_OP_ISC_NAME, NES_OP_ISC_INDIRECT_X, ExecuteOpISC, INDIRECT_X, 8);
+	UOP(NES_OP_ISC_NAME, NES_OP_ISC_INDIRECT_Y, ExecuteOpISC, INDIRECT_Y, 8);
+
+	// KIL
+	UOP(NES_OP_KIL_NAME, NES_OP_KIL_IMPLIED1, ExecuteOpKIL, IMPLIED, 0);
+	UOP(NES_OP_KIL_NAME, NES_OP_KIL_IMPLIED2, ExecuteOpKIL, IMPLIED, 0);
+	UOP(NES_OP_KIL_NAME, NES_OP_KIL_IMPLIED3, ExecuteOpKIL, IMPLIED, 0);
+	UOP(NES_OP_KIL_NAME, NES_OP_KIL_IMPLIED4, ExecuteOpKIL, IMPLIED, 0);
+	UOP(NES_OP_KIL_NAME, NES_OP_KIL_IMPLIED5, ExecuteOpKIL, IMPLIED, 0);
+	UOP(NES_OP_KIL_NAME, NES_OP_KIL_IMPLIED6, ExecuteOpKIL, IMPLIED, 0);
+	UOP(NES_OP_KIL_NAME, NES_OP_KIL_IMPLIED7, ExecuteOpKIL, IMPLIED, 0);
+	UOP(NES_OP_KIL_NAME, NES_OP_KIL_IMPLIED8, ExecuteOpKIL, IMPLIED, 0);
+	UOP(NES_OP_KIL_NAME, NES_OP_KIL_IMPLIED9, ExecuteOpKIL, IMPLIED, 0);
+	UOP(NES_OP_KIL_NAME, NES_OP_KIL_IMPLIED10, ExecuteOpKIL, IMPLIED, 0);
+	UOP(NES_OP_KIL_NAME, NES_OP_KIL_IMPLIED11, ExecuteOpKIL, IMPLIED, 0);
+	UOP(NES_OP_KIL_NAME, NES_OP_KIL_IMPLIED12, ExecuteOpKIL, IMPLIED, 0);
+			
+	// LAR
+	UOP(NES_OP_LAS_NAME, NES_OP_LAS_ABSOLUTE_Y, ExecuteOpLAS, ABSOLUTE_Y, 4);
+
+	// LAX
+	UOP(NES_OP_LAX_NAME, NES_OP_LAX_ZEROPAGE, ExecuteOpLAX, ZEROPAGE, 3);
+	UOP(NES_OP_LAX_NAME, NES_OP_LAX_ZEROPAGE_Y, ExecuteOpLAX, ZEROPAGE_Y, 4);
+	UOP(NES_OP_LAX_NAME, NES_OP_LAX_ABSOLUTE, ExecuteOpLAX, ABSOLUTE, 4);
+	UOP(NES_OP_LAX_NAME, NES_OP_LAX_ABSOLUTE_Y, ExecuteOpLAX, ABSOLUTE_Y, 4);
+	UOP(NES_OP_LAX_NAME, NES_OP_LAX_INDIRECT_X, ExecuteOpLAX, INDIRECT_X, 6);
+	UOP(NES_OP_LAX_NAME, NES_OP_LAX_INDIRECT_Y, ExecuteOpLAX, INDIRECT_Y, 5);
+	UOP(NES_OP_LAX_NAME, NES_OP_LAX_IMMEDIATE, ExecuteOpLAX, IMMEDIATE, 2);
+
 	// NOP (Unofficial)
 	UOP(NES_OP_NOP_NAME, NES_OP_NOP_U_IMPLIED1, ExecuteOpNOP, IMPLIED, 2);
 	UOP(NES_OP_NOP_NAME, NES_OP_NOP_U_IMPLIED2, ExecuteOpNOP, IMPLIED, 2);
@@ -435,8 +506,50 @@ NESCPUStaticInit::NESCPUStaticInit()
 	UOP(NES_OP_NOP_NAME, NES_OP_NOP_U_IMPLIED5, ExecuteOpNOP, IMPLIED, 2);
 	UOP(NES_OP_NOP_NAME, NES_OP_NOP_U_IMPLIED6, ExecuteOpNOP, IMPLIED, 2);
 
+	// RLA
+	UOP(NES_OP_RLA_NAME, NES_OP_RLA_ZEROPAGE, ExecuteOpRLA, ZEROPAGE, 5);
+	UOP(NES_OP_RLA_NAME, NES_OP_RLA_ZEROPAGE_X, ExecuteOpRLA, ZEROPAGE_X, 6);
+	UOP(NES_OP_RLA_NAME, NES_OP_RLA_ABSOLUTE, ExecuteOpRLA, ABSOLUTE, 6);
+	UOP(NES_OP_RLA_NAME, NES_OP_RLA_ABSOLUTE_X, ExecuteOpRLA, ABSOLUTE_X, 7);
+	UOP(NES_OP_RLA_NAME, NES_OP_RLA_ABSOLUTE_Y, ExecuteOpRLA, ABSOLUTE_Y, 7);
+	UOP(NES_OP_RLA_NAME, NES_OP_RLA_INDIRECT_X, ExecuteOpRLA, INDIRECT_X, 8);
+	UOP(NES_OP_RLA_NAME, NES_OP_RLA_INDIRECT_Y, ExecuteOpRLA, INDIRECT_Y, 8);
+
+	// RRA
+	UOP(NES_OP_RRA_NAME, NES_OP_RRA_ZEROPAGE, ExecuteOpRRA, ZEROPAGE, 5);
+	UOP(NES_OP_RRA_NAME, NES_OP_RRA_ZEROPAGE_X, ExecuteOpRRA, ZEROPAGE_X, 6);
+	UOP(NES_OP_RRA_NAME, NES_OP_RRA_ABSOLUTE, ExecuteOpRRA, ABSOLUTE, 6);
+	UOP(NES_OP_RRA_NAME, NES_OP_RRA_ABSOLUTE_X, ExecuteOpRRA, ABSOLUTE_X, 7);
+	UOP(NES_OP_RRA_NAME, NES_OP_RRA_ABSOLUTE_Y, ExecuteOpRRA, ABSOLUTE_Y, 7);
+	UOP(NES_OP_RRA_NAME, NES_OP_RRA_INDIRECT_X, ExecuteOpRRA, INDIRECT_X, 8);
+	UOP(NES_OP_RRA_NAME, NES_OP_RRA_INDIRECT_Y, ExecuteOpRRA, INDIRECT_Y, 8);
+
 	// SBC (Unofficial)
 	UOP(NES_OP_SBC_NAME, NES_OP_SBC_U_IMMEDIATE, ExecuteOpSBC, IMMEDIATE, 2);
+
+	// SLO
+	UOP(NES_OP_SLO_NAME, NES_OP_SLO_ZEROPAGE, ExecuteOpSLO, ZEROPAGE, 5);
+	UOP(NES_OP_SLO_NAME, NES_OP_SLO_ZEROPAGE_X, ExecuteOpSLO, ZEROPAGE_X, 6);
+	UOP(NES_OP_SLO_NAME, NES_OP_SLO_ABSOLUTE, ExecuteOpSLO, ABSOLUTE, 6);
+	UOP(NES_OP_SLO_NAME, NES_OP_SLO_ABSOLUTE_X, ExecuteOpSLO, ABSOLUTE_X, 7);
+	UOP(NES_OP_SLO_NAME, NES_OP_SLO_ABSOLUTE_Y, ExecuteOpSLO, ABSOLUTE_Y, 7);
+	UOP(NES_OP_SLO_NAME, NES_OP_SLO_INDIRECT_X, ExecuteOpSLO, INDIRECT_X, 8);
+	UOP(NES_OP_SLO_NAME, NES_OP_SLO_INDIRECT_Y, ExecuteOpSLO, INDIRECT_Y, 8);
+
+	// SRE
+	UOP(NES_OP_SRE_NAME, NES_OP_SRE_ZEROPAGE, ExecuteOpSRE, ZEROPAGE, 5);
+	UOP(NES_OP_SRE_NAME, NES_OP_SRE_ZEROPAGE_X, ExecuteOpSRE, ZEROPAGE_X, 6);
+	UOP(NES_OP_SRE_NAME, NES_OP_SRE_ABSOLUTE, ExecuteOpSRE, ABSOLUTE, 6);
+	UOP(NES_OP_SRE_NAME, NES_OP_SRE_ABSOLUTE_X, ExecuteOpSRE, ABSOLUTE_X, 7);
+	UOP(NES_OP_SRE_NAME, NES_OP_SRE_ABSOLUTE_Y, ExecuteOpSRE, ABSOLUTE_Y, 7);
+	UOP(NES_OP_SRE_NAME, NES_OP_SRE_INDIRECT_X, ExecuteOpSRE, INDIRECT_X, 8);
+	UOP(NES_OP_SRE_NAME, NES_OP_SRE_INDIRECT_Y, ExecuteOpSRE, INDIRECT_Y, 8);
+
+	// SHX
+	UOP(NES_OP_SHX_NAME, NES_OP_SHX_ABSOLUTE_Y, ExecuteOpSHX, ABSOLUTE_Y, 5);
+
+	// SHY
+	UOP(NES_OP_SHY_NAME, NES_OP_SHY_ABSOLUTE_X, ExecuteOpSHY, ABSOLUTE_X, 5);
 
 	// TOP (Triple NOP)
 	UOP(NES_OP_TOP_NAME, NES_OP_TOP_ABSOLUTE, ExecuteOpNOP, ABSOLUTE, 4);
@@ -447,16 +560,21 @@ NESCPUStaticInit::NESCPUStaticInit()
 	UOP(NES_OP_TOP_NAME, NES_OP_TOP_ABSOLUTE_X5, ExecuteOpNOP, ABSOLUTE_X, 4);
 	UOP(NES_OP_TOP_NAME, NES_OP_TOP_ABSOLUTE_X6, ExecuteOpNOP, ABSOLUTE_X, 4);
 
+	// TAS
+	UOP(NES_OP_TAS_NAME, NES_OP_TAS_ABSOLUTE_Y, ExecuteOpTAS, ABSOLUTE_Y, 5);
 
+	// XAA
+	UOP(NES_OP_XAA_NAME, NES_OP_XAA_IMMEDIATE, ExecuteOpXAA, IMMEDIATE, 2);
 }
 
 
 NESCPU::NESCPU(NESCPUMemoryMapper& mem) :
 mem_(mem),
-intReset_(true),
+elapsedCycles_(0),
+isJammed_(false),
+intReset_(false),
 intNmi_(false),
-intIrq_(false),
-elapsedCycles_(0)
+intIrq_(false)
 {
 }
 
@@ -485,30 +603,40 @@ void NESCPU::SetInterrupt(NESCPUInterruptType interrupt)
 }
 
 
-void NESCPU::Run(unsigned int numCycles)
+void NESCPU::Power()
 {
-	// @TODO Need to compensate for going over the specified amount of
-	// numCycles for the next Run()
-	const auto maxCycles = numCycles + elapsedCycles_;
-	while (elapsedCycles_ < maxCycles)
+	elapsedCycles_ = 0;
+	isJammed_ = false;
+
+	intReset_ = true; // Trigger a Reset interrupt.
+	intNmi_ = intIrq_ = false;
+
+	reg_.PC = 0xC000;
+	reg_.SP = 0xFD;
+	reg_.SetP(0x34); // I, B (and bit 5) are set on power.
+	reg_.A = reg_.X = reg_.Y = 0;
+
+	// @TODO Memory to power-up state!
+}
+
+
+void NESCPU::Tick()
+{
+	// @TODO Do nothing if an instruction is still exec.
+	// (Check the amount of cycles an instr takes!
+
+	// Check for interrupts.
+	const auto handledInt = HandleInterrupts();
+	if (handledInt != NESCPUInterruptType::NONE)
 	{
-		// Check for interrupts. Return if it's a reset.
-		const auto handledInt = HandleInterrupts();
-		if (handledInt != NESCPUInterruptType::NONE)
-		{
-			// Interrupts take 7 cycles to execute.
-			elapsedCycles_ += 7;
-
-			// Terminate the loop if we handle a reset.
-			if (handledInt == NESCPUInterruptType::RESET)
-				break;
-		}
-
-		// Execute next instruction.
-		ExecuteNextOp();
-
-		elapsedCycles_ += currentOp_.opCycleCount;
+		// Interrupts take 7 cycles to execute.
+		elapsedCycles_ += 7;
+		return;
 	}
+
+	// Execute next instruction.
+	ExecuteNextOp();
+	elapsedCycles_ += currentOp_.opCycleCount;
 }
 
 
@@ -626,43 +754,46 @@ NESCPUInterruptType NESCPU::HandleInterrupts()
 {
 	auto handledInt = NESCPUInterruptType::NONE;
 
-	// Handle interrupts while accounting for priority.
-	// Only IRQ's check for the interrupt disable flag (I).
-	if (intReset_)
+	if (!isJammed_)
 	{
-		handledInt = NESCPUInterruptType::RESET;
-
-		UpdateRegPC(NESHelper::MemoryRead16(mem_, 0xFFFC));
-		reg_.SP = 0xFA;
-		reg_.SetP(0x24);
-		intReset_ = false;
-	}
-	else if (intNmi_) // @TODO: Check for NMI Edge!
-	{
-		handledInt = NESCPUInterruptType::NMI;
-
-		UpdateRegPC(NESHelper::MemoryRead16(mem_, 0xFFFA));
-		intNmi_ = false;
-	}
-	else if (intIrq_ && !NESHelper::IsBitSet(reg_.GetP(), NES_CPU_REG_P_I_BIT))
-	{
-		handledInt = NESCPUInterruptType::IRQ;
-
-		UpdateRegPC(NESHelper::MemoryRead16(mem_, 0xFFFE));
-		intIrq_ = false;
-	}
-
-	if (handledInt != NESCPUInterruptType::NONE)
-	{
-		// If it wasn't a reset, we need to push the next PC and status register (P).
-		if (handledInt != NESCPUInterruptType::RESET)
+		// Handle interrupts while accounting for priority.
+		// Only IRQ's check for the interrupt disable flag (I).
+		if (intReset_)
 		{
-			StackPush16(reg_.PC + 1);
-			StackPush8(reg_.GetP());
+			handledInt = NESCPUInterruptType::RESET;
+
+			UpdateRegPC(NESHelper::MemoryRead16(mem_, 0xFFFC));
+			reg_.SP = 0xFA; // SP and P changed from reset.
+			reg_.SetP(0x24);
+			intReset_ = false;
+		}
+		else if (intNmi_) // @TODO: Check for NMI Edge!
+		{
+			handledInt = NESCPUInterruptType::NMI;
+
+			UpdateRegPC(NESHelper::MemoryRead16(mem_, 0xFFFA));
+			intNmi_ = false;
+		}
+		else if (intIrq_ && !NESHelper::IsBitSet(reg_.GetP(), NES_CPU_REG_P_I_BIT))
+		{
+			handledInt = NESCPUInterruptType::IRQ;
+
+			UpdateRegPC(NESHelper::MemoryRead16(mem_, 0xFFFE));
+			intIrq_ = false;
 		}
 
-		// Make sure the interrupt disable flag is set if we interrupted.
-		reg_.SetP(NESHelper::SetBit(reg_.GetP(), NES_CPU_REG_P_I_BIT));
+		if (handledInt != NESCPUInterruptType::NONE)
+		{
+			// If it wasn't a reset, we need to push the next PC and status register (P).
+			if (handledInt != NESCPUInterruptType::RESET)
+			{
+				StackPush16(reg_.PC + 1);
+				StackPush8(reg_.GetP());
+			}
+
+			// Make sure the interrupt disable flag is set if we interrupted.
+			reg_.SetP(NESHelper::SetBit(reg_.GetP(), NES_CPU_REG_P_I_BIT));
+		}
 	}
 
 	return handledInt;
@@ -671,6 +802,9 @@ NESCPUInterruptType NESCPU::HandleInterrupts()
 
 void NESCPU::ExecuteNextOp()
 {
+	if (isJammed_)
+		return;
+
 	try
 	{
 		// Get the next opcode.
@@ -682,25 +816,25 @@ void NESCPU::ExecuteNextOp()
 	}
 
 	// @TODO Debug!
-	//if (mem_.Read8(0x6000) != 0x80 &&
-	//	mem_.Read8(0x6001) == 0xDE &&
-	//	mem_.Read8(0x6002) == 0xB0 &&
-	//	mem_.Read8(0x6003) == 0x61)
-	//{
-	//	std::cout << "Test status: $" << std::hex << +mem_.Read8(0x6000) << std::endl;
-	//	std::cout << "Message: " << std::endl;
-	//	for (u16 i = 0x6004;; ++i)
-	//	{
-	//		const u8 c = mem_.Read8(i);
-	//		if (c == 0)
-	//			break;
+	if (mem_.Read8(0x6000) != 0x80 &&
+		mem_.Read8(0x6001) == 0xDE &&
+		mem_.Read8(0x6002) == 0xB0 &&
+		mem_.Read8(0x6003) == 0x61)
+	{
+		std::cout << "Test status: $" << std::hex << +mem_.Read8(0x6000) << std::endl;
+		std::cout << "Message: " << std::endl;
+		for (u16 i = 0x6004;; ++i)
+		{
+			const u8 c = mem_.Read8(i);
+			if (c == 0)
+				break;
 
-	//		std::cout << c;
-	//	}
-	//	std::cout << std::endl;
-	//	system("pause");
-	//	exit(0);
-	//}
+			std::cout << c;
+		}
+		std::cout << std::endl;
+		system("pause");
+		exit(0);
+	}
 
 	// Locate the mapping for this opcode.
 	const auto it = opInfos_.find(currentOp_.op);
@@ -735,118 +869,12 @@ void NESCPU::ExecuteNextOp()
 	//++a;
 
 	// Execute instruction.
+	// @TODO: Possibly inline all instructions instead of using func pointers?
+	//        For now, just make all instructions inlined if I decide to change
+	//        this in the future...
 	(this->*it->second.opFunc)(argInfo);
 
-	// Go to the next instruction.
-	if (!currentOp_.opChangedPC)
+	// Go to the next instruction if the CPU isn't now jammed...
+	if (!currentOp_.opChangedPC && !isJammed_)
 		reg_.PC += GetOpSizeFromAddrMode(it->second.addrMode);
-}
-
-
-NESCPUOpArgInfo NESCPU::ReadOpArgInfo(NESCPUOpAddrMode addrMode)
-{
-	NESCPUOpArgInfo argInfo(addrMode);
-
-	switch (argInfo.addrMode)
-	{
-	case NESCPUOpAddrMode::ACCUMULATOR: // Instruction will need to read the register.
-	case NESCPUOpAddrMode::IMPLIED: // No operands for implied addr modes.
-	case NESCPUOpAddrMode::IMPLIED_BRK:
-		break;
-
-	case NESCPUOpAddrMode::IMMEDIATE:
-		argInfo.argAddr = reg_.PC + 1;
-		break;
-
-	case NESCPUOpAddrMode::RELATIVE:
-		// We add an extra 2 to the PC to cover the size of the rest of the instruction.
-		// The offset is a signed 2s complement number.
-		argInfo.argAddr = reg_.PC + 2 + static_cast<s8>(mem_.Read8(reg_.PC + 1));
-		break;
-
-	case NESCPUOpAddrMode::INDIRECT:
-		argInfo.argAddr = NESHelper::MemoryIndirectRead16(mem_, NESHelper::MemoryRead16(mem_, reg_.PC + 1));
-		break;
-
-	case NESCPUOpAddrMode::INDIRECT_X:
-		argInfo.argAddr = NESHelper::MemoryIndirectRead16(mem_, (mem_.Read8(reg_.PC + 1) + reg_.X) & 0xFF);
-		break;
-
-	case NESCPUOpAddrMode::INDIRECT_Y:
-		argInfo.argAddr = NESHelper::MemoryIndirectRead16(mem_, mem_.Read8(reg_.PC + 1));
-		argInfo.crossedPage = !NESHelper::IsInSamePage(argInfo.argAddr, argInfo.argAddr + reg_.Y);
-		argInfo.argAddr += reg_.Y;
-		break;
-
-	case NESCPUOpAddrMode::ABSOLUTE:
-		argInfo.argAddr = NESHelper::MemoryRead16(mem_, reg_.PC + 1);
-		break;
-
-	case NESCPUOpAddrMode::ABSOLUTE_X:
-		argInfo.argAddr = NESHelper::MemoryRead16(mem_, reg_.PC + 1);
-		argInfo.crossedPage = !NESHelper::IsInSamePage(argInfo.argAddr, argInfo.argAddr + reg_.X);
-		argInfo.argAddr += reg_.X;
-		break;
-
-	case NESCPUOpAddrMode::ABSOLUTE_Y:
-		argInfo.argAddr = NESHelper::MemoryRead16(mem_, reg_.PC + 1);
-		argInfo.crossedPage = !NESHelper::IsInSamePage(argInfo.argAddr, argInfo.argAddr + reg_.Y);
-		argInfo.argAddr += reg_.Y;
-		break;
-
-	case NESCPUOpAddrMode::ZEROPAGE:
-		argInfo.argAddr = mem_.Read8(reg_.PC + 1);
-		break;
-
-	case NESCPUOpAddrMode::ZEROPAGE_X:
-		argInfo.argAddr = (mem_.Read8(reg_.PC + 1) + reg_.X) & 0xFF;
-		break;
-
-	case NESCPUOpAddrMode::ZEROPAGE_Y:
-		argInfo.argAddr = (mem_.Read8(reg_.PC + 1) + reg_.Y) & 0xFF;
-		break;
-
-	default:
-		// Unhandled addressing mode!
-		assert("Unknown addressing mode supplied!" && false);
-		break;
-	}
-
-	return argInfo;
-}
-
-
-void NESCPU::WriteOpResult(NESCPUOpAddrMode addrMode, u8 result)
-{
-	u16 addr;
-	switch (addrMode)
-	{
-	case NESCPUOpAddrMode::ACCUMULATOR:
-		reg_.A = result; // Write to accumulator instead.
-		return;
-
-	case NESCPUOpAddrMode::ABSOLUTE:
-		addr = NESHelper::MemoryRead16(mem_, reg_.PC + 1);
-		break;
-
-	case NESCPUOpAddrMode::ABSOLUTE_X:
-		addr = NESHelper::MemoryRead16(mem_, reg_.PC + 1) + reg_.X;
-		break;
-
-	case NESCPUOpAddrMode::ZEROPAGE:
-		addr = mem_.Read8(reg_.PC + 1);
-		break;
-
-	case NESCPUOpAddrMode::ZEROPAGE_X:
-		addr = (mem_.Read8(reg_.PC + 1) + reg_.X) & 0xFF;
-		break;
-
-	default:
-		// Unhandled addressing mode!
-		assert("Unknown addressing mode supplied!" && false);
-		return;
-	}
-
-	// Assume writing to main memory at addr.
-	mem_.Write8(addr, result);
 }

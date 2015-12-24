@@ -27,6 +27,7 @@ void NESEmulator::LoadROM(const std::string& fileName)
 
 	cpuMap_ = std::make_unique<NESCPUMemoryMapper>(cpuRam_, *ppu_, cart_.GetMMC());
 	cpu_ = std::make_unique<NESCPU>(*cpuMap_);
+	cpu_->Power();
 }
 
 
@@ -38,8 +39,9 @@ void NESEmulator::Frame()
 	// @TODO DEBUG!!
 	debug_.create(256, 240, sf::Color::Black);
 
-	cpu_->Run(20480); // @TODO DEBUG!!
-	ppu_->Frame();
+	for (int i = 0; i < 20000; ++i)
+		cpu_->Tick(); // @TODO DEBUG!!
+	//ppu_->Frame();
 
 	tex.loadFromImage(debug_);
 	spr.setTexture(tex);

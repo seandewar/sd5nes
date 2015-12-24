@@ -347,9 +347,9 @@
 #define NES_OP_ASR_NAME "ASR"
 #define NES_OP_ASR_IMMEDIATE 0x4B
 
-/* LXA */
-#define NES_OP_LXA_NAME "LXA"
-#define NES_OP_LXA_IMMEDIATE 0xAB
+///* LXA */
+//#define NES_OP_LXA_NAME "LXA"
+//#define NES_OP_LXA_IMMEDIATE 0xAB
 
 /* AHX */
 #define NES_OP_AHX_NAME "AHX"
@@ -424,6 +424,7 @@
 #define NES_OP_LAX_ABSOLUTE_Y 0xBF
 #define NES_OP_LAX_INDIRECT_X 0xA3
 #define NES_OP_LAX_INDIRECT_Y 0xB3
+#define NES_OP_LAX_IMMEDIATE 0xAB
 
 /* NOP (Unofficial) */
 #define NES_OP_NOP_U_IMPLIED1 0x1A
