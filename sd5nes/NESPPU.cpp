@@ -107,7 +107,7 @@ void NESPPU::DebugDrawPatterns(sf::Image& target, int colorOffset)
 			const auto col = (colHi << 1) | colLo;
 
 			target.setPixel((7 - j) + (o * 8), (i % (8 * 30)),
-				col == 0 ? sf::Color::Black : NES_PPU_PALETTE_COLORS[col + colorOffset].ToSFColor());
+				col == 0 ? sf::Color::Black : ppuPalette[col + colorOffset].ToSFColor());
 		}
 
 		if (i % (8 * 30) == 0 && i != 0)
@@ -262,7 +262,7 @@ void NESPPU::HandleScanline(unsigned int scanline)
 					}
 
 					// Get the color to use from the table of colors.
-					const auto color = NES_PPU_PALETTE_COLORS[mem_.Read8(colorNum == 0 ? 0x3F00 : 0x3F01 + (3 * paletteNum) + colorNum)];
+					const auto color = ppuPalette[mem_.Read8(colorNum == 0 ? 0x3F00 : 0x3F01 + (3 * paletteNum) + colorNum)];
 
 					// @TODO DEBUG!
 					debug_.setPixel((i * 8) + pix, scanline, color.ToSFColor());

@@ -365,7 +365,7 @@ private:
 
 		default:
 			// Unhandled addressing mode!
-			assert("Unknown addressing mode supplied!" && false);
+			assert("Unknown addressing mode supplied to ReadOpArgInfo()!" && false);
 			break;
 		}
 
@@ -383,6 +383,14 @@ private:
 		case NESCPUOpAddrMode::ACCUMULATOR:
 			reg_.A = result; // Write to accumulator instead.
 			return;
+
+		case NESCPUOpAddrMode::INDIRECT_X:
+			addr = NESHelper::MemoryIndirectRead16(mem_, (mem_.Read8(reg_.PC + 1) + reg_.X) & 0xFF);
+			break;
+
+		case NESCPUOpAddrMode::INDIRECT_Y:
+			addr = NESHelper::MemoryIndirectRead16(mem_, mem_.Read8(reg_.PC + 1)) + reg_.Y;
+			break;
 
 		case NESCPUOpAddrMode::ABSOLUTE:
 			addr = NESHelper::MemoryRead16(mem_, reg_.PC + 1);
@@ -410,7 +418,7 @@ private:
 
 		default:
 			// Unhandled addressing mode!
-			assert("Unknown addressing mode supplied!" && false);
+			assert("Unknown addressing mode supplied to WriteOpResult()!" && false);
 			return;
 		}
 
@@ -1142,17 +1150,18 @@ private:
 	// Execute Set Interrupt Disable Status (SEI).
 	inline void ExecuteOpSEI(NESCPUOpArgInfo& argInfo) { /* 1 -> I */ reg_.SetP(NESHelper::SetBit(reg_.GetP(), NES_CPU_REG_P_I_BIT)); }
 
-	// Execute AND X with High Byte of Argument's Address + 1 (SHX).
-	// @TODO FIX ME AND SHY!!!
+	// Execute SHX.
 	inline void ExecuteOpSHX(NESCPUOpArgInfo& argInfo)
 	{
-		WriteOpResult(argInfo.addrMode, reg_.X & (argInfo.argAddr >> 8) + 1);
+		const u8 res = reg_.X & (argInfo.argAddr >> 8);
+		mem_.Write8(NESHelper::ConvertTo16(res, argInfo.argAddr & 0xFF), res);
 	}
 
-	// Execute AND Y with High Byte of Argument's Address + 1 (SHY).
+	// Execute SHY.
 	inline void ExecuteOpSHY(NESCPUOpArgInfo& argInfo)
 	{
-		WriteOpResult(argInfo.addrMode, reg_.Y & ((argInfo.argAddr >> 8) + 1));
+		const u8 res = reg_.Y & (argInfo.argAddr >> 8);
+		mem_.Write8(NESHelper::ConvertTo16(res, argInfo.argAddr & 0xFF), res);
 	}
 
 	// Execute Shift Right, then EOR Accumulator (SRE).
@@ -1246,7 +1255,7 @@ private:
 		UpdateRegZ(reg_.A);
 	}
 
-	// Execute Strange Instruction (XAA).
+	// Execute XAA.
 	inline void ExecuteOpXAA(NESCPUOpArgInfo& argInfo)
 	{
 		// This instruction is weird. More info at:
