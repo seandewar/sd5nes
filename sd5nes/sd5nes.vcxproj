@@ -72,6 +72,7 @@
   <ItemGroup>
     <ClCompile Include="main.cpp" />
     <ClCompile Include="NESCPU.cpp" />
+    <ClCompile Include="NESCPUOpcodes.cpp" />
     <ClCompile Include="NESEmulator.cpp" />
     <ClCompile Include="NESGamePak.cpp" />
     <ClCompile Include="NESMemory.cpp" />

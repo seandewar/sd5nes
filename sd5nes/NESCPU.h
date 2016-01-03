@@ -1,6 +1,6 @@
 #pragma once
 
-#include <unordered_map>
+#include <array>
 #include <stdexcept>
 #include <sstream>
 
@@ -149,14 +149,6 @@ enum class NESCPUOpAddrMode
 };
 
 /**
-* Allows static constructor mimic to register opcode mappings.
-*/
-struct NESCPUStaticInit
-{
-	NESCPUStaticInit();
-};
-
-/**
 * Struct containing information about the arg being executed.
 */
 struct NESCPUOpArgInfo
@@ -219,8 +211,6 @@ struct NESCPUExecutingOpInfo
 */
 class NESCPU
 {
-	friend struct NESCPUStaticInit;
-
 public:
 	explicit NESCPU(NESCPUMemoryMapper& mem);
 	~NESCPU();
@@ -249,11 +239,8 @@ public:
 	inline bool IsJammed() const { return isJammed_; }
 
 private:
-	// Allows init of static stuff such as registration of opcode mapp
-	static NESCPUStaticInit staticInit_;
-
-	// Contains mapped opcode info.
-	static std::unordered_map<u8, NESCPUOpInfo> opInfos_;
+	// Contains opcode info.
+	static std::array<NESCPUOpInfo, 0x100> opInfos_;
 
 	/**
 	* Registers an official opcode mapping.
@@ -761,7 +748,7 @@ private:
 		StackPush16(reg_.PC + 2); // There is a padding byte after the opcode, hence the +2.
 		StackPush8(reg_.GetP() | 0x10); // Make sure bit 5 is set on the copy we push.
 		reg_.SetP(NESHelper::SetBit(reg_.GetP(), NES_CPU_REG_P_I_BIT));
-
+		
 		UpdateRegPC(NESHelper::MemoryRead16(mem_, 0xFFFE));
 	}
 
