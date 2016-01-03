@@ -987,18 +987,6 @@ private:
 			ExecuteShiftRight(argInfo.addrMode == NESCPUOpAddrMode::ACCUMULATOR ? reg_.A : mem_.Read8(argInfo.argAddr)));
 	}
 
-	// Execute AND with Accumulator, then transfer to X (LXA).
-	// @NOTE: The test seems to expect an LAX #i instead as opcode $AB!
-	// So this is unused.
-	//inline void ExecuteOpLXA(NESCPUOpArgInfo& argInfo)
-	//{
-	//	const u8 res = mem_.Read8(argInfo.argAddr) & reg_.A;
-	//
-	//	UpdateRegN(res);
-	//	UpdateRegZ(res);
-	//	reg_.X = reg_.A = res;
-	//}
-
 	// Execute No Operation (Do Nothing) (NOP).
 	inline void ExecuteOpNOP(NESCPUOpArgInfo& argInfo) 
 	{ 

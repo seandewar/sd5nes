@@ -347,10 +347,6 @@
 #define NES_OP_ASR_NAME "ASR"
 #define NES_OP_ASR_IMMEDIATE 0x4B
 
-///* LXA */
-//#define NES_OP_LXA_NAME "LXA"
-//#define NES_OP_LXA_IMMEDIATE 0xAB
-
 /* AHX */
 #define NES_OP_AHX_NAME "AHX"
 #define NES_OP_AHX_ABSOLUTE_Y 0x9F
