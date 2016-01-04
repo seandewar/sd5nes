@@ -322,7 +322,7 @@ void NESPPU::Tick()
 		if (currentCycle_ == 1)
 			reg_.PPUSTATUS = 0; // Clear PPUSTATUS flags on cycle 1.
 		else if (currentCycle_ >= 280 && currentCycle_ <= 304 && IsRenderingEnabled())
-			// Reset vertical scroll bits.
+			assert(false); // @TODO Reset vertical scroll bits.
 	}
 
 	++elapsedCycles_;
