@@ -75,6 +75,7 @@
     <ClCompile Include="NESCPUOpcodes.cpp" />
     <ClCompile Include="NESEmulator.cpp" />
     <ClCompile Include="NESGamePak.cpp" />
+    <ClCompile Include="NESHelper.cpp" />
     <ClCompile Include="NESMemory.cpp" />
     <ClCompile Include="NESMMC.cpp" />
     <ClCompile Include="NESPPU.cpp" />

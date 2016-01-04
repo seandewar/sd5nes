@@ -7,6 +7,7 @@
 
 #include "NESTypes.h"
 #include "NESMemory.h"
+#include "NESCPU.h"
 
 /* Typedefs for the individual tables + typedef for holding both palettes (BG and Sprite). */
 typedef NESMemory<0x1000> NESMemPatternTable;
@@ -161,6 +162,21 @@ enum class NESPPURegisterType
 };
 
 /**
+* The probability of certain bits in PPUSTATUS being set on power-on state.
+*/
+#define NES_PPU_POWER_REG_PPUSTATUS_V_SET_CHANCE 0.75
+#define NES_PPU_POWER_REG_PPUSTATUS_O_SET_CHANCE 0.75
+
+/**
+* @TODO CONSIDER THIS
+* How many CPU cycles writes to PPUCTRL, PPUMASK, PPUSCROLL and PPUADDR should be ignored for
+* after a reset. The PPUDATA internal buffer (but not the register) will be cleared for this duration too.
+*
+* Because of this, the address latch cannot toggle for the duration of this event.
+*/
+#define NES_PPU_RESET_REG_IGNORE_WRITE_FOR_CPU_CYC 29658
+
+/**
 * Struct containing the registers used by the NES PPU.
 */
 struct NESPPURegisters
@@ -191,6 +207,13 @@ struct NESPPURegisters
 
 	/* OAM DMA High Address (OAMDMA) */
 	u8 OAMDMA;
+
+	NESPPURegisters() :
+		PPUCTRL(0), PPUMASK(0), PPUSTATUS(0),
+		OAMADDR(0), OAMDATA(0),
+		PPUSCROLL(0), PPUADDR(0), PPUDATA(0),
+		OAMDMA(0)
+	{ }
 };
 
 /**
@@ -203,6 +226,11 @@ struct NESPPULatches
 
 	/* The state of the address latch used by PPUSCROLL and PPUADDR. */
 	bool isAddressLatchOn;
+
+	NESPPULatches() :
+		internalDataBusVal(0),
+		isAddressLatchOn(false)
+	{ }
 };
 
 /**
@@ -211,18 +239,28 @@ struct NESPPULatches
 class NESPPU
 {
 public:
-	explicit NESPPU(NESPPUMemoryMapper& mem, sf::Image& debug);
+	NESPPU(NESPPUMemoryMapper& mem, NESCPU& cpu, sf::Image& debug);
 	~NESPPU();
-
-	/**
-	* Handles one frame worth of PPU logic.
-	*/
-	void Frame();
 
 	/**
 	* Debug : Draws sprites from the pattern table.
 	*/
 	void DebugDrawPatterns(sf::Image& target, int colorOffset);
+
+	/**
+	* Sets the PPU to its power-up state.
+	*/
+	void Power();
+
+	/**
+	* Sets the PPU to its reset state.
+	*/
+	void Reset();
+
+	/**
+	* Tick the PPU for one cycle.
+	*/
+	void Tick();
 
 	/**
 	* Writes to the specified PPU register.
@@ -239,10 +277,21 @@ private:
 
 	NESPPURegisters reg_;
 	NESPPULatches latches_;
-	u8 xNtScroll_, yNtScroll_;
-	u16 vramDataAddr_;
+
+	unsigned int elapsedCycles_;
+
+	unsigned int currentScanline_;
+	unsigned int currentCycle_;
+
+	bool isNmiPulled_;
+
+	// v (current v-ram addr) [15-bits used], t (temp v-ram addr) [15-bits used]
+	// x (fine x scroll) [3-bits used]
+	u16 vScroll_, tScroll_;
+	u8 xScroll_;
 
 	NESPPUMemoryMapper& mem_;
+	NESCPU& cpu_;
 
 	NESMemory<0x100> primaryOam_;
 	NESMemory<0x20> secondaryOam_;
@@ -250,13 +299,9 @@ private:
 	bool isEvenFrame_;
 
 	/**
-	* Inits the PPU.
+	* Returns whether or not rendering is enabled.
+	* (Rendering is disabled if bits 3 and 4 in PPUMASK are cleared).
 	*/
-	void Initialize();
-
-	/**
-	* Handles the logic and rendering of the current scanline.
-	*/
-	void HandleScanline(unsigned int scanline);
+	inline bool IsRenderingEnabled() const { return ((reg_.PPUMASK & 0x18) != 0); }
 };
 

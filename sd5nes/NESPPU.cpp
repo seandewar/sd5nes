@@ -33,7 +33,7 @@ std::size_t NESPPUMemoryMapper::GetNameTableIndex(u16 addr) const
 		// @TODO NOT IMPLEMENTED YET!
 
 	default:
-		assert(false && "Invalid name table mirror type!");
+		assert("Invalid name table mirror type!" && false);
 		return NES_INVALID_NAME_TABLE_INDEX;
 	}
 }
@@ -65,26 +65,23 @@ u8 NESPPUMemoryMapper::Read8(u16 addr) const
 }
 
 
-NESPPU::NESPPU(NESPPUMemoryMapper& mem, sf::Image& debug) :
+NESPPU::NESPPU(NESPPUMemoryMapper& mem, NESCPU& cpu, sf::Image& debug) :
 mem_(mem),
+cpu_(cpu),
+isNmiPulled_(false),
+isEvenFrame_(true),
+vScroll_(0),
+tScroll_(0),
+xScroll_(0),
+currentCycle_(0),
+elapsedCycles_(0),
 debug_(debug) // @TODO Debug!!
 {
-	Initialize();
 }
 
 
 NESPPU::~NESPPU()
 {
-}
-
-
-void NESPPU::Initialize()
-{
-	isEvenFrame_ = true;
-	vramDataAddr_ = xNtScroll_ = yNtScroll_ = 0;
-
-	reg_ = {}; // Zero PPU registers.
-	latches_ = {}; // Zero PPU latches.
 }
 
 
@@ -131,6 +128,15 @@ void NESPPU::WriteRegister(NESPPURegisterType reg, u8 val)
 	{
 	case NESPPURegisterType::PPUCTRL:
 		reg_.PPUCTRL = val;
+
+		// Reset the Nmi Pull if we wrote 0 to V in PPUCTRL.
+		// This will allow multiple NMIs to be generated if toggled
+		// during V-BLANK.
+		if (!NESHelper::IsBitSet(val, NES_PPU_REG_PPUCTRL_V_BIT))
+			isNmiPulled_ = false;
+
+		// t: ...BA.. ........ = d: ......BA
+		tScroll_ = (tScroll_ & 0x73FF) | ((val & 3) << 10);
 		break;
 
 	case NESPPURegisterType::PPUMASK:
@@ -149,9 +155,18 @@ void NESPPU::WriteRegister(NESPPURegisterType reg, u8 val)
 		reg_.PPUSCROLL = val;
 
 		if (latches_.isAddressLatchOn)
-			yNtScroll_ = val;
+		{
+			// t: CBA..HG FED..... = d : HGFEDCBA
+			tScroll_ = (((tScroll_ & 0x7C1F) | ((val & 0xF8) << 2)) & 0xFFF) | ((val & 7) << 12);
+		}
 		else
-			xNtScroll_ = val;
+		{
+			// t: ....... ...HGFED = d: HGFED...
+			tScroll_ = (tScroll_ & 0x7FE0) | ((val & 0xF8) >> 3);
+
+			// x:              CBA = d: .....CBA
+			xScroll_ = val & 7;
+		}
 
 		latches_.isAddressLatchOn = !latches_.isAddressLatchOn; // Toggle state of the latch.
 		break;
@@ -160,9 +175,17 @@ void NESPPU::WriteRegister(NESPPURegisterType reg, u8 val)
 		reg_.PPUADDR = val;
 
 		if (latches_.isAddressLatchOn)
-			vramDataAddr_ = NESHelper::ConvertTo16((vramDataAddr_ & 0xFF00) >> 8, val);
+		{
+			// t: ....... HGFEDCBA = d: HGFEDCBA
+			// v                   = t
+			vScroll_ = tScroll_ = (tScroll_ & 0x7F00) | (val & 0xFF);
+		}
 		else
-			vramDataAddr_ = NESHelper::ConvertTo16(val, vramDataAddr_ & 0xFF);
+		{
+			// t: .FEDCBA ........ = d: ..FEDCBA
+			// t: X...... ........ = 0
+			tScroll_ = (tScroll_ & 0xFF) | ((val & 0x3F) << 8);
+		}
 
 		latches_.isAddressLatchOn = !latches_.isAddressLatchOn; // Toggle state of the latch.
 		break;
@@ -192,8 +215,12 @@ u8 NESPPU::ReadRegister(NESPPURegisterType reg)
 	{
 	case NESPPURegisterType::PPUSTATUS:
 		returnVal = reg_.PPUSTATUS;
-		NESHelper::ClearRefBit(reg_.PPUSTATUS, NES_PPU_REG_PPUSTATUS_V_BIT); // The V-Blank flag is cleared upon read.
-		latches_.isAddressLatchOn = false; // Reading PPUSTATUS resets the address latch.
+
+		// The V-Blank flag is cleared upon read
+		NESHelper::ClearRefBit(reg_.PPUSTATUS, NES_PPU_REG_PPUSTATUS_V_BIT);
+
+		// w:                  = 0 (Reset address latch)
+		latches_.isAddressLatchOn = false;
 		break;
 
 	case NESPPURegisterType::OAMDATA:
@@ -214,76 +241,107 @@ u8 NESPPU::ReadRegister(NESPPURegisterType reg)
 }
 
 
-void NESPPU::HandleScanline(unsigned int scanline)
+void NESPPU::Power()
 {
-	NESHelper::SetRefBit(reg_.PPUSTATUS, NES_PPU_REG_PPUSTATUS_V_BIT); // @TODO debug!!!!
+	isEvenFrame_ = true;
 
-	if (scanline < 20)
-	{
-		// "VINT period"
-		// Do nothing.
-	}
-	else if (scanline < 240)
-	{
-		// 32 tiles per scanline.
-		for (int i = 0; i < 32; ++i)
-		{
-			// Visible scanlines.
-			const u8 ntOffset = (reg_.PPUCTRL & 3) * 0x400;
-			const u8 ntByte = mem_.Read8(0x2000 + ntOffset + xNtScroll_ + (32 * yNtScroll_) + i);
-			const u8 atByte = mem_.Read8(0x23C0 + ntOffset + ((xNtScroll_ + i) / 2) + (8 * (yNtScroll_ / 2))); // Attrib entry represents 2x2 grid of tiles.
+	isNmiPulled_ = false;
+	tScroll_ = vScroll_ = xScroll_ = 0;
 
-			const u8 ptOffset = (NESHelper::IsBitSet(reg_.PPUCTRL, NES_PPU_REG_PPUCTRL_B_BIT) ? 0x1000 : 0);
-			const u8 ptHi = mem_.Read8(ptOffset + ntByte);
-			const u8 ptLo = mem_.Read8(ptOffset + ntByte + 1);
+	latches_.internalDataBusVal = 0;
+	latches_.isAddressLatchOn = false;
 
-			// Check that this is not the dummy scanline.
-			if (scanline != 20)
-			{
-				for (int pix = 0; pix < 8; ++pix)
-				{
-					// Determine the colour of the pixel to draw in the palette. (0 - 3)
-					const u8 colorNum = (((ptHi >> (7 - pix)) & 1) << 1) | ((ptLo >> (7 - pix)) & 1);
+	reg_.PPUCTRL = reg_.PPUMASK = reg_.PPUSCROLL = reg_.PPUADDR 
+		= reg_.PPUDATA = reg_.OAMADDR = 0;
 
-					u8 paletteNum;
-					if (yNtScroll_ % 2 == 0) // towards the top
-					{
-						if (pix < 3) // towards the left
-							paletteNum = atByte & 3;
-						else // towards the right
-							paletteNum = (atByte & 0xC) >> 2;
-					}
-					else // towards the bottom
-					{
-						if (pix < 3) // towards the left
-							paletteNum = (atByte & 0x30) >> 4;
-						else // towards the right
-							paletteNum = (atByte & 0xC0) >> 6;
-					}
-
-					// Get the color to use from the table of colors.
-					const auto color = ppuPalette[mem_.Read8(colorNum == 0 ? 0x3F00 : 0x3F01 + (3 * paletteNum) + colorNum)];
-
-					// @TODO DEBUG!
-					debug_.setPixel((i * 8) + pix, scanline, color.ToSFColor());
-				}
-			}
-		}
-	}
-	else if (scanline == 261)
-	{
-		// Pre-render scanline. Do nothing
-	}
+	// Set up PPUSTATUS Power state - depends on a few random variables
+	// O and V are often set in PPUSTATUS
+	// Other bits are irrelevant (except S which should be 0).
+	reg_.PPUSTATUS = 0;
+	NESHelper::EditRefBit(reg_.PPUSTATUS, NES_PPU_REG_PPUSTATUS_V_BIT, 
+		NESHelper::GetRandomBool(NES_PPU_POWER_REG_PPUSTATUS_V_SET_CHANCE));
+	NESHelper::EditRefBit(reg_.PPUSTATUS, NES_PPU_REG_PPUSTATUS_O_BIT, 
+		NESHelper::GetRandomBool(NES_PPU_POWER_REG_PPUSTATUS_O_SET_CHANCE));
+	
+	// @TODO: Init NT RAM to mostly $FF and CHR RAM to unspec pattern and
+	// OAM to pattern
 }
 
 
-void NESPPU::Frame()
+void NESPPU::Reset()
 {
-	isEvenFrame_ = !isEvenFrame_; // Toggle status of even frame.
-	latches_.internalDataBusVal = 0; // Decay the latch.
+	isEvenFrame_ = true;
 
-	for (int i = 0; i < 262; ++i) // @TODO: PAL scanlines.
-		HandleScanline(i);
+	isNmiPulled_ = false;
+	tScroll_ = vScroll_ = xScroll_ = 0;
 
-	// @TODO
+	latches_.isAddressLatchOn = false;
+
+	reg_.PPUCTRL = reg_.PPUMASK = reg_.PPUSCROLL = reg_.PPUDATA = 0;
+	reg_.PPUSTATUS &= 0x80; // Only retain bit 7. (PPUSTATUS V)
+
+	// @TODO: Init OAM to pattern
+}
+
+
+void NESPPU::Tick()
+{
+	// @TODO: Handle PAL (70 V-BLANK scanlines instead).
+
+	if (currentScanline_ < 240)
+	{
+		/*** Visible scanline (0 - 239) ***/
+
+
+	}
+	else if (currentScanline_ >= 241 && currentScanline_ < 261)
+	{
+		/*** V-BLANK Period (241 - 260) ***/
+
+		// Set V-BLANK on cycle 1 of scanline 241.
+		if (currentScanline_ == 241 && currentCycle_ == 1)
+		{
+			// Set V flag in PPUSTATUS and make sure Nmi isn't pulled.
+			NESHelper::SetRefBit(reg_.PPUSTATUS, NES_PPU_REG_PPUSTATUS_V_BIT);
+			isNmiPulled_ = false;
+		}
+
+		if (NESHelper::IsBitSet(reg_.PPUSTATUS, NES_PPU_REG_PPUSTATUS_V_BIT) && 
+			NESHelper::IsBitSet(reg_.PPUCTRL, NES_PPU_REG_PPUCTRL_V_BIT) &&
+			!isNmiPulled_)
+		{
+			// We should set the V-BLANK NMI now.
+			isNmiPulled_ = true;
+			cpu_.SetInterrupt(NESCPUInterruptType::NMI);
+		}
+	}
+	else if (currentScanline_ == 261)
+	{
+		/*** Pre-render scanline (261) ***/
+
+		if (currentCycle_ == 1)
+			reg_.PPUSTATUS = 0; // Clear PPUSTATUS flags on cycle 1.
+		else if (currentCycle_ >= 280 && currentCycle_ <= 304 && IsRenderingEnabled())
+			// Reset vertical scroll bits.
+	}
+
+	++elapsedCycles_;
+	++currentCycle_;
+
+	// Check if we're at the end of this scanline (which is one cycle earlier on
+	// the pre-render scanline (261) when on an odd frame).
+	if (currentCycle_ > 340 ||
+		(currentScanline_ == 261 && currentCycle_ == 339 && !isEvenFrame_))
+	{
+		currentCycle_ = 0;
+		++currentScanline_;
+
+		// Check if we've finished handling the entire frame.
+		if (currentScanline_ > 261)
+		{
+			// @TODO ??
+			currentScanline_ = 0;
+			isEvenFrame_ = !isEvenFrame_;
+		}
+	}
 }

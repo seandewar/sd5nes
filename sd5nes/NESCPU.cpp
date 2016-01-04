@@ -88,78 +88,6 @@ u8 NESCPUMemoryMapper::Read8(u16 addr) const
 }
 
 
-NESCPU::NESCPU(NESCPUMemoryMapper& mem) :
-mem_(mem),
-elapsedCycles_(0),
-isJammed_(false),
-intReset_(false),
-intNmi_(false),
-intIrq_(false)
-{
-}
-
-
-NESCPU::~NESCPU()
-{
-}
-
-
-void NESCPU::SetInterrupt(NESCPUInterruptType interrupt)
-{
-	switch (interrupt)
-	{
-	case NESCPUInterruptType::RESET:
-		intReset_ = true;
-		break;
-
-	case NESCPUInterruptType::NMI:
-		intNmi_ = true;
-		break;
-
-	case NESCPUInterruptType::IRQ:
-		intIrq_ = true;
-		break;
-	}
-}
-
-
-void NESCPU::Power()
-{
-	elapsedCycles_ = 0;
-	isJammed_ = false;
-
-	intReset_ = true; // Trigger a Reset interrupt.
-	intNmi_ = intIrq_ = false;
-
-	reg_.PC = 0xC000;
-	reg_.SP = 0xFD;
-	reg_.SetP(0x34); // I, B (and bit 5) are set on power.
-	reg_.A = reg_.X = reg_.Y = 0;
-
-	// @TODO Memory to power-up state!
-}
-
-
-void NESCPU::Tick()
-{
-	// @TODO Do nothing if an instruction is still exec.
-	// (Check the amount of cycles an instr takes!
-
-	// Check for interrupts.
-	const auto handledInt = HandleInterrupts();
-	if (handledInt != NESCPUInterruptType::NONE)
-	{
-		// Interrupts take 7 cycles to execute.
-		elapsedCycles_ += 7;
-		return;
-	}
-
-	// Execute next instruction.
-	ExecuteNextOp();
-	elapsedCycles_ += currentOp_.opCycleCount;
-}
-
-
 std::string NESCPU::OpAsAsm(const std::string& opName, NESCPUOpAddrMode addrMode, u16 val)
 {
 	std::ostringstream oss;
@@ -235,12 +163,12 @@ u16 NESCPU::GetOpSizeFromAddrMode(NESCPUOpAddrMode addrMode)
 {
 	switch (addrMode)
 	{
-	// 1 byte addressing modes.
+		// 1 byte addressing modes.
 	case NESCPUOpAddrMode::ACCUMULATOR:
 	case NESCPUOpAddrMode::IMPLIED:
 		return 1;
 
-	// 2 byte addressing modes.
+		// 2 byte addressing modes.
 	case NESCPUOpAddrMode::IMPLIED_BRK: // BRK has a padding byte.
 	case NESCPUOpAddrMode::IMMEDIATE:
 	case NESCPUOpAddrMode::RELATIVE:
@@ -251,18 +179,287 @@ u16 NESCPU::GetOpSizeFromAddrMode(NESCPUOpAddrMode addrMode)
 	case NESCPUOpAddrMode::INDIRECT_Y:
 		return 2;
 
-	// 3 byte addressing modes.
+		// 3 byte addressing modes.
 	case NESCPUOpAddrMode::ABSOLUTE:
 	case NESCPUOpAddrMode::ABSOLUTE_X:
 	case NESCPUOpAddrMode::ABSOLUTE_Y:
 	case NESCPUOpAddrMode::INDIRECT:
 		return 3;
 
-	// Unknown addressing mode.
+		// Unknown addressing mode.
 	default:
 		assert("Unknown addressing mode supplied!" && false);
 		return 0;
 	}
+}
+
+
+NESCPU::NESCPU(NESCPUMemoryMapper& mem) :
+mem_(mem),
+elapsedCycles_(0),
+isJammed_(false),
+intReset_(false),
+intNmi_(false),
+intIrq_(false)
+{
+}
+
+
+NESCPU::~NESCPU()
+{
+}
+
+
+void NESCPU::SetInterrupt(NESCPUInterruptType interrupt)
+{
+	switch (interrupt)
+	{
+	case NESCPUInterruptType::RESET:
+		intReset_ = true;
+		break;
+
+	case NESCPUInterruptType::NMI:
+		intNmi_ = true;
+		break;
+
+	case NESCPUInterruptType::IRQ:
+		intIrq_ = true;
+		break;
+	}
+}
+
+
+void NESCPU::Power()
+{
+	elapsedCycles_ = 0;
+	isJammed_ = false;
+
+	intReset_ = true; // Trigger a Reset interrupt.
+	intNmi_ = intIrq_ = false;
+
+	reg_.PC = 0xC000;
+	reg_.SP = 0xFD;
+	reg_.SetP(0x34); // I, B (and bit 5) are set on power.
+	reg_.A = reg_.X = reg_.Y = 0;
+
+	// @TODO Memory to power-up state!
+}
+
+
+void NESCPU::Tick()
+{
+	// @TODO Do nothing if an instruction is still exec.
+	// (Check the amount of cycles an instr takes!
+
+	// Check for interrupts.
+	const auto handledInt = HandleInterrupts();
+	if (handledInt != NESCPUInterruptType::NONE)
+	{
+		// Interrupts take 7 cycles to execute.
+		elapsedCycles_ += 7;
+		return;
+	}
+
+	// Execute next instruction.
+	ExecuteNextOp();
+	elapsedCycles_ += currentOp_.opCycleCount;
+}
+
+
+void NESCPU::WriteOpResult(NESCPUOpAddrMode addrMode, u8 result)
+{
+	u16 addr;
+	switch (addrMode)
+	{
+	case NESCPUOpAddrMode::ACCUMULATOR:
+		reg_.A = result; // Write to accumulator instead.
+		return;
+
+	case NESCPUOpAddrMode::INDIRECT_X:
+		addr = NESHelper::MemoryIndirectRead16(mem_, (mem_.Read8(reg_.PC + 1) + reg_.X) & 0xFF);
+		break;
+
+	case NESCPUOpAddrMode::INDIRECT_Y:
+		addr = NESHelper::MemoryIndirectRead16(mem_, mem_.Read8(reg_.PC + 1)) + reg_.Y;
+		break;
+
+	case NESCPUOpAddrMode::ABSOLUTE:
+		addr = NESHelper::MemoryRead16(mem_, reg_.PC + 1);
+		break;
+
+	case NESCPUOpAddrMode::ABSOLUTE_X:
+		addr = NESHelper::MemoryRead16(mem_, reg_.PC + 1) + reg_.X;
+		break;
+
+	case NESCPUOpAddrMode::ABSOLUTE_Y:
+		addr = NESHelper::MemoryRead16(mem_, reg_.PC + 1) + reg_.Y;
+		break;
+
+	case NESCPUOpAddrMode::ZEROPAGE:
+		addr = mem_.Read8(reg_.PC + 1);
+		break;
+
+	case NESCPUOpAddrMode::ZEROPAGE_X:
+		addr = (mem_.Read8(reg_.PC + 1) + reg_.X) & 0xFF;
+		break;
+
+	case NESCPUOpAddrMode::ZEROPAGE_Y:
+		addr = (mem_.Read8(reg_.PC + 1) + reg_.Y) & 0xFF;
+		break;
+
+	default:
+		// Unhandled addressing mode!
+		assert("Unknown addressing mode supplied to WriteOpResult()!" && false);
+		return;
+	}
+
+	// Assume writing to main memory at addr.
+	mem_.Write8(addr, result);
+}
+
+
+NESCPUOpArgInfo NESCPU::ReadOpArgInfo(NESCPUOpAddrMode addrMode)
+{
+	NESCPUOpArgInfo argInfo(addrMode);
+
+	switch (argInfo.addrMode)
+	{
+	case NESCPUOpAddrMode::ACCUMULATOR: // Instruction will need to read the register.
+	case NESCPUOpAddrMode::IMPLIED: // No operands for implied addr modes.
+	case NESCPUOpAddrMode::IMPLIED_BRK:
+		break;
+
+	case NESCPUOpAddrMode::IMMEDIATE:
+		argInfo.argAddr = reg_.PC + 1;
+		break;
+
+	case NESCPUOpAddrMode::RELATIVE:
+		// We add an extra 2 to the PC to cover the size of the rest of the instruction.
+		// The offset is a signed 2s complement number.
+		argInfo.argAddr = reg_.PC + 2 + static_cast<s8>(mem_.Read8(reg_.PC + 1));
+		break;
+
+	case NESCPUOpAddrMode::INDIRECT:
+		argInfo.argAddr = NESHelper::MemoryIndirectRead16(mem_, NESHelper::MemoryRead16(mem_, reg_.PC + 1));
+		break;
+
+	case NESCPUOpAddrMode::INDIRECT_X:
+		argInfo.argAddr = NESHelper::MemoryIndirectRead16(mem_, (mem_.Read8(reg_.PC + 1) + reg_.X) & 0xFF);
+		break;
+
+	case NESCPUOpAddrMode::INDIRECT_Y:
+		argInfo.argAddr = NESHelper::MemoryIndirectRead16(mem_, mem_.Read8(reg_.PC + 1));
+		argInfo.crossedPage = !NESHelper::IsInSamePage(argInfo.argAddr, argInfo.argAddr + reg_.Y);
+		argInfo.argAddr += reg_.Y;
+		break;
+
+	case NESCPUOpAddrMode::ABSOLUTE:
+		argInfo.argAddr = NESHelper::MemoryRead16(mem_, reg_.PC + 1);
+		break;
+
+	case NESCPUOpAddrMode::ABSOLUTE_X:
+		argInfo.argAddr = NESHelper::MemoryRead16(mem_, reg_.PC + 1);
+		argInfo.crossedPage = !NESHelper::IsInSamePage(argInfo.argAddr, argInfo.argAddr + reg_.X);
+		argInfo.argAddr += reg_.X;
+		break;
+
+	case NESCPUOpAddrMode::ABSOLUTE_Y:
+		argInfo.argAddr = NESHelper::MemoryRead16(mem_, reg_.PC + 1);
+		argInfo.crossedPage = !NESHelper::IsInSamePage(argInfo.argAddr, argInfo.argAddr + reg_.Y);
+		argInfo.argAddr += reg_.Y;
+		break;
+
+	case NESCPUOpAddrMode::ZEROPAGE:
+		argInfo.argAddr = mem_.Read8(reg_.PC + 1);
+		break;
+
+	case NESCPUOpAddrMode::ZEROPAGE_X:
+		argInfo.argAddr = (mem_.Read8(reg_.PC + 1) + reg_.X) & 0xFF;
+		break;
+
+	case NESCPUOpAddrMode::ZEROPAGE_Y:
+		argInfo.argAddr = (mem_.Read8(reg_.PC + 1) + reg_.Y) & 0xFF;
+		break;
+
+	default:
+		// Unhandled addressing mode!
+		assert("Unknown addressing mode supplied to ReadOpArgInfo()!" && false);
+		break;
+	}
+
+	return argInfo;
+}
+
+
+void NESCPU::ExecuteNextOp()
+{
+	if (isJammed_)
+		return;
+
+	try
+	{
+		// Get the next opcode.
+		currentOp_ = NESCPUExecutingOpInfo(mem_.Read8(reg_.PC));
+	}
+	catch (const NESMemoryException&)
+	{
+		throw NESCPUExecutionException("Could not read the next opcode for program execution.", reg_);
+	}
+
+	// @TODO Debug!
+	if (mem_.Read8(0x6000) != 0x80 &&
+		mem_.Read8(0x6001) == 0xDE &&
+		mem_.Read8(0x6002) == 0xB0 &&
+		mem_.Read8(0x6003) == 0x61)
+	{
+		std::cout << "Test status: $" << std::hex << +mem_.Read8(0x6000) << std::endl;
+		std::cout << "Message: " << std::endl;
+		for (u16 i = 0x6004;; ++i)
+		{
+			const u8 c = mem_.Read8(i);
+			if (c == 0)
+				break;
+
+			std::cout << c;
+		}
+		std::cout << std::endl;
+		system("pause");
+		exit(0);
+	}
+
+	// Get opcode mapping info.
+	const auto& opMapping = opInfos_[currentOp_.op];
+	assert("Invalid opcode!" && opMapping.opFunc != nullptr);
+
+	auto argInfo = ReadOpArgInfo(opMapping.addrMode);
+	currentOp_.opCycleCount = opMapping.cycleCount;
+	currentOp_.opChangedPC = false;
+
+	//u16 val;
+	//if (argInfo.addrMode == NESCPUOpAddrMode::IMMEDIATE)
+	//	val = mem_.Read8(argInfo.argAddr);
+	//else if (argInfo.addrMode == NESCPUOpAddrMode::ACCUMULATOR)
+	//	val = 0;
+	//else
+	//	val = argInfo.argAddr;
+	//
+	//std::cout << "SP: $" << std::hex << +reg_.SP << ",  " <<  << std::endl;
+	//std::cout << "stack: ";
+	//for (u8 i = 0xFF; i >= 0 && i > reg_.SP; --i)
+	//	std::cout << std::hex << +mem_.Read8(NES_CPU_STACK_START + i) << ", ";
+	//std::cout << std::endl;
+	//
+	//static int a = 0;
+	//if (a < 50)
+	//std::cout <<"Cyc: " << elapsedCycles_ << ", Reg: " << reg_.ToString() << "\t Ins: " << OpAsAsm(opMapping.opName, opMapping.addrMode, val) << std::endl;
+	//++a;
+
+	// Execute instruction.
+	(this->*opMapping.opFunc)(argInfo);
+
+	// Go to the next instruction if the CPU isn't now jammed...
+	if (!currentOp_.opChangedPC && !isJammed_)
+		reg_.PC += GetOpSizeFromAddrMode(opMapping.addrMode);
 }
 
 
@@ -313,81 +510,4 @@ NESCPUInterruptType NESCPU::HandleInterrupts()
 	}
 
 	return handledInt;
-}
-
-
-void NESCPU::ExecuteNextOp()
-{
-	if (isJammed_)
-		return;
-
-	try
-	{
-		// Get the next opcode.
-		currentOp_ = NESCPUExecutingOpInfo(mem_.Read8(reg_.PC));
-	}
-	catch (const NESMemoryException&)
-	{
-		throw NESCPUExecutionException("Could not read the next opcode for program execution.", reg_);
-	}
-
-	// @TODO Debug!
-	if (mem_.Read8(0x6000) != 0x80 &&
-		mem_.Read8(0x6001) == 0xDE &&
-		mem_.Read8(0x6002) == 0xB0 &&
-		mem_.Read8(0x6003) == 0x61)
-	{
-		std::cout << "Test status: $" << std::hex << +mem_.Read8(0x6000) << std::endl;
-		std::cout << "Message: " << std::endl;
-		for (u16 i = 0x6004;; ++i)
-		{
-			const u8 c = mem_.Read8(i);
-			if (c == 0)
-				break;
-
-			std::cout << c;
-		}
-		std::cout << std::endl;
-		system("pause");
-		exit(0);
-	}
-
-	// Get opcode mapping info.
-	const auto& opMapping = opInfos_[currentOp_.op];
-	if (opMapping.opFunc == nullptr)
-	{
-		std::ostringstream oss;
-		oss << "Unknown opcode $" << std::hex << +currentOp_.op << "!";
-		throw NESCPUExecutionException(oss.str(), reg_);
-	}
-
-	auto argInfo = ReadOpArgInfo(opMapping.addrMode);
-	currentOp_.opCycleCount = opMapping.cycleCount;
-	currentOp_.opChangedPC = false;
-
-	//u16 val;
-	//if (argInfo.addrMode == NESCPUOpAddrMode::IMMEDIATE)
-	//	val = mem_.Read8(argInfo.argAddr);
-	//else if (argInfo.addrMode == NESCPUOpAddrMode::ACCUMULATOR)
-	//	val = 0;
-	//else
-	//	val = argInfo.argAddr;
-	//
-	//std::cout << "SP: $" << std::hex << +reg_.SP << ",  " <<  << std::endl;
-	//std::cout << "stack: ";
-	//for (u8 i = 0xFF; i >= 0 && i > reg_.SP; --i)
-	//	std::cout << std::hex << +mem_.Read8(NES_CPU_STACK_START + i) << ", ";
-	//std::cout << std::endl;
-	//
-	//static int a = 0;
-	//if (a < 50)
-	// std::cout <<"Cyc: " << elapsedCycles_ << ", Reg: " << reg_.ToString() << "\t Ins: " << OpAsAsm(it->second.opName, it->second.addrMode, val) << std::endl;
-	//++a;
-
-	// Execute instruction.
-	(this->*opMapping.opFunc)(argInfo);
-
-	// Go to the next instruction if the CPU isn't now jammed...
-	if (!currentOp_.opChangedPC && !isJammed_)
-		reg_.PC += GetOpSizeFromAddrMode(opMapping.addrMode);
 }

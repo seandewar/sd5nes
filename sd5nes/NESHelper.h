@@ -12,6 +12,12 @@
 namespace NESHelper
 {
 	/**
+	* Gets a random bool. The chance of the returned value being true
+	* is affected by trueChance. 1.0 = always true, 0.0 = always false.
+	*/
+	bool GetRandomBool(double trueChance = 0.5);
+
+	/**
 	* Gets the value of a bit in the specified position of an 8-bit value.
 	*/
 	inline bool IsBitSet(u8 val, u8 pos) 

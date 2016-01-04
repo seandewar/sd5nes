@@ -35,7 +35,7 @@ int main(int argc, char* argv[])
 	//sf::Sprite spr;
 
 	NESEmulator emu(window);
-	emu.LoadROM("instr_test-v4//rom_singles//16-special.nes");
+	emu.LoadROM("roms//instr_test-v4//rom_singles//07-abs_xy.nes");
 
 	// Main loop.
 	while (window.isOpen())
