@@ -272,6 +272,12 @@ public:
 	*/
 	u8 ReadRegister(NESPPURegisterType reg);
 
+	/**
+	* Returns whether or not rendering is enabled.
+	* (Rendering is disabled if bits 3 and 4 in PPUMASK are cleared).
+	*/
+	inline bool IsRenderingEnabled() const { return ((reg_.PPUMASK & 0x18) != 0); }
+
 private:
 	sf::Image& debug_; // @TODO DEBUG!!
 
@@ -284,6 +290,7 @@ private:
 	unsigned int currentCycle_;
 
 	bool isNmiPulled_;
+	bool xIncdThisTick_, yIncdThisTick_;
 
 	// v (current v-ram addr) [15-bits used], t (temp v-ram addr) [15-bits used]
 	// x (fine x scroll) [3-bits used]
@@ -299,9 +306,16 @@ private:
 	bool isEvenFrame_;
 
 	/**
-	* Returns whether or not rendering is enabled.
-	* (Rendering is disabled if bits 3 and 4 in PPUMASK are cleared).
+	* Increments coarse X of v.
+	* Result of the increment overflows into horizontal nt select of v.
 	*/
-	inline bool IsRenderingEnabled() const { return ((reg_.PPUMASK & 0x18) != 0); }
+	void IncrementCoarseX();
+
+	/**
+	* Increments fine Y of v.
+	* Result of the increment overflows into coarse Y of v.
+	* Will wrap between the vertical name tables.
+	*/
+	void IncrementFineY();
 };
 

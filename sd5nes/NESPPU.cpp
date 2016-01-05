@@ -70,6 +70,8 @@ mem_(mem),
 cpu_(cpu),
 isNmiPulled_(false),
 isEvenFrame_(true),
+xIncdThisTick_(false),
+yIncdThisTick_(false),
 vScroll_(0),
 tScroll_(0),
 xScroll_(0),
@@ -115,17 +117,15 @@ void NESPPU::DebugDrawPatterns(sf::Image& target, int colorOffset)
 
 void NESPPU::WriteRegister(NESPPURegisterType reg, u8 val)
 {
-	if (reg == NESPPURegisterType::UNKNOWN)
-	{
-		assert(false && "Unknown register type!");
-		return;
-	}
-
 	// Update the internal data bus value to the value being written.
 	latches_.internalDataBusVal = val;
 
 	switch (reg)
 	{
+	case NESPPURegisterType::UNKNOWN:
+		assert(false && "Unknown register type!");
+		return;
+
 	case NESPPURegisterType::PPUCTRL:
 		reg_.PPUCTRL = val;
 
@@ -192,6 +192,24 @@ void NESPPU::WriteRegister(NESPPURegisterType reg, u8 val)
 
 	case NESPPURegisterType::PPUDATA:
 		reg_.PPUDATA = val;
+
+		// @NOTE: PPU has some strange behaviour where it increments both coarse X and fine Y
+		// if rendering is enabled and the PPU is currently handling
+		// the pre-render or visible scanlines.
+		if ((currentScanline_ <= 239 || currentScanline_ == 261) &&
+			IsRenderingEnabled())
+		{
+			IncrementCoarseX();
+			IncrementFineY();
+		}
+		else
+		{
+			// Increment v by 32 if I in PPUCTRL is set, otherwise by 1 instead.
+			if (NESHelper::IsBitSet(reg_.PPUCTRL, NES_PPU_REG_PPUCTRL_I_BIT))
+				vScroll_ += 32;
+			else
+				vScroll_ += 1;
+		}
 		break;
 
 	case NESPPURegisterType::OAMDMA:
@@ -203,24 +221,21 @@ void NESPPU::WriteRegister(NESPPURegisterType reg, u8 val)
 
 u8 NESPPU::ReadRegister(NESPPURegisterType reg)
 {
-	if (reg == NESPPURegisterType::UNKNOWN)
-	{
-		assert(false && "Unknown register type!");
-		return 0;
-	}
-
 	u8 returnVal;
 
 	switch (reg)
 	{
+	case NESPPURegisterType::UNKNOWN:
+		assert(false && "Unknown register type!");
+		return 0;
+
 	case NESPPURegisterType::PPUSTATUS:
 		returnVal = reg_.PPUSTATUS;
 
 		// The V-Blank flag is cleared upon read
 		NESHelper::ClearRefBit(reg_.PPUSTATUS, NES_PPU_REG_PPUSTATUS_V_BIT);
 
-		// w:                  = 0 (Reset address latch)
-		latches_.isAddressLatchOn = false;
+		latches_.isAddressLatchOn = false; // Reset address latch
 		break;
 
 	case NESPPURegisterType::OAMDATA:
@@ -244,6 +259,8 @@ u8 NESPPU::ReadRegister(NESPPURegisterType reg)
 void NESPPU::Power()
 {
 	isEvenFrame_ = true;
+	xIncdThisTick_ = yIncdThisTick_ = false;
+	currentCycle_ = currentScanline_ = 0;
 
 	isNmiPulled_ = false;
 	tScroll_ = vScroll_ = xScroll_ = 0;
@@ -271,6 +288,7 @@ void NESPPU::Power()
 void NESPPU::Reset()
 {
 	isEvenFrame_ = true;
+	currentCycle_ = currentScanline_ = 0;
 
 	isNmiPulled_ = false;
 	tScroll_ = vScroll_ = xScroll_ = 0;
@@ -284,19 +302,78 @@ void NESPPU::Reset()
 }
 
 
+void NESPPU::IncrementCoarseX()
+{
+	// Do not double increment for this tick.
+	if (xIncdThisTick_)
+		return;
+
+	xIncdThisTick_ = true;
+
+	// Coarse X is bits 0-4 in v.
+	if ((vScroll_ & 0x1F) == 0x1F)
+	{
+		// Coarse X is currently 31 (0x1F) which is its max value.
+		// So we need to clear coarse X and switch horiz nt.
+		vScroll_ = (vScroll_ & 0x7FE0) ^ 0x400;
+	}
+	else
+	{
+		// No wrap needed, just increment coarse X as it was below 31.
+		vScroll_ += 1;
+	}
+}
+
+
+void NESPPU::IncrementFineY()
+{
+	// Do not double increment for this tick.
+	if (yIncdThisTick_)
+		return;
+
+	yIncdThisTick_ = true;
+
+	// Fine Y scroll is bits 12-14 in v.
+	if ((vScroll_ & 0x7000) == 0x7000)
+	{
+		// Fine Y is currently 7 which means we need to check
+		// coarse Y (bits 5-9 in v).
+		vScroll_ &= 0xFFF; // Clear fine y scroll.
+
+		const u8 coarseY = (vScroll_ & 0x3E0) >> 5;
+		if (coarseY == 0x1D) // == 29
+		{
+			// Switch vertical nt by toggling bit 11
+			// and clear coarse Y.
+			vScroll_ = (vScroll_ & 0x7C1F) ^ 0x800;
+		}
+		else if (coarseY == 0x1F) // == 31 (max value)
+		{
+			// Clear coarse Y.
+			vScroll_ &= 0x7C1F;
+		}
+		else
+		{
+			// Increment coarse Y.
+			vScroll_ = (vScroll_ & 0x7C1F) | (((coarseY + 1) & 0xF) << 5);
+		}
+	}
+	else
+	{
+		// No wrap needed, we can just increment fine Y as it was below 7.
+		vScroll_ += 0x1000;
+	}
+}
+
+
 void NESPPU::Tick()
 {
 	// @TODO: Handle PAL (70 V-BLANK scanlines instead).
 
-	if (currentScanline_ < 240)
+	if (currentScanline_ >= 240 && currentScanline_ <= 260)
 	{
-		/*** Visible scanline (0 - 239) ***/
-
-
-	}
-	else if (currentScanline_ >= 241 && currentScanline_ < 261)
-	{
-		/*** V-BLANK Period (241 - 260) ***/
+		/*** Post-render (idle) scanline (240) OR ***/
+		/*** V-BLANK period (241 - 260)           ***/
 
 		// Set V-BLANK on cycle 1 of scanline 241.
 		if (currentScanline_ == 241 && currentCycle_ == 1)
@@ -306,31 +383,61 @@ void NESPPU::Tick()
 			isNmiPulled_ = false;
 		}
 
-		if (NESHelper::IsBitSet(reg_.PPUSTATUS, NES_PPU_REG_PPUSTATUS_V_BIT) && 
+		if (currentScanline_ >= 241 &&
+			NESHelper::IsBitSet(reg_.PPUSTATUS, NES_PPU_REG_PPUSTATUS_V_BIT) &&
 			NESHelper::IsBitSet(reg_.PPUCTRL, NES_PPU_REG_PPUCTRL_V_BIT) &&
 			!isNmiPulled_)
 		{
 			// We should set the V-BLANK NMI now.
 			isNmiPulled_ = true;
-			cpu_.SetInterrupt(NESCPUInterruptType::NMI);
+			cpu_.SetInterrupt(NESCPUInterruptType::NMI); // @TODO Don't reference CPU directly..?
 		}
 	}
-	else if (currentScanline_ == 261)
+	else
 	{
-		/*** Pre-render scanline (261) ***/
+		if (currentScanline_ == 261)
+		{
+			/*** Pre-render scanline (261) ***/
 
-		if (currentCycle_ == 1)
-			reg_.PPUSTATUS = 0; // Clear PPUSTATUS flags on cycle 1.
-		else if (currentCycle_ >= 280 && currentCycle_ <= 304 && IsRenderingEnabled())
-			assert(false); // @TODO Reset vertical scroll bits.
+			if (currentCycle_ == 1)
+			{
+				// Clear PPUSTATUS flags on cycle 1.
+				reg_.PPUSTATUS = 0;
+			}
+			else if (currentCycle_ >= 280 && currentCycle_ < 305 && IsRenderingEnabled())
+			{
+				// v: IHGF.ED CBA..... = t: IHGF.ED CBA.....
+				vScroll_ = (vScroll_ & 0x41F) | (tScroll_ & 0x7BE0);
+			}
+		}
+		//else
+		//{
+		//	/*** Visible scanlines (0 - 239) ***/
+		//}
+
+		if (IsRenderingEnabled())
+		{
+			if (currentCycle_ == 256)
+				IncrementFineY();
+			else if (currentCycle_ == 257)
+			{
+				// v: ....F.. ...EDCBA = t: ....F.. ...EDCBA
+				vScroll_ = (vScroll_ & 0x7BE0) | (tScroll_ & 0x41F);
+			}
+		}
+
+		if ((currentCycle_ != 0 && currentCycle_ <= 256 && currentCycle_ % 8 == 0) ||
+			currentCycle_ == 328 || currentCycle_ == 336)
+			IncrementCoarseX();
 	}
 
 	++elapsedCycles_;
 	++currentCycle_;
+	xIncdThisTick_ = yIncdThisTick_ = false;
 
-	// Check if we're at the end of this scanline (which is one cycle earlier on
-	// the pre-render scanline (261) when on an odd frame).
-	if (currentCycle_ > 340 ||
+	// Check if we're at the end of this scanline (which is one cycle earlier (339)
+	// on the pre-render scanline (261) when on an odd frame).
+	if (currentCycle_ > 340 || 
 		(currentScanline_ == 261 && currentCycle_ == 339 && !isEvenFrame_))
 	{
 		currentCycle_ = 0;
@@ -339,7 +446,6 @@ void NESPPU::Tick()
 		// Check if we've finished handling the entire frame.
 		if (currentScanline_ > 261)
 		{
-			// @TODO ??
 			currentScanline_ = 0;
 			isEvenFrame_ = !isEvenFrame_;
 		}
