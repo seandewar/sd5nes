@@ -123,9 +123,9 @@ void NESGamePak::ParseROMFileData(const std::vector<u8>& data)
 	// @TODO init mmc_
 	case 0:
 		if (prgRomBanks_.size() == 1)
-			mmc_ = std::make_unique<NESMMCNROM>(sram_, prgRomBanks_[0]);
+			mmc_ = std::make_unique<NESMMCNROM>(sram_, chrRomBanks_[0], prgRomBanks_[0]);
 		else if (prgRomBanks_.size() == 2)
-			mmc_ = std::make_unique<NESMMCNROM>(sram_, prgRomBanks_[0], prgRomBanks_[1]);
+			mmc_ = std::make_unique<NESMMCNROM>(sram_, chrRomBanks_[0], prgRomBanks_[0], prgRomBanks_[1]);
 		else
 			throw NESGamePakLoadException("Invalid amount of PRG-ROM banks for NROM mapper!");
 		break;

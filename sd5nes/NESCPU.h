@@ -10,30 +10,8 @@
 #include "NESCPUOpConstants.h"
 #include "NESMemoryConstants.h"
 #include "NESMemory.h"
-#include "NESGamePak.h"
-#include "NESPPU.h"
 
 typedef NESMemory<0x800> NESMemCPURAM;
-
-/**
-* Memory module that maps CPU memory.
-*/
-class NESCPUMemoryMapper : public NESMemoryMapper
-{
-public:
-	NESCPUMemoryMapper(NESMemCPURAM& ram, NESPPU& ppu, NESMMC* mmc);
-	virtual ~NESCPUMemoryMapper();
-
-	void Write8(u16 addr, u8 val) override;
-	u8 Read8(u16 addr) const override;
-
-private:
-	static NESPPURegisterType GetPPURegister(u16 realAddr);
-
-	NESMemCPURAM& ram_;
-	NESPPU& ppu_;
-	NESMMC* mmc_;
-};
 
 /* Positions of the different used status bits inside of the CPU status register.*/
 #define NES_CPU_REG_P_C_BIT 0
@@ -207,13 +185,27 @@ struct NESCPUExecutingOpInfo
 };
 
 /**
+* Interface for allowing the CPU to communicate with other devices.
+*/
+class INESCPUCommunicationsInterface : public INESMemoryInterface
+{
+public:
+	virtual ~INESCPUCommunicationsInterface() { }
+};
+
+/**
 * Handles emulation of the 6502 2A03 CPU used in the NES.
 */
 class NESCPU
 {
 public:
-	explicit NESCPU(NESCPUMemoryMapper& mem);
+	NESCPU();
 	~NESCPU();
+
+	/**
+	* Initialize the CPU.
+	*/
+	void Initialize(INESCPUCommunicationsInterface& comm);
 
 	/**
 	* Sets the CPU to its power on state and sets a reset interrupt
@@ -231,7 +223,7 @@ public:
 	* Handles the next available interrupt of highest priority if set and last instruction finished executing.
 	* Otherwise, runs the next instruction if last instruction finished executing.
 	*/
-	void Tick();
+	unsigned int Tick();
 
 	/**
 	* Whether or not the CPU is jammed.
@@ -262,8 +254,9 @@ private:
 	*/
 	static std::string OpAsAsm(const std::string& opName, NESCPUOpAddrMode addrMode, u16 val);
 
+	INESCPUCommunicationsInterface* comm_;
+
 	NESCPURegisters reg_;
-	NESCPUMemoryMapper& mem_;
 	NESCPUExecutingOpInfo currentOp_;
 	bool intReset_, intNmi_, intIrq_;
 	bool isJammed_;
@@ -311,7 +304,7 @@ private:
 	{
 		// @NOTE: Some games purposely overflow the stack
 		// So there is no need to do any bounds checks.
-		mem_.Write8(NES_CPU_STACK_START + (reg_.SP--), val);
+		comm_->Write8(NES_CPU_STACK_START + (reg_.SP--), val);
 	}
 
 	// Push 16-bit value onto the stack.
@@ -327,7 +320,7 @@ private:
 	{
 		// @NOTE: Some games purposely underflow the stack
 		// So there is no need to do any bounds checks.
-		return mem_.Read8(NES_CPU_STACK_START + (++reg_.SP));
+		return comm_->Read8(NES_CPU_STACK_START + (++reg_.SP));
 	}
 
 	// Pull 16-bit value from the stack.
@@ -523,7 +516,7 @@ private:
 		if (argInfo.crossedPage)
 			OpAddCycles(1);
 
-		reg_.A = ExecuteAddWithCarry(mem_.Read8(argInfo.argAddr));
+		reg_.A = ExecuteAddWithCarry(comm_->Read8(argInfo.argAddr));
 	}
 
 	// Execute AND X with Accumulator, then AND with 7 (AHX).
@@ -535,7 +528,7 @@ private:
 	// Execute AND with Accumulator, Set Carry if Negative (ANC).
 	inline void ExecuteOpANC(NESCPUOpArgInfo& argInfo)
 	{
-		reg_.A = ExecuteANDWithA(mem_.Read8(argInfo.argAddr));
+		reg_.A = ExecuteANDWithA(comm_->Read8(argInfo.argAddr));
 		reg_.SetP(NESHelper::EditBit(reg_.GetP(), NES_CPU_REG_P_C_BIT, (reg_.A & 0x80) == 0x80));
 	}
 
@@ -547,14 +540,14 @@ private:
 		if (argInfo.crossedPage)
 			OpAddCycles(1);
 
-		reg_.A = ExecuteANDWithA(mem_.Read8(argInfo.argAddr));
+		reg_.A = ExecuteANDWithA(comm_->Read8(argInfo.argAddr));
 	}
 
 	// Execute AND with Accumulator then Rotate Right in Accumulator (ARR).
 	inline void ExecuteOpARR(NESCPUOpArgInfo& argInfo)
 	{
 		// Append the carry bit to position 8 if it is set.
-		const u8 argVal = mem_.Read8(argInfo.argAddr);
+		const u8 argVal = comm_->Read8(argInfo.argAddr);
 		const u8 res = (argVal | (NESHelper::IsBitSet(reg_.GetP(), NES_CPU_REG_P_C_BIT) ? 0x100 : 0)) >> 1;
 
 		// C is set depending on bit 6 and V depends on bits 5 and 6.
@@ -571,19 +564,19 @@ private:
 	{
 		// C <- [76543210] <- 0
 		WriteOpResult(argInfo.addrMode,
-			ExecuteShiftLeft(argInfo.addrMode == NESCPUOpAddrMode::ACCUMULATOR ? reg_.A : mem_.Read8(argInfo.argAddr)));
+			ExecuteShiftLeft(argInfo.addrMode == NESCPUOpAddrMode::ACCUMULATOR ? reg_.A : comm_->Read8(argInfo.argAddr)));
 	}
 
 	// Execute AND with Accumulator then Shift Right (ASR).
 	inline void ExecuteOpASR(NESCPUOpArgInfo& argInfo)
 	{
-		reg_.A = ExecuteShiftRight(reg_.A & mem_.Read8(argInfo.argAddr));
+		reg_.A = ExecuteShiftRight(reg_.A & comm_->Read8(argInfo.argAddr));
 	}
 
 	// Execute AND X with A and Store in X then subtract byte from X (without borrow) (AXS).
 	inline void ExecuteOpAXS(NESCPUOpArgInfo& argInfo)
 	{
-		const u16 res = (reg_.X & reg_.A) - mem_.Read8(argInfo.argAddr);
+		const u16 res = (reg_.X & reg_.A) - comm_->Read8(argInfo.argAddr);
 
 		reg_.SetP(NESHelper::EditBit(reg_.GetP(), NES_CPU_REG_P_C_BIT, res < 0x100));
 
@@ -606,7 +599,7 @@ private:
 	inline void ExecuteOpBIT(NESCPUOpArgInfo& argInfo)
 	{
 		// A /\ M, M7 -> N, M6 -> V
-		const u8 argVal = mem_.Read8(argInfo.argAddr);
+		const u8 argVal = comm_->Read8(argInfo.argAddr);
 
 		UpdateRegN(argVal);
 		UpdateRegZ(argVal & reg_.A);
@@ -630,7 +623,7 @@ private:
 		StackPush8(reg_.GetP() | 0x10); // Make sure bit 5 is set on the copy we push.
 		reg_.SetP(NESHelper::SetBit(reg_.GetP(), NES_CPU_REG_P_I_BIT));
 		
-		UpdateRegPC(NESHelper::MemoryRead16(mem_, 0xFFFE));
+		UpdateRegPC(NESHelper::MemoryRead16(*comm_, 0xFFFE));
 	}
 
 	// Execute Branch on Overflow Clear (BVC).
@@ -659,37 +652,37 @@ private:
 			OpAddCycles(1);
 
 		// A - M
-		ExecuteComparison(mem_.Read8(argInfo.argAddr), reg_.A);
+		ExecuteComparison(comm_->Read8(argInfo.argAddr), reg_.A);
 	}
 
 	// Execute Compare Memory and Index X (CPX).
 	inline void ExecuteOpCPX(NESCPUOpArgInfo& argInfo)
 	{
 		// X - M
-		ExecuteComparison(mem_.Read8(argInfo.argAddr), reg_.X);
+		ExecuteComparison(comm_->Read8(argInfo.argAddr), reg_.X);
 	}
 
 	// Execute Compare Memory and Index Y (CPY).
 	inline void ExecuteOpCPY(NESCPUOpArgInfo& argInfo)
 	{
 		// Y - M
-		ExecuteComparison(mem_.Read8(argInfo.argAddr), reg_.Y);
+		ExecuteComparison(comm_->Read8(argInfo.argAddr), reg_.Y);
 	}
 
 	// Execute Subtract 1 from Memory (Without Borrow) (DCP).
 	inline void ExecuteOpDCP(NESCPUOpArgInfo& argInfo)
 	{
-		const u8 res = mem_.Read8(argInfo.argAddr) - 1;
+		const u8 res = comm_->Read8(argInfo.argAddr) - 1;
 		WriteOpResult(argInfo.addrMode, res);
 
-		ExecuteComparison(mem_.Read8(argInfo.argAddr), reg_.A);
+		ExecuteComparison(comm_->Read8(argInfo.argAddr), reg_.A);
 	}
 
 	// Execute Decrement Memory by One (DEC).
 	inline void ExecuteOpDEC(NESCPUOpArgInfo& argInfo)
 	{
 		// M - 1 -> M
-		const u8 res = mem_.Read8(argInfo.argAddr) - 1;
+		const u8 res = comm_->Read8(argInfo.argAddr) - 1;
 		WriteOpResult(argInfo.addrMode, res);
 
 		UpdateRegN(res);
@@ -722,14 +715,14 @@ private:
 		if (argInfo.crossedPage)
 			OpAddCycles(1);
 
-		reg_.A = ExecuteEORWithA(mem_.Read8(argInfo.argAddr));
+		reg_.A = ExecuteEORWithA(comm_->Read8(argInfo.argAddr));
 	}
 
 	// Execute Increment Memory by One (INC).
 	inline void ExecuteOpINC(NESCPUOpArgInfo& argInfo)
 	{
 		// M + 1 -> M
-		const u8 res = mem_.Read8(argInfo.argAddr) + 1;
+		const u8 res = comm_->Read8(argInfo.argAddr) + 1;
 		WriteOpResult(argInfo.addrMode, res);
 
 		UpdateRegN(res);
@@ -757,7 +750,7 @@ private:
 	// Execute Increase Memory by 1, then Subtract Memory from Accumulator (ISC).
 	inline void ExecuteOpISC(NESCPUOpArgInfo& argInfo)
 	{
-		const u8 res = mem_.Read8(argInfo.argAddr) + 1;
+		const u8 res = comm_->Read8(argInfo.argAddr) + 1;
 		WriteOpResult(argInfo.addrMode, res);
 
 		reg_.A = ExecuteAddWithCarry(~res);
@@ -794,7 +787,7 @@ private:
 		if (argInfo.crossedPage)
 			OpAddCycles(1);
 
-		const u8 res = mem_.Read8(argInfo.argAddr) & reg_.SP;
+		const u8 res = comm_->Read8(argInfo.argAddr) & reg_.SP;
 
 		reg_.A = reg_.X = reg_.SP = res;
 		UpdateRegN(res);
@@ -808,7 +801,7 @@ private:
 		if (argInfo.crossedPage)
 			OpAddCycles(1);
 
-		const u8 res = mem_.Read8(argInfo.argAddr);
+		const u8 res = comm_->Read8(argInfo.argAddr);
 
 		reg_.A = reg_.X = res;
 		UpdateRegN(res);
@@ -823,7 +816,7 @@ private:
 			OpAddCycles(1);
 
 		// M -> A
-		const u8 argVal = mem_.Read8(argInfo.argAddr);
+		const u8 argVal = comm_->Read8(argInfo.argAddr);
 
 		UpdateRegN(argVal);
 		UpdateRegZ(argVal);
@@ -838,7 +831,7 @@ private:
 			OpAddCycles(1);
 
 		// M -> X
-		const u8 argVal = mem_.Read8(argInfo.argAddr);
+		const u8 argVal = comm_->Read8(argInfo.argAddr);
 
 		UpdateRegN(argVal);
 		UpdateRegZ(argVal);
@@ -853,7 +846,7 @@ private:
 			OpAddCycles(1);
 
 		// M -> Y
-		const u8 argVal = mem_.Read8(argInfo.argAddr);
+		const u8 argVal = comm_->Read8(argInfo.argAddr);
 
 		UpdateRegN(argVal);
 		UpdateRegZ(argVal);
@@ -865,7 +858,7 @@ private:
 	{
 		// 0 -> [76543210] -> C
 		WriteOpResult(argInfo.addrMode, 
-			ExecuteShiftRight(argInfo.addrMode == NESCPUOpAddrMode::ACCUMULATOR ? reg_.A : mem_.Read8(argInfo.argAddr)));
+			ExecuteShiftRight(argInfo.addrMode == NESCPUOpAddrMode::ACCUMULATOR ? reg_.A : comm_->Read8(argInfo.argAddr)));
 	}
 
 	// Execute No Operation (Do Nothing) (NOP).
@@ -887,7 +880,7 @@ private:
 		if (argInfo.crossedPage)
 			OpAddCycles(1);
 
-		reg_.A = ExecuteORWithA(mem_.Read8(argInfo.argAddr));
+		reg_.A = ExecuteORWithA(comm_->Read8(argInfo.argAddr));
 	}
 
 	// Execute Push Accumulator to Stack (PHA).
@@ -924,7 +917,7 @@ private:
 	inline void ExecuteOpRLA(NESCPUOpArgInfo& argInfo)
 	{
 		// Shift to the left and append the carry bit in position 0 if set.
-		const u16 rotateRes = (mem_.Read8(argInfo.argAddr) << 1) | (NESHelper::IsBitSet(reg_.GetP(), NES_CPU_REG_P_C_BIT) ? 1 : 0);
+		const u16 rotateRes = (comm_->Read8(argInfo.argAddr) << 1) | (NESHelper::IsBitSet(reg_.GetP(), NES_CPU_REG_P_C_BIT) ? 1 : 0);
 
 		// Set the carry if there is a set bit in position 8 (which will be lost after we shift).
 		reg_.SetP(NESHelper::EditBit(reg_.GetP(), NES_CPU_REG_P_C_BIT, (rotateRes & 0x100) == 0x100));
@@ -937,7 +930,7 @@ private:
 	inline void ExecuteOpRRA(NESCPUOpArgInfo& argInfo)
 	{
 		// Append the carry bit to position 8 if it is set.
-		const u16 unshiftedRes = mem_.Read8(argInfo.argAddr) | (NESHelper::IsBitSet(reg_.GetP(), NES_CPU_REG_P_C_BIT) ? 0x100 : 0);
+		const u16 unshiftedRes = comm_->Read8(argInfo.argAddr) | (NESHelper::IsBitSet(reg_.GetP(), NES_CPU_REG_P_C_BIT) ? 0x100 : 0);
 
 		// Set the carry bit if there is a set bit in position 0 (which will be lost after we shift).
 		reg_.SetP(NESHelper::EditBit(reg_.GetP(), NES_CPU_REG_P_C_BIT, (unshiftedRes & 1) == 1));
@@ -954,7 +947,7 @@ private:
 	{
 		// C <-[7654321] <- C
 		WriteOpResult(argInfo.addrMode, 
-			ExecuteRotateLeft(argInfo.addrMode == NESCPUOpAddrMode::ACCUMULATOR ? reg_.A : mem_.Read8(argInfo.argAddr)));
+			ExecuteRotateLeft(argInfo.addrMode == NESCPUOpAddrMode::ACCUMULATOR ? reg_.A : comm_->Read8(argInfo.argAddr)));
 	}
 
 	// Execute Rotate One Bit Right (ROR).
@@ -962,7 +955,7 @@ private:
 	{
 		// C -> [7654321] -> C
 		WriteOpResult(argInfo.addrMode,
-			ExecuteRotateRight(argInfo.addrMode == NESCPUOpAddrMode::ACCUMULATOR ? reg_.A : mem_.Read8(argInfo.argAddr)));
+			ExecuteRotateRight(argInfo.addrMode == NESCPUOpAddrMode::ACCUMULATOR ? reg_.A : comm_->Read8(argInfo.argAddr)));
 	}
 
 	// Execute Return from Interrupt (RTI).
@@ -994,7 +987,7 @@ private:
 		// Simply just execute ADC with the bitwise complement of argVal.
 		// In 2s complement, this will = (-argVal) - 1.
 		// If the carry flag is set, 1 will be added to make it -argVal as intended.
-		reg_.A = ExecuteAddWithCarry(~mem_.Read8(argInfo.argAddr));
+		reg_.A = ExecuteAddWithCarry(~comm_->Read8(argInfo.argAddr));
 	}
 
 	// Execute Set Carry Flag (SEC).
@@ -1010,21 +1003,21 @@ private:
 	inline void ExecuteOpSHX(NESCPUOpArgInfo& argInfo)
 	{
 		const u8 res = reg_.X & (argInfo.argAddr >> 8);
-		mem_.Write8(NESHelper::ConvertTo16(res, argInfo.argAddr & 0xFF), res);
+		comm_->Write8(NESHelper::ConvertTo16(res, argInfo.argAddr & 0xFF), res);
 	}
 
 	// Execute SHY.
 	inline void ExecuteOpSHY(NESCPUOpArgInfo& argInfo)
 	{
 		const u8 res = reg_.Y & (argInfo.argAddr >> 8);
-		mem_.Write8(NESHelper::ConvertTo16(res, argInfo.argAddr & 0xFF), res);
+		comm_->Write8(NESHelper::ConvertTo16(res, argInfo.argAddr & 0xFF), res);
 	}
 
 	// Execute Shift Right, then EOR Accumulator (SRE).
 	inline void ExecuteOpSRE(NESCPUOpArgInfo& argInfo)
 	{
 		// Shift to the right. We will lose bit 0 in the process, and bit 7 should become 0.
-		const u8 argVal = mem_.Read8(argInfo.argAddr);
+		const u8 argVal = comm_->Read8(argInfo.argAddr);
 		const u8 shiftRes = argVal >> 1;
 
 		// Set the carry if the original bit 0 (that we lost) was 1.
@@ -1038,7 +1031,7 @@ private:
 	inline void ExecuteOpSLO(NESCPUOpArgInfo& argInfo)
 	{
 		// Shift to the left. Bit now in position 0 should be 0. Bit originally in pos 8 is lost.
-		const u8 argVal = mem_.Read8(argInfo.argAddr);
+		const u8 argVal = comm_->Read8(argInfo.argAddr);
 		const u8 shiftRes = (argVal << 1) & 0xFF;
 
 		// Set carry bit if bit 7 (which was lost after the shift) was originally 1.
@@ -1049,13 +1042,13 @@ private:
 	}
 
 	// Execute Store Accumulator in Memory (STA).
-	inline void ExecuteOpSTA(NESCPUOpArgInfo& argInfo) { /* A -> M */ mem_.Write8(argInfo.argAddr, reg_.A); }
+	inline void ExecuteOpSTA(NESCPUOpArgInfo& argInfo) { /* A -> M */ comm_->Write8(argInfo.argAddr, reg_.A); }
 
 	// Execute Store Index X in Memory (STX).
-	inline void ExecuteOpSTX(NESCPUOpArgInfo& argInfo) { /* X -> M */ mem_.Write8(argInfo.argAddr, reg_.X); }
+	inline void ExecuteOpSTX(NESCPUOpArgInfo& argInfo) { /* X -> M */ comm_->Write8(argInfo.argAddr, reg_.X); }
 
 	// Execute Store Index Y in Memory (STY).
-	inline void ExecuteOpSTY(NESCPUOpArgInfo& argInfo) { /* Y -> M */ mem_.Write8(argInfo.argAddr, reg_.Y); }
+	inline void ExecuteOpSTY(NESCPUOpArgInfo& argInfo) { /* Y -> M */ comm_->Write8(argInfo.argAddr, reg_.Y); }
 
 	// Execute AND X with Accumulator, Store in SP, then AND SP with High Byte of Arg Addr + 1 (TAS).
 	inline void ExecuteOpTAS(NESCPUOpArgInfo& argInfo)
@@ -1116,6 +1109,6 @@ private:
 	{
 		// This instruction is weird. More info at:
 		// http://visual6502.org/wiki/index.php?title=6502_Opcode_8B_%28XAA,_ANE%29
-		reg_.A = reg_.X & mem_.Read8(argInfo.argAddr) & (reg_.A | 0xEE);
+		reg_.A = reg_.X & comm_->Read8(argInfo.argAddr) & (reg_.A | 0xEE);
 	}
 };

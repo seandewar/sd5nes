@@ -48,13 +48,15 @@ protected:
 class NESMMCNROM : public NESMMC
 {
 public:
-	NESMMCNROM(NESMemSRAM& sram, NESMemPRGROMBank& prgRomBank);
-	NESMMCNROM(NESMemSRAM& sram, NESMemPRGROMBank& prgRom1, NESMemPRGROMBank& prgRom2);
+	NESMMCNROM(NESMemSRAM& sram, NESMemCHRROMBank& chrRom, NESMemPRGROMBank& prgRomBank);
+	NESMMCNROM(NESMemSRAM& sram, NESMemCHRROMBank& chrRom, NESMemPRGROMBank& prgRom1, NESMemPRGROMBank& prgRom2);
 	virtual ~NESMMCNROM();
 
 	inline NESMMCType GetType() const override { return NESMMCType::NROM; }
 
-	inline void Write8(u16 addr, u8 val) override { NESMMC::Write8(addr, val); }
+	void Write8(u16 addr, u8 val) override;
+	u8 Read8(u16 addr) const override;
 
-	inline u8 Read8(u16 addr) const override { return NESMMC::Read8(addr); }
+private:
+	NESMemCHRROMBank& chr_;
 };

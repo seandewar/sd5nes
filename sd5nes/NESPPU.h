@@ -7,7 +7,6 @@
 
 #include "NESTypes.h"
 #include "NESMemory.h"
-#include "NESCPU.h"
 
 /* Typedefs for the individual tables + typedef for holding both palettes (BG and Sprite). */
 typedef NESMemory<0x1000> NESMemPatternTable;
@@ -34,32 +33,6 @@ enum class NESPPUMirroringType
 	ONE_SCREEN,
 	FOUR_SCREEN,
 	UNKNOWN
-};
-
-/* Invalid Name Table */
-#define NES_INVALID_NAME_TABLE_INDEX -1
-
-/**
-* Emulates the mapping and mirroring of the PPU's memory.
-*/
-class NESPPUMemoryMapper : public NESMemoryMapper
-{
-public:
-	NESPPUMemoryMapper(NESPPUMemory& mem, NESPPUMirroringType ntMirror);
-	virtual ~NESPPUMemoryMapper();
-
-	void Write8(u16 addr, u8 val) override;
-	u8 Read8(u16 addr) const override;
-
-private:
-	NESPPUMemory& mem_;
-	NESPPUMirroringType ntMirror_;
-
-	/**
-	* Gets the corrisponding nametable's index from an address that is inside the nametable.
-	* Considers the nametable mirroring type that is being used.
-	*/
-	std::size_t GetNameTableIndex(u16 addr) const;
 };
 
 /**
@@ -103,21 +76,6 @@ const std::array<NESPPUColor, 0x40> ppuPalette = {
 #define NES_PPU_OAM_ATTRIB_PRORITY_BIT 5
 #define NES_PPU_OAM_ATTRIB_HFLIP_BIT 6
 #define NES_PPU_OAM_ATTRIB_VFLIP_BIT 7
-
-/**
-* Represents 1 entry in the PPU's OAM (Object Attribute Memory).
-*/
-struct NESPPUOAMEntry
-{
-	/* Y position of the top of the sprite. */
-	u8 spriteY;
-
-	/* Index number of the tile to use for this sprite. */
-	u8 tileIndex;
-
-	/* Sprite attributes. */
-	u8 attrib;
-};
 
 /* Positions of the different PPUCTRL bits. */
 #define NES_PPU_REG_PPUCTRL_N_HI_BIT 0
@@ -202,17 +160,13 @@ struct NESPPURegisters
 	/* PPU Read/Write Address (PPUADDR) W x2 */
 	u8 PPUADDR;
 
-	/* PPU Data Read/Write (PPUDATA) */
-	u8 PPUDATA;
-
 	/* OAM DMA High Address (OAMDMA) */
 	u8 OAMDMA;
 
 	NESPPURegisters() :
 		PPUCTRL(0), PPUMASK(0), PPUSTATUS(0),
-		OAMADDR(0), OAMDATA(0),
-		PPUSCROLL(0), PPUADDR(0), PPUDATA(0),
-		OAMDMA(0)
+		OAMADDR(0), OAMDATA(0), OAMDMA(0),
+		PPUSCROLL(0), PPUADDR(0)
 	{ }
 };
 
@@ -234,12 +188,23 @@ struct NESPPULatches
 };
 
 /**
+* Interface for allowing the PPU to communicate with other devices.
+*/
+class INESPPUCommunicationsInterface : public INESMemoryInterface
+{
+public:
+	virtual ~INESPPUCommunicationsInterface() { }
+
+	virtual void PullNMI() = 0;
+};
+
+/**
 * Handles emulation of the 2C02 PPU used in the NES.
 */
 class NESPPU
 {
 public:
-	NESPPU(NESPPUMemoryMapper& mem, NESCPU& cpu, sf::Image& debug);
+	explicit NESPPU(sf::Image& debug);
 	~NESPPU();
 
 	/**
@@ -248,9 +213,19 @@ public:
 	void DebugDrawPatterns(sf::Image& target, int colorOffset);
 
 	/**
+	* Initialize the PPU.
+	*/
+	void Initialize(INESPPUCommunicationsInterface& comm);
+
+	/**
 	* Sets the PPU to its power-up state.
 	*/
 	void Power();
+
+	/**
+	* Turns the PPU off.
+	*/
+	void TurnOff();
 
 	/**
 	* Sets the PPU to its reset state.
@@ -281,6 +256,8 @@ public:
 private:
 	sf::Image& debug_; // @TODO DEBUG!!
 
+	INESPPUCommunicationsInterface* comm_;
+
 	NESPPURegisters reg_;
 	NESPPULatches latches_;
 
@@ -297,8 +274,11 @@ private:
 	u16 vScroll_, tScroll_;
 	u8 xScroll_;
 
-	NESPPUMemoryMapper& mem_;
-	NESCPU& cpu_;
+	// Buffered data of PPUDATA.
+	u8 ppuDataBuffered_;
+
+	u8 ntByte_, atByte_;
+	u8 tileBitmapHi_, tileBitmapLo_;
 
 	NESMemory<0x100> primaryOam_;
 	NESMemory<0x20> secondaryOam_;
@@ -317,5 +297,17 @@ private:
 	* Will wrap between the vertical name tables.
 	*/
 	void IncrementFineY();
+
+	/**
+	* Increments VRAM Address after accessing PPUDATA
+	* and emulates the strange result of accessing PPUDATA 
+	* while the PPU is rendering.
+	*/
+	void HandlePPUDATAAccess();
+
+	/**
+	* Handles the fetching of tile data for this tick.
+	*/
+	void TickFetchTileData();
 };
 

@@ -32,20 +32,45 @@ u8 NESMMC::Read8(u16 addr) const
 }
 
 
-NESMMCNROM::NESMMCNROM(NESMemSRAM& sram, NESMemPRGROMBank& prgRom1, NESMemPRGROMBank& prgRom2) :
-NESMMC(sram)
+NESMMCNROM::NESMMCNROM(NESMemSRAM& sram, NESMemCHRROMBank& chrRom, NESMemPRGROMBank& prgRom1, NESMemPRGROMBank& prgRom2) :
+NESMMC(sram),
+chr_(chrRom)
 {
 	loadedPrgRomBanks_[0] = &prgRom1;
 	loadedPrgRomBanks_[1] = &prgRom2;
 }
 
 
-NESMMCNROM::NESMMCNROM(NESMemSRAM& sram, NESMemPRGROMBank& prgRomBank) :
-NESMMCNROM(sram, prgRomBank, prgRomBank)
+NESMMCNROM::NESMMCNROM(NESMemSRAM& sram, NESMemCHRROMBank& chrRom, NESMemPRGROMBank& prgRomBank) :
+NESMMCNROM(sram, chrRom, prgRomBank, prgRomBank)
 {
 }
 
 
 NESMMCNROM::~NESMMCNROM()
 {
+}
+
+
+void NESMMCNROM::Write8(u16 addr, u8 val)
+{ 
+	// @TODO: DEBUG!
+	assert(addr >= 0x6000);
+
+	if (addr < 0x8000) // Cartridge SRAM
+		sram_.Write8(addr - 0x6000, val);
+}
+
+
+u8 NESMMCNROM::Read8(u16 addr) const
+{
+	// @TODO: DEBUG!
+	assert(addr >= 0x6000);
+
+	if (addr < 0x2000)
+		return chr_.Read8(addr);
+	else if (addr < 0x8000) // Cartridge SRAM
+		return sram_.Read8(addr - 0x6000);
+	else // Upper & Lower PRG-ROM Banks
+		return loadedPrgRomBanks_[(addr - 0x8000) / 0x4000]->Read8(addr & 0x3FFF);
 }

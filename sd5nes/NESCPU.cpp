@@ -4,89 +4,6 @@
 #include <sstream>
 #include <iostream> // @TODO Debug?
 
-#include "NESMMC.h"
-
-
-NESCPUMemoryMapper::NESCPUMemoryMapper(NESMemCPURAM& ram, NESPPU& ppu, NESMMC* mmc) :
-ram_(ram),
-ppu_(ppu),
-mmc_(mmc)
-{
-	assert(mmc_ != nullptr);
-}
-
-
-NESCPUMemoryMapper::~NESCPUMemoryMapper()
-{
-}
-
-
-NESPPURegisterType NESCPUMemoryMapper::GetPPURegister(u16 realAddr)
-{
-	switch (realAddr)
-	{
-	case 0x2000:
-		return NESPPURegisterType::PPUCTRL;
-
-	case 0x2001:
-		return NESPPURegisterType::PPUMASK;
-
-	case 0x2002:
-		return NESPPURegisterType::PPUSTATUS;
-
-	case 0x2003:
-		return NESPPURegisterType::OAMADDR;
-
-	case 0x2004:
-		return NESPPURegisterType::OAMDATA;
-
-	case 0x2005:
-		return NESPPURegisterType::PPUSCROLL;
-
-	case 0x2006:
-		return NESPPURegisterType::PPUADDR;
-
-	case 0x2007:
-		return NESPPURegisterType::PPUDATA;
-
-	case 0x4014:
-		return NESPPURegisterType::OAMDMA;
-
-	default:
-		return NESPPURegisterType::UNKNOWN;
-	}
-}
-
-
-void NESCPUMemoryMapper::Write8(u16 addr, u8 val)
-{
-	if (addr < 0x2000) // RAM
-		ram_.Write8(addr & 0x7FF, val);
-	else if (addr < 0x4000) // PPU I/O Registers
-		ppu_.WriteRegister(GetPPURegister(0x2000 + (addr & 7)), val);
-	else if (addr == 0x4014) // PPU I/O OAMDATA Register
-		ppu_.WriteRegister(GetPPURegister(0x4014), val);
-	else if (addr < 0x4020) // pAPU I/O Registers
-		return; // @TODO
-	else // Use the MMC
-		mmc_->Write8(addr, val);
-}
-
-
-u8 NESCPUMemoryMapper::Read8(u16 addr) const
-{
-	if (addr < 0x2000) // RAM
-		return ram_.Read8(addr & 0x7FF);
-	else if (addr < 0x4000) // PPU I/O Registers
-		return ppu_.ReadRegister(GetPPURegister(0x2000 + (addr & 7)));
-	else if (addr == 0x4014) // PPU I/O OAMDATA Register
-		return ppu_.ReadRegister(GetPPURegister(0x4014));
-	else if (addr < 0x4020) // pAPU I/O Registers
-		return 0; // @TODO
-	else // Use the MMC
-		return mmc_->Read8(addr);
-}
-
 
 std::string NESCPU::OpAsAsm(const std::string& opName, NESCPUOpAddrMode addrMode, u16 val)
 {
@@ -194,19 +111,22 @@ u16 NESCPU::GetOpSizeFromAddrMode(NESCPUOpAddrMode addrMode)
 }
 
 
-NESCPU::NESCPU(NESCPUMemoryMapper& mem) :
-mem_(mem),
+NESCPU::NESCPU() :
+comm_(nullptr),
 elapsedCycles_(0),
-isJammed_(false),
-intReset_(false),
-intNmi_(false),
-intIrq_(false)
+isJammed_(false)
 {
 }
 
 
 NESCPU::~NESCPU()
 {
+}
+
+
+void NESCPU::Initialize(INESCPUCommunicationsInterface& comm)
+{
+	comm_ = &comm;
 }
 
 
@@ -231,6 +151,8 @@ void NESCPU::SetInterrupt(NESCPUInterruptType interrupt)
 
 void NESCPU::Power()
 {
+	assert(comm_ != nullptr);
+
 	elapsedCycles_ = 0;
 	isJammed_ = false;
 
@@ -246,8 +168,11 @@ void NESCPU::Power()
 }
 
 
-void NESCPU::Tick()
+// @TODO: Don't return clocks but instead account for them inside of Tick().
+unsigned int NESCPU::Tick()
 {
+	assert(comm_ != nullptr);
+
 	// @TODO Do nothing if an instruction is still exec.
 	// (Check the amount of cycles an instr takes!
 
@@ -257,12 +182,13 @@ void NESCPU::Tick()
 	{
 		// Interrupts take 7 cycles to execute.
 		elapsedCycles_ += 7;
-		return;
+		return 7;
 	}
 
 	// Execute next instruction.
 	ExecuteNextOp();
 	elapsedCycles_ += currentOp_.opCycleCount;
+	return currentOp_.opCycleCount;
 }
 
 
@@ -276,35 +202,35 @@ void NESCPU::WriteOpResult(NESCPUOpAddrMode addrMode, u8 result)
 		return;
 
 	case NESCPUOpAddrMode::INDIRECT_X:
-		addr = NESHelper::MemoryIndirectRead16(mem_, (mem_.Read8(reg_.PC + 1) + reg_.X) & 0xFF);
+		addr = NESHelper::MemoryIndirectRead16(*comm_, (comm_->Read8(reg_.PC + 1) + reg_.X) & 0xFF);
 		break;
 
 	case NESCPUOpAddrMode::INDIRECT_Y:
-		addr = NESHelper::MemoryIndirectRead16(mem_, mem_.Read8(reg_.PC + 1)) + reg_.Y;
+		addr = NESHelper::MemoryIndirectRead16(*comm_, comm_->Read8(reg_.PC + 1)) + reg_.Y;
 		break;
 
 	case NESCPUOpAddrMode::ABSOLUTE:
-		addr = NESHelper::MemoryRead16(mem_, reg_.PC + 1);
+		addr = NESHelper::MemoryRead16(*comm_, reg_.PC + 1);
 		break;
 
 	case NESCPUOpAddrMode::ABSOLUTE_X:
-		addr = NESHelper::MemoryRead16(mem_, reg_.PC + 1) + reg_.X;
+		addr = NESHelper::MemoryRead16(*comm_, reg_.PC + 1) + reg_.X;
 		break;
 
 	case NESCPUOpAddrMode::ABSOLUTE_Y:
-		addr = NESHelper::MemoryRead16(mem_, reg_.PC + 1) + reg_.Y;
+		addr = NESHelper::MemoryRead16(*comm_, reg_.PC + 1) + reg_.Y;
 		break;
 
 	case NESCPUOpAddrMode::ZEROPAGE:
-		addr = mem_.Read8(reg_.PC + 1);
+		addr = comm_->Read8(reg_.PC + 1);
 		break;
 
 	case NESCPUOpAddrMode::ZEROPAGE_X:
-		addr = (mem_.Read8(reg_.PC + 1) + reg_.X) & 0xFF;
+		addr = (comm_->Read8(reg_.PC + 1) + reg_.X) & 0xFF;
 		break;
 
 	case NESCPUOpAddrMode::ZEROPAGE_Y:
-		addr = (mem_.Read8(reg_.PC + 1) + reg_.Y) & 0xFF;
+		addr = (comm_->Read8(reg_.PC + 1) + reg_.Y) & 0xFF;
 		break;
 
 	default:
@@ -314,7 +240,7 @@ void NESCPU::WriteOpResult(NESCPUOpAddrMode addrMode, u8 result)
 	}
 
 	// Assume writing to main memory at addr.
-	mem_.Write8(addr, result);
+	comm_->Write8(addr, result);
 }
 
 
@@ -336,49 +262,49 @@ NESCPUOpArgInfo NESCPU::ReadOpArgInfo(NESCPUOpAddrMode addrMode)
 	case NESCPUOpAddrMode::RELATIVE:
 		// We add an extra 2 to the PC to cover the size of the rest of the instruction.
 		// The offset is a signed 2s complement number.
-		argInfo.argAddr = reg_.PC + 2 + static_cast<s8>(mem_.Read8(reg_.PC + 1));
+		argInfo.argAddr = reg_.PC + 2 + static_cast<s8>(comm_->Read8(reg_.PC + 1));
 		break;
 
 	case NESCPUOpAddrMode::INDIRECT:
-		argInfo.argAddr = NESHelper::MemoryIndirectRead16(mem_, NESHelper::MemoryRead16(mem_, reg_.PC + 1));
+		argInfo.argAddr = NESHelper::MemoryIndirectRead16(*comm_, NESHelper::MemoryRead16(*comm_, reg_.PC + 1));
 		break;
 
 	case NESCPUOpAddrMode::INDIRECT_X:
-		argInfo.argAddr = NESHelper::MemoryIndirectRead16(mem_, (mem_.Read8(reg_.PC + 1) + reg_.X) & 0xFF);
+		argInfo.argAddr = NESHelper::MemoryIndirectRead16(*comm_, (comm_->Read8(reg_.PC + 1) + reg_.X) & 0xFF);
 		break;
 
 	case NESCPUOpAddrMode::INDIRECT_Y:
-		argInfo.argAddr = NESHelper::MemoryIndirectRead16(mem_, mem_.Read8(reg_.PC + 1));
+		argInfo.argAddr = NESHelper::MemoryIndirectRead16(*comm_, comm_->Read8(reg_.PC + 1));
 		argInfo.crossedPage = !NESHelper::IsInSamePage(argInfo.argAddr, argInfo.argAddr + reg_.Y);
 		argInfo.argAddr += reg_.Y;
 		break;
 
 	case NESCPUOpAddrMode::ABSOLUTE:
-		argInfo.argAddr = NESHelper::MemoryRead16(mem_, reg_.PC + 1);
+		argInfo.argAddr = NESHelper::MemoryRead16(*comm_, reg_.PC + 1);
 		break;
 
 	case NESCPUOpAddrMode::ABSOLUTE_X:
-		argInfo.argAddr = NESHelper::MemoryRead16(mem_, reg_.PC + 1);
+		argInfo.argAddr = NESHelper::MemoryRead16(*comm_, reg_.PC + 1);
 		argInfo.crossedPage = !NESHelper::IsInSamePage(argInfo.argAddr, argInfo.argAddr + reg_.X);
 		argInfo.argAddr += reg_.X;
 		break;
 
 	case NESCPUOpAddrMode::ABSOLUTE_Y:
-		argInfo.argAddr = NESHelper::MemoryRead16(mem_, reg_.PC + 1);
+		argInfo.argAddr = NESHelper::MemoryRead16(*comm_, reg_.PC + 1);
 		argInfo.crossedPage = !NESHelper::IsInSamePage(argInfo.argAddr, argInfo.argAddr + reg_.Y);
 		argInfo.argAddr += reg_.Y;
 		break;
 
 	case NESCPUOpAddrMode::ZEROPAGE:
-		argInfo.argAddr = mem_.Read8(reg_.PC + 1);
+		argInfo.argAddr = comm_->Read8(reg_.PC + 1);
 		break;
 
 	case NESCPUOpAddrMode::ZEROPAGE_X:
-		argInfo.argAddr = (mem_.Read8(reg_.PC + 1) + reg_.X) & 0xFF;
+		argInfo.argAddr = (comm_->Read8(reg_.PC + 1) + reg_.X) & 0xFF;
 		break;
 
 	case NESCPUOpAddrMode::ZEROPAGE_Y:
-		argInfo.argAddr = (mem_.Read8(reg_.PC + 1) + reg_.Y) & 0xFF;
+		argInfo.argAddr = (comm_->Read8(reg_.PC + 1) + reg_.Y) & 0xFF;
 		break;
 
 	default:
@@ -399,7 +325,7 @@ void NESCPU::ExecuteNextOp()
 	try
 	{
 		// Get the next opcode.
-		currentOp_ = NESCPUExecutingOpInfo(mem_.Read8(reg_.PC));
+		currentOp_ = NESCPUExecutingOpInfo(comm_->Read8(reg_.PC));
 	}
 	catch (const NESMemoryException&)
 	{
@@ -407,16 +333,16 @@ void NESCPU::ExecuteNextOp()
 	}
 
 	// @TODO Debug!
-	if (mem_.Read8(0x6000) != 0x80 &&
-		mem_.Read8(0x6001) == 0xDE &&
-		mem_.Read8(0x6002) == 0xB0 &&
-		mem_.Read8(0x6003) == 0x61)
+	if (comm_->Read8(0x6000) != 0x80 &&
+		comm_->Read8(0x6001) == 0xDE &&
+		comm_->Read8(0x6002) == 0xB0 &&
+		comm_->Read8(0x6003) == 0x61)
 	{
-		std::cout << "Test status: $" << std::hex << +mem_.Read8(0x6000) << std::endl;
+		std::cout << "Test status: $" << std::hex << +comm_->Read8(0x6000) << std::endl;
 		std::cout << "Message: " << std::endl;
 		for (u16 i = 0x6004;; ++i)
 		{
-			const u8 c = mem_.Read8(i);
+			const u8 c = comm_->Read8(i);
 			if (c == 0)
 				break;
 
@@ -435,18 +361,18 @@ void NESCPU::ExecuteNextOp()
 	currentOp_.opCycleCount = opMapping.cycleCount;
 	currentOp_.opChangedPC = false;
 
-	//u16 val;
-	//if (argInfo.addrMode == NESCPUOpAddrMode::IMMEDIATE)
-	//	val = mem_.Read8(argInfo.argAddr);
-	//else if (argInfo.addrMode == NESCPUOpAddrMode::ACCUMULATOR)
-	//	val = 0;
-	//else
-	//	val = argInfo.argAddr;
+	u16 val;
+	if (argInfo.addrMode == NESCPUOpAddrMode::IMMEDIATE)
+		val = comm_->Read8(argInfo.argAddr);
+	else if (argInfo.addrMode == NESCPUOpAddrMode::ACCUMULATOR)
+		val = 0;
+	else
+		val = argInfo.argAddr;
 	//
 	//std::cout << "SP: $" << std::hex << +reg_.SP << ",  " <<  << std::endl;
 	//std::cout << "stack: ";
 	//for (u8 i = 0xFF; i >= 0 && i > reg_.SP; --i)
-	//	std::cout << std::hex << +mem_.Read8(NES_CPU_STACK_START + i) << ", ";
+	//	std::cout << std::hex << +comm_->Read8(NES_CPU_STACK_START + i) << ", ";
 	//std::cout << std::endl;
 	//
 	//static int a = 0;
@@ -467,46 +393,46 @@ NESCPUInterruptType NESCPU::HandleInterrupts()
 {
 	auto handledInt = NESCPUInterruptType::NONE;
 
-	if (!isJammed_)
+	// Handle interrupts while accounting for priority.
+	// Only IRQ's check for the interrupt disable flag (I).
+	if (intReset_)
 	{
-		// Handle interrupts while accounting for priority.
-		// Only IRQ's check for the interrupt disable flag (I).
-		if (intReset_)
-		{
-			handledInt = NESCPUInterruptType::RESET;
+		handledInt = NESCPUInterruptType::RESET;
 
-			UpdateRegPC(NESHelper::MemoryRead16(mem_, 0xFFFC));
-			reg_.SP = 0xFA; // SP and P changed from reset.
-			reg_.SetP(0x24);
-			intReset_ = false;
-		}
-		else if (intNmi_) // @TODO: Check for NMI Edge!
+		UpdateRegPC(NESHelper::MemoryRead16(*comm_, 0xFFFC));
+		reg_.SP = 0xFA; // SP and P changed from reset.
+		reg_.SetP(0x24);
+		intReset_ = false;
+	}
+	else if (!isJammed_)
+	{
+		if (intNmi_) // @TODO: Check for NMI Edge!
 		{
 			handledInt = NESCPUInterruptType::NMI;
 
-			UpdateRegPC(NESHelper::MemoryRead16(mem_, 0xFFFA));
+			UpdateRegPC(NESHelper::MemoryRead16(*comm_, 0xFFFA));
 			intNmi_ = false;
 		}
 		else if (intIrq_ && !NESHelper::IsBitSet(reg_.GetP(), NES_CPU_REG_P_I_BIT))
 		{
 			handledInt = NESCPUInterruptType::IRQ;
 
-			UpdateRegPC(NESHelper::MemoryRead16(mem_, 0xFFFE));
+			UpdateRegPC(NESHelper::MemoryRead16(*comm_, 0xFFFE));
 			intIrq_ = false;
 		}
+	}
 
-		if (handledInt != NESCPUInterruptType::NONE)
+	if (handledInt != NESCPUInterruptType::NONE)
+	{
+		// If it wasn't a reset, we need to push the next PC and status register (P).
+		if (handledInt != NESCPUInterruptType::RESET)
 		{
-			// If it wasn't a reset, we need to push the next PC and status register (P).
-			if (handledInt != NESCPUInterruptType::RESET)
-			{
-				StackPush16(reg_.PC + 1);
-				StackPush8(reg_.GetP());
-			}
-
-			// Make sure the interrupt disable flag is set if we interrupted.
-			reg_.SetP(NESHelper::SetBit(reg_.GetP(), NES_CPU_REG_P_I_BIT));
+			StackPush16(reg_.PC + 1);
+			StackPush8(reg_.GetP());
 		}
+
+		// Make sure the interrupt disable flag is set if we interrupted.
+		reg_.SetP(NESHelper::SetBit(reg_.GetP(), NES_CPU_REG_P_I_BIT));
 	}
 
 	return handledInt;

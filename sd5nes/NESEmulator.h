@@ -5,7 +5,9 @@
 #include <SFML\Graphics\RenderTarget.hpp>
 
 #include "NESCPU.h"
+#include "NESCPUEmuComm.h"
 #include "NESPPU.h"
+#include "NESPPUEmuComm.h"
 #include "NESGamePak.h"
 
 /**
@@ -31,11 +33,11 @@ private:
 
 	NESGamePak cart_;
 
-	NESPPUMemory ppuMem_;
-	std::unique_ptr<NESPPUMemoryMapper> ppuMap_;
-	std::unique_ptr<NESPPU> ppu_;
-
 	NESMemCPURAM cpuRam_;
-	std::unique_ptr<NESCPUMemoryMapper> cpuMap_;
-	std::unique_ptr<NESCPU> cpu_;
+	std::unique_ptr<NESCPUEmuComm> cpuComm_;
+	NESCPU cpu_;
+
+	NESPPUMemory ppuMem_;
+	std::unique_ptr<NESPPUEmuComm> ppuComm_;
+	NESPPU ppu_;
 };

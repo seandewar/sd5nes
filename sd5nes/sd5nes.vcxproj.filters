@@ -30,9 +30,6 @@
     <ClCompile Include="NESReadBuffer.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="NESMemory.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
     <ClCompile Include="NESPPU.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
@@ -43,6 +40,12 @@
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="NESHelper.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="NESPPUEmuComm.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="NESCPUEmuComm.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
   </ItemGroup>
@@ -84,6 +87,12 @@
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="NESMMC.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="NESPPUEmuComm.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="NESCPUEmuComm.h">
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>

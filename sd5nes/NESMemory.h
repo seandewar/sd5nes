@@ -101,13 +101,3 @@ public:
 private:
 	std::array<u8, size> data_;
 };
-
-/**
-* Base class for memory mappers.
-*/
-class NESMemoryMapper : public INESMemoryInterface
-{
-public:
-	NESMemoryMapper();
-	virtual ~NESMemoryMapper();
-};

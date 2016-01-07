@@ -2,79 +2,11 @@
 
 #include "NESHelper.h"
 
-
-NESPPUMemoryMapper::NESPPUMemoryMapper(NESPPUMemory& mem, NESPPUMirroringType ntMirror) :
-mem_(mem),
-ntMirror_(ntMirror)
-{
-	assert(ntMirror != NESPPUMirroringType::UNKNOWN);
-}
+#include <iostream> // TODO: DEBUG!
 
 
-NESPPUMemoryMapper::~NESPPUMemoryMapper()
-{
-}
-
-
-std::size_t NESPPUMemoryMapper::GetNameTableIndex(u16 addr) const
-{
-	switch (ntMirror_)
-	{
-	case NESPPUMirroringType::VERTICAL:
-		return (addr & 0x7FF) / 0x400;
-
-	case NESPPUMirroringType::HORIZONTAL:
-		return (addr & 0xFFF) / 0x800;
-
-	case NESPPUMirroringType::ONE_SCREEN:
-		return 0;
-
-	case NESPPUMirroringType::FOUR_SCREEN:
-		// @TODO NOT IMPLEMENTED YET!
-
-	default:
-		assert("Invalid name table mirror type!" && false);
-		return NES_INVALID_NAME_TABLE_INDEX;
-	}
-}
-
-
-void NESPPUMemoryMapper::Write8(u16 addr, u8 val)
-{
-	addr &= 0x3FFF; // Mirror ($0000 .. $3FFF) to $4000
-
-	if (addr < 0x2000) // Pattern tables
-		mem_.patternTables[addr / 0x1000].Write8(addr & 0xFFF, val);
-	else if (addr < 0x3F00) // Name tables
-		mem_.nameTables[GetNameTableIndex(addr)].Write8(addr & 0x3FF, val);
-	else // Palette memory
-		mem_.paletteMem.Write8(addr & 0x1F, val); // @TODO Mirror $3F00, $3F04, $3F08 and $3F0C!
-}
-
-
-u8 NESPPUMemoryMapper::Read8(u16 addr) const
-{
-	addr &= 0x3FFF; // Mirror ($0000 .. $3FFF) to $4000
-
-	if (addr < 0x2000) // Pattern tables
-		return mem_.patternTables[addr / 0x1000].Read8(addr & 0xFFF);
-	else if (addr < 0x3F00) // Name tables
-		return mem_.nameTables[GetNameTableIndex(addr)].Read8(addr & 0x3FF);
-	else // Palette memory
-		return mem_.paletteMem.Read8(addr & 0x1F); // @TODO Mirror $3F00, $3F04, $3F08 and $3F0C!
-}
-
-
-NESPPU::NESPPU(NESPPUMemoryMapper& mem, NESCPU& cpu, sf::Image& debug) :
-mem_(mem),
-cpu_(cpu),
-isNmiPulled_(false),
-isEvenFrame_(true),
-xIncdThisTick_(false),
-yIncdThisTick_(false),
-vScroll_(0),
-tScroll_(0),
-xScroll_(0),
+NESPPU::NESPPU(sf::Image& debug) :
+comm_(nullptr),
 currentCycle_(0),
 elapsedCycles_(0),
 debug_(debug) // @TODO Debug!!
@@ -95,8 +27,8 @@ void NESPPU::DebugDrawPatterns(sf::Image& target, int colorOffset)
 	// Loop through the pattern tables.
 	for (std::size_t i = 0; i < 0x2000; ++i)
 	{
-		const u8 pLo = mem_.Read8(i);
-		const u8 pHi = mem_.Read8(i + 8);
+		const u8 pLo = comm_->Read8(i);
+		const u8 pHi = comm_->Read8(i + 8);
 
 		for (int j = 7; j >= 0; --j)
 		{
@@ -111,6 +43,34 @@ void NESPPU::DebugDrawPatterns(sf::Image& target, int colorOffset)
 
 		if (i % (8 * 30) == 0 && i != 0)
 			++o;
+	}
+}
+
+
+void NESPPU::Initialize(INESPPUCommunicationsInterface& comm)
+{
+	comm_ = &comm;
+}
+
+
+void NESPPU::HandlePPUDATAAccess()
+{
+	// @NOTE: PPU has some strange behaviour where it increments both coarse X and fine Y
+	// if rendering is enabled and the PPU is currently handling
+	// the pre-render or visible scanlines.
+	if ((currentScanline_ <= 239 || currentScanline_ == 261) &&
+		IsRenderingEnabled())
+	{
+		IncrementCoarseX();
+		IncrementFineY();
+	}
+	else
+	{
+		// Increment v by 32 if I in PPUCTRL is set, otherwise by 1 instead.
+		if (NESHelper::IsBitSet(reg_.PPUCTRL, NES_PPU_REG_PPUCTRL_I_BIT))
+			vScroll_ += 32;
+		else
+			vScroll_ += 1;
 	}
 }
 
@@ -191,29 +151,15 @@ void NESPPU::WriteRegister(NESPPURegisterType reg, u8 val)
 		break;
 
 	case NESPPURegisterType::PPUDATA:
-		reg_.PPUDATA = val;
-
-		// @NOTE: PPU has some strange behaviour where it increments both coarse X and fine Y
-		// if rendering is enabled and the PPU is currently handling
-		// the pre-render or visible scanlines.
-		if ((currentScanline_ <= 239 || currentScanline_ == 261) &&
-			IsRenderingEnabled())
-		{
-			IncrementCoarseX();
-			IncrementFineY();
-		}
-		else
-		{
-			// Increment v by 32 if I in PPUCTRL is set, otherwise by 1 instead.
-			if (NESHelper::IsBitSet(reg_.PPUCTRL, NES_PPU_REG_PPUCTRL_I_BIT))
-				vScroll_ += 32;
-			else
-				vScroll_ += 1;
-		}
+		std::cout << std::hex << vScroll_ << std::endl;
+		comm_->Write8(vScroll_, val);
+		HandlePPUDATAAccess();
 		break;
 
 	case NESPPURegisterType::OAMDMA:
 		reg_.OAMDMA = val;
+
+		// @TODO: OAMDMA
 		break;
 	}
 }
@@ -243,7 +189,20 @@ u8 NESPPU::ReadRegister(NESPPURegisterType reg)
 		break;
 
 	case NESPPURegisterType::PPUDATA:
-		returnVal = reg_.PPUDATA;
+		returnVal = comm_->Read8(vScroll_);
+		if ((vScroll_ & 0x3FFF) < 0x3F00)
+		{
+			const auto bufData = ppuDataBuffered_;
+			ppuDataBuffered_ = returnVal;
+			returnVal = bufData;
+		}
+		else
+		{
+			// Buffered data is the mirrored palette table below.
+			ppuDataBuffered_ = comm_->Read8(vScroll_ - 0x1000);
+		}
+		
+		HandlePPUDATAAccess();
 		break;
 
 	default:
@@ -258,6 +217,8 @@ u8 NESPPU::ReadRegister(NESPPURegisterType reg)
 
 void NESPPU::Power()
 {
+	assert(comm_ != nullptr);
+
 	isEvenFrame_ = true;
 	xIncdThisTick_ = yIncdThisTick_ = false;
 	currentCycle_ = currentScanline_ = 0;
@@ -265,11 +226,14 @@ void NESPPU::Power()
 	isNmiPulled_ = false;
 	tScroll_ = vScroll_ = xScroll_ = 0;
 
+	ppuDataBuffered_ = 0;
+
+	ntByte_ = atByte_ = tileBitmapHi_ = tileBitmapLo_ = 0;
+
 	latches_.internalDataBusVal = 0;
 	latches_.isAddressLatchOn = false;
 
-	reg_.PPUCTRL = reg_.PPUMASK = reg_.PPUSCROLL = reg_.PPUADDR 
-		= reg_.PPUDATA = reg_.OAMADDR = 0;
+	reg_.PPUCTRL = reg_.PPUMASK = reg_.PPUSCROLL = reg_.PPUADDR = reg_.OAMADDR = 0;
 
 	// Set up PPUSTATUS Power state - depends on a few random variables
 	// O and V are often set in PPUSTATUS
@@ -287,15 +251,21 @@ void NESPPU::Power()
 
 void NESPPU::Reset()
 {
+	assert(comm_ != nullptr);
+
 	isEvenFrame_ = true;
 	currentCycle_ = currentScanline_ = 0;
 
 	isNmiPulled_ = false;
 	tScroll_ = vScroll_ = xScroll_ = 0;
 
+	ppuDataBuffered_ = 0;
+
+	ntByte_ = atByte_ = tileBitmapHi_ = tileBitmapLo_ = 0;
+
 	latches_.isAddressLatchOn = false;
 
-	reg_.PPUCTRL = reg_.PPUMASK = reg_.PPUSCROLL = reg_.PPUDATA = 0;
+	reg_.PPUCTRL = reg_.PPUMASK = reg_.PPUSCROLL = 0;
 	reg_.PPUSTATUS &= 0x80; // Only retain bit 7. (PPUSTATUS V)
 
 	// @TODO: Init OAM to pattern
@@ -366,69 +336,149 @@ void NESPPU::IncrementFineY()
 }
 
 
+void NESPPU::TickFetchTileData()
+{
+	switch (currentCycle_ % 8)
+	{
+	case 1:
+		// Fetch the Name table Byte
+		ntByte_ = comm_->Read8(0x2000 | (vScroll_ & 0xFFF));
+		break;
+
+	case 3:
+		// Fetch the Attribute table Byte.
+		atByte_ = comm_->Read8(0x23C0 | (vScroll_ & 0xC00) | ((vScroll_ >> 4) & 0x38) | ((vScroll_ >> 2) & 7));
+		break;
+
+	case 5:
+	{
+		// Fetch the Tile Bitmap Low Byte from Pattern table.
+		const u16 addr = (NESHelper::IsBitSet(reg_.PPUCTRL, NES_PPU_REG_PPUCTRL_B_BIT) ? 0x1000 : 0) + (ntByte_ * 16) +
+			((vScroll_ >> 12) & 7);
+		tileBitmapLo_ = comm_->Read8(addr);
+
+		//std::cout << "l: " << std::hex << addr << ", v: " << std::hex << +tileBitmapLo_ << std::endl;
+	}
+	break;
+
+	case 7:
+		// Fetch the Tile Bitmap High Byte from Pattern table.
+		const u16 addr = (NESHelper::IsBitSet(reg_.PPUCTRL, NES_PPU_REG_PPUCTRL_B_BIT) ? 0x1000 : 0) + (ntByte_ * 16) +
+			((vScroll_ >> 12) & 7) + 8;
+		tileBitmapHi_ = comm_->Read8(addr);
+
+		//std::cout << "h: " << std::hex << addr << ", v: " << std::hex << +tileBitmapHi_ << std::endl;
+		break;
+	}
+}
+
+
 void NESPPU::Tick()
 {
+	assert(comm_ != nullptr);
+
 	// @TODO: Handle PAL (70 V-BLANK scanlines instead).
 
-	if (currentScanline_ >= 240 && currentScanline_ <= 260)
+	// Make sure that this isn't the idle cycle.
+	if (currentCycle_ != 0)
 	{
-		/*** Post-render (idle) scanline (240) OR ***/
-		/*** V-BLANK period (241 - 260)           ***/
-
-		// Set V-BLANK on cycle 1 of scanline 241.
-		if (currentScanline_ == 241 && currentCycle_ == 1)
+		if (currentScanline_ >= 240 && currentScanline_ <= 260)
 		{
-			// Set V flag in PPUSTATUS and make sure Nmi isn't pulled.
-			NESHelper::SetRefBit(reg_.PPUSTATUS, NES_PPU_REG_PPUSTATUS_V_BIT);
-			isNmiPulled_ = false;
-		}
+			/*** Post-render (idle) scanline (240) OR ***/
+			/*** V-BLANK period (241 - 260)           ***/
 
-		if (currentScanline_ >= 241 &&
-			NESHelper::IsBitSet(reg_.PPUSTATUS, NES_PPU_REG_PPUSTATUS_V_BIT) &&
-			NESHelper::IsBitSet(reg_.PPUCTRL, NES_PPU_REG_PPUCTRL_V_BIT) &&
-			!isNmiPulled_)
-		{
-			// We should set the V-BLANK NMI now.
-			isNmiPulled_ = true;
-			cpu_.SetInterrupt(NESCPUInterruptType::NMI); // @TODO Don't reference CPU directly..?
-		}
-	}
-	else
-	{
-		if (currentScanline_ == 261)
-		{
-			/*** Pre-render scanline (261) ***/
-
-			if (currentCycle_ == 1)
+			// Set V-BLANK on cycle 1 of scanline 241.
+			if (currentScanline_ == 241 && currentCycle_ == 1)
 			{
-				// Clear PPUSTATUS flags on cycle 1.
-				reg_.PPUSTATUS = 0;
+				// Set V flag in PPUSTATUS and make sure Nmi isn't pulled.
+				NESHelper::SetRefBit(reg_.PPUSTATUS, NES_PPU_REG_PPUSTATUS_V_BIT);
+				isNmiPulled_ = false;
 			}
-			else if (currentCycle_ >= 280 && currentCycle_ < 305 && IsRenderingEnabled())
+
+			if (currentScanline_ >= 241 &&
+				NESHelper::IsBitSet(reg_.PPUSTATUS, NES_PPU_REG_PPUSTATUS_V_BIT) &&
+				NESHelper::IsBitSet(reg_.PPUCTRL, NES_PPU_REG_PPUCTRL_V_BIT) &&
+				!isNmiPulled_)
 			{
-				// v: IHGF.ED CBA..... = t: IHGF.ED CBA.....
-				vScroll_ = (vScroll_ & 0x41F) | (tScroll_ & 0x7BE0);
+				// We should set the V-BLANK NMI now.
+				isNmiPulled_ = true;
+				comm_->PullNMI();
 			}
 		}
-		//else
-		//{
-		//	/*** Visible scanlines (0 - 239) ***/
-		//}
-
-		if (IsRenderingEnabled())
+		else
 		{
-			if (currentCycle_ == 256)
-				IncrementFineY();
-			else if (currentCycle_ == 257)
+			if (currentScanline_ == 261)
 			{
-				// v: ....F.. ...EDCBA = t: ....F.. ...EDCBA
-				vScroll_ = (vScroll_ & 0x7BE0) | (tScroll_ & 0x41F);
+				/*** Pre-render scanline (261) ***/
+
+				if (currentCycle_ == 1)
+				{
+					// Clear PPUSTATUS flags on cycle 1.
+					reg_.PPUSTATUS = 0;
+				}
+				else if (IsRenderingEnabled() && currentCycle_ >= 280 && currentCycle_ <= 304)
+				{
+					// v: IHGF.ED CBA..... = t: IHGF.ED CBA.....
+					vScroll_ = (vScroll_ & 0x41F) | (tScroll_ & 0x7BE0);
+				}
+			}
+
+			/*** Visible scanlines (0 - 239) AND ***/
+			/***    Pre-render scanline (261)    ***/
+
+			if (IsRenderingEnabled())
+			{
+				if (currentCycle_ == 256)
+					IncrementFineY();
+				else if (currentCycle_ == 257)
+				{
+					// v: ....F.. ...EDCBA = t: ....F.. ...EDCBA
+					vScroll_ = (vScroll_ & 0x7BE0) | (tScroll_ & 0x41F);
+				}
+
+				TickFetchTileData();
+				// @TODO: Sprite layer
+
+				if ((currentCycle_ <= 256 && currentCycle_ % 8 == 0) ||
+					currentCycle_ == 328 || currentCycle_ == 336)
+					IncrementCoarseX();
+
+				// Sprite evaluation
+				if (currentCycle_ >= 65 && currentCycle_ <= 256)
+				{
+					// @TODO
+				}
+
+				// Render this pixel.
+				if (currentCycle_ >= 4)
+				{
+					// @TODO: DEBUG!!!!
+					const u8 colLo = (tileBitmapLo_ >> (7 - ((currentCycle_ - 4) % 8))) & 1;
+					const u8 colHi = (tileBitmapHi_ >> (7 - ((currentCycle_ - 4) % 8))) & 1;
+					const u8 colNum = (colHi << 1) | colLo;
+
+					sf::Color testC;
+					if (colNum == 0)
+						testC = sf::Color::Black;
+					else if (colNum == 1)
+						testC = sf::Color::Green;
+					else if (colNum == 2)
+						testC = sf::Color::Red;
+					else if (colNum == 3)
+						testC = sf::Color::Yellow;
+					else
+						testC = sf::Color::White;
+
+					//std::cout << ": " << +ntByte_ << "," << +atByte_ << "," << +tileBitmapLo_ << "," << +tileBitmapHi_ << std::endl;
+
+					debug_.setPixel(currentCycle_, currentScanline_,
+						//(colNum == 0 ? sf::Color::Black : ppuPalette[comm_->Read8(0x3F00 + (3 * atByte_) + colNum - 1)].ToSFColor())
+						//ppuPalette[comm_->Read8(0x3F00 + (3 * atByte_) + colNum - 1)].ToSFColor()
+						testC
+						);
+				}
 			}
 		}
-
-		if ((currentCycle_ != 0 && currentCycle_ <= 256 && currentCycle_ % 8 == 0) ||
-			currentCycle_ == 328 || currentCycle_ == 336)
-			IncrementCoarseX();
 	}
 
 	++elapsedCycles_;
