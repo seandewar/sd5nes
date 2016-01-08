@@ -20,6 +20,11 @@ public:
 	*/
 	inline void PullNMI() override { cpu_.SetInterrupt(NESCPUInterruptType::NMI); }
 
+	/**
+	* Reads 8-bits from CPU memory at the specified address.
+	*/
+	std::array<u8, 0x100> OAMDMARead(u8 addrPage) override;
+
 	void Write8(u16 addr, u8 val) override;
 	u8 Read8(u16 addr) const override;
 

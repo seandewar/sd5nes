@@ -126,9 +126,8 @@ enum class NESPPURegisterType
 #define NES_PPU_POWER_REG_PPUSTATUS_O_SET_CHANCE 0.75
 
 /**
-* @TODO CONSIDER THIS
 * How many CPU cycles writes to PPUCTRL, PPUMASK, PPUSCROLL and PPUADDR should be ignored for
-* after a reset. The PPUDATA internal buffer (but not the register) will be cleared for this duration too.
+* after a reset.
 *
 * Because of this, the address latch cannot toggle for the duration of this event.
 */
@@ -151,24 +150,25 @@ struct NESPPURegisters
 	/* OAM Read/Write Address (OAMADDR) */
 	u8 OAMADDR; 
 
-	/* OAM Data Read/Write (OAMDATA) */
-	u8 OAMDATA;
-
 	/* Scroll Position (PPUSCROLL) W x2 */
 	u8 PPUSCROLL;
 
 	/* PPU Read/Write Address (PPUADDR) W x2 */
 	u8 PPUADDR;
 
-	/* OAM DMA High Address (OAMDMA) */
-	u8 OAMDMA;
+	/* Amount of cycles left to ignore writes to PPUCTRL, PPUMASK, PPUSCROLL and PPUADDR. */
+	unsigned int writeIgnoreCyclesLeft;
 
 	NESPPURegisters() :
 		PPUCTRL(0), PPUMASK(0), PPUSTATUS(0),
-		OAMADDR(0), OAMDATA(0), OAMDMA(0),
-		PPUSCROLL(0), PPUADDR(0)
+		PPUSCROLL(0), PPUADDR(0),
+		OAMADDR(0),
+		writeIgnoreCyclesLeft(0)
 	{ }
 };
+
+/* The amount of PPU cycles it takes for the value inside the internal data bus to decay. */
+#define NES_PPU_DATA_BUS_DECAY_CYCLES 357368
 
 /**
 * Struct containing info on the status of the PPU's reg write latches.
@@ -178,11 +178,15 @@ struct NESPPULatches
 	/* The value stored in the internal data bus. */
 	u8 internalDataBusVal;
 
+	/* Amount of cycles left until the value in the internal data bus decays away. */
+	unsigned int cyclesLeftUntilBusDecay;
+
 	/* The state of the address latch used by PPUSCROLL and PPUADDR. */
 	bool isAddressLatchOn;
 
 	NESPPULatches() :
 		internalDataBusVal(0),
+		cyclesLeftUntilBusDecay(0),
 		isAddressLatchOn(false)
 	{ }
 };
@@ -196,6 +200,7 @@ public:
 	virtual ~INESPPUCommunicationsInterface() { }
 
 	virtual void PullNMI() = 0;
+	virtual std::array<u8, 0x100> OAMDMARead(u8 addrPage) = 0;
 };
 
 /**
@@ -223,11 +228,6 @@ public:
 	void Power();
 
 	/**
-	* Turns the PPU off.
-	*/
-	void TurnOff();
-
-	/**
 	* Sets the PPU to its reset state.
 	*/
 	void Reset();
@@ -253,6 +253,11 @@ public:
 	*/
 	inline bool IsRenderingEnabled() const { return ((reg_.PPUMASK & 0x18) != 0); }
 
+	/**
+	* Whether or not the frame has completely finished rendering on the last tick.
+	*/
+	inline bool IsFrameFinished() const { return isFrameFinished_; }
+
 private:
 	sf::Image& debug_; // @TODO DEBUG!!
 
@@ -260,6 +265,8 @@ private:
 
 	NESPPURegisters reg_;
 	NESPPULatches latches_;
+
+	bool isFrameFinished_;
 
 	unsigned int elapsedCycles_;
 
@@ -282,6 +289,10 @@ private:
 
 	NESMemory<0x100> primaryOam_;
 	NESMemory<0x20> secondaryOam_;
+
+	unsigned int evalSpriteStep_;
+	u8 activeSpriteCount_;
+	u8 nSprite_, mSprite_;
 
 	bool isEvenFrame_;
 
@@ -309,5 +320,15 @@ private:
 	* Handles the fetching of tile data for this tick.
 	*/
 	void TickFetchTileData();
+
+	/**
+	* Handles the evaluation of sprites for this tick.
+	*/
+	void TickEvaluateSprites();
+
+	/**
+	* Handles the rendering of pixels for this tick.
+	*/
+	void TickRenderPixel();
 };
 

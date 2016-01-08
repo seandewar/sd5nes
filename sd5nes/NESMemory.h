@@ -74,7 +74,7 @@ public:
 	/**
 	* Writes 8-bits to the memory at a specified location with the specified value.
 	*/
-	void Write8(u16 addr, u8 val) override
+	inline void Write8(u16 addr, u8 val) override
 	{
 		if (addr >= data_.size())
 			throw NESMemoryException("Cannot write to memory outside of allocated space!");
@@ -85,7 +85,7 @@ public:
 	/**
 	* Reads 8-bits from the memory at a specified location.
 	*/
-	u8 Read8(u16 addr) const override
+	inline u8 Read8(u16 addr) const override
 	{
 		if (addr >= data_.size())
 			throw NESMemoryException("Cannot read from memory outside of allocated space!");

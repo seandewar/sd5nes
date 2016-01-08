@@ -174,12 +174,12 @@ struct NESCPUOpInfo
 struct NESCPUExecutingOpInfo
 {
 	u8 op;
-	int opCycleCount;
+	int opCyclesLeft;
 	bool opChangedPC;
 
 	NESCPUExecutingOpInfo(u8 op = NES_OP_KIL_IMPLIED1) :
 		op(op),
-		opCycleCount(0),
+		opCyclesLeft(0),
 		opChangedPC(false)
 	{ }
 };
@@ -223,12 +223,32 @@ public:
 	* Handles the next available interrupt of highest priority if set and last instruction finished executing.
 	* Otherwise, runs the next instruction if last instruction finished executing.
 	*/
-	unsigned int Tick();
+	void Tick();
+
+	/**
+	* Reads 8-bits from CPU memory at a specified address in CPU memory.
+	*/
+	inline u8 ReadMemory8(u16 addr) const { return comm_->Read8(addr); };
 
 	/**
 	* Whether or not the CPU is jammed.
 	*/
 	inline bool IsJammed() const { return isJammed_; }
+
+	/**
+	* Sets the CPU to be stalled for an additional amount of ticks.
+	*/
+	inline void StallFor(unsigned int ticks) { stallTicksLeft_ += ticks; }
+
+	/**
+	* Whether or not the CPU is currently stalled.
+	*/
+	inline bool IsStalled() const { return (stallTicksLeft_ > 0); }
+
+	/**
+	* Gets the amount of elapsed CPU cycles since power.
+	*/
+	inline unsigned int GetElapsedCycles() const { return elapsedCycles_; }
 
 private:
 	// Contains opcode info.
@@ -260,6 +280,8 @@ private:
 	NESCPUExecutingOpInfo currentOp_;
 	bool intReset_, intNmi_, intIrq_;
 	bool isJammed_;
+	unsigned int stallTicksLeft_;
+
 	unsigned int elapsedCycles_;
 
 	// Updates the Z bit of the P register. Sets to 1 if val is zero. Sets to 0 otherwise.
@@ -272,7 +294,7 @@ private:
 	inline void UpdateRegPC(u16 val) { reg_.PC = val; currentOp_.opChangedPC = true; }
 
 	// Adds the specified amount of extra cycles to the current instruction's execution.
-	inline void OpAddCycles(int cycleAmount) { currentOp_.opCycleCount += cycleAmount; }
+	inline void OpAddCycles(int cycleAmount) { currentOp_.opCyclesLeft += cycleAmount; }
 
 	/**
 	* Reads the value of the next op's immediate argument depending on its addressing mode.

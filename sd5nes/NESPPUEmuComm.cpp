@@ -38,6 +38,22 @@ std::size_t NESPPUEmuComm::GetNameTableIndex(u16 addr) const
 }
 
 
+std::array<u8, 0x100> NESPPUEmuComm::OAMDMARead(u8 addrPage)
+{
+	// DMA causes CPU stall for 513 cycles (+1 on odd CPU cycle).
+	cpu_.StallFor(513 + (cpu_.GetElapsedCycles() % 2 == 1 ? 1 : 0));
+
+	// DMA CPU Memory in order to read 256 bytes from page.
+	const u16 addrStart = addrPage << 8;
+
+	std::array<u8, 0x100> retMem;
+	for (std::size_t i = 0; i < retMem.size(); ++i)
+		retMem[i] = cpu_.ReadMemory8(addrStart + i);
+
+	return retMem;
+}
+
+
 void NESPPUEmuComm::Write8(u16 addr, u8 val)
 {
 	addr &= 0x3FFF; // Mirror ($0000 .. $3FFF) to $4000
@@ -47,7 +63,10 @@ void NESPPUEmuComm::Write8(u16 addr, u8 val)
 	else if (addr < 0x3F00) // Name tables
 		mem_.nameTables[GetNameTableIndex(addr)].Write8(addr & 0x3FF, val);
 	else // Palette memory
-		mem_.paletteMem.Write8(addr & 0x1F, val); // @TODO Mirror $3F00, $3F04, $3F08 and $3F0C!
+	{
+		mem_.paletteMem.Write8(addr & 0x1F, val);
+		mem_.paletteMem.Write8((addr & 0x1F) ^ 0x10, val); // @TODO HACK HACK
+	}
 }
 
 
@@ -60,5 +79,5 @@ u8 NESPPUEmuComm::Read8(u16 addr) const
 	else if (addr < 0x3F00) // Name tables
 		return mem_.nameTables[GetNameTableIndex(addr)].Read8(addr & 0x3FF);
 	else // Palette memory
-		return mem_.paletteMem.Read8(addr & 0x1F); // @TODO Mirror $3F00, $3F04, $3F08 and $3F0C!
+		return mem_.paletteMem.Read8(addr & 0x1F);
 }

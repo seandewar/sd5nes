@@ -1,6 +1,7 @@
 #include "NESEmulator.h"
 
 #include <fstream>
+#include <iostream> // @TODO DEBUG!
 
 #include <SFML\Graphics\Sprite.hpp>
 #include <SFML\Graphics\Texture.hpp>
@@ -10,6 +11,8 @@ NESEmulator::NESEmulator(sf::RenderTarget& target) :
 target_(target),
 ppu_(debug_) // @TODO DEBUG!
 {
+	// @TODO DEBUG!!
+	debug_.create(341, 262, sf::Color::Black);
 }
 
 
@@ -30,6 +33,7 @@ void NESEmulator::LoadROM(const std::string& fileName)
 	ppu_.Initialize(*ppuComm_);
 
 	cpu_.Power();
+	ppu_.Power();
 }
 
 
@@ -38,19 +42,18 @@ void NESEmulator::Frame()
 	sf::Sprite spr;
 	sf::Texture tex;
 
-	// @TODO DEBUG!!
-	debug_.create(341, 262, sf::Color::Black);
-
-	for (int i = 0; i < 30000; ++i)
+	// Keep ticking until a frame is fully rendered by the PPU.
+	do
 	{
-		const auto clocks = cpu_.Tick(); // @TODO DEBUG!
-		for (int j = 0; j < clocks; ++j)
+		cpu_.Tick();
+
+		for (unsigned int i = 0; i < 3; ++i)
 		{
 			ppu_.Tick();
-			ppu_.Tick();
-			ppu_.Tick();
+			if (ppu_.IsFrameFinished())
+				break;
 		}
-	}
+	} while (!ppu_.IsFrameFinished());
 
 	tex.loadFromImage(debug_);
 	spr.setTexture(tex);

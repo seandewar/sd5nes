@@ -7,6 +7,7 @@
 
 NESPPU::NESPPU(sf::Image& debug) :
 comm_(nullptr),
+isFrameFinished_(false),
 currentCycle_(0),
 elapsedCycles_(0),
 debug_(debug) // @TODO Debug!!
@@ -67,10 +68,7 @@ void NESPPU::HandlePPUDATAAccess()
 	else
 	{
 		// Increment v by 32 if I in PPUCTRL is set, otherwise by 1 instead.
-		if (NESHelper::IsBitSet(reg_.PPUCTRL, NES_PPU_REG_PPUCTRL_I_BIT))
-			vScroll_ += 32;
-		else
-			vScroll_ += 1;
+		vScroll_ += (NESHelper::IsBitSet(reg_.PPUCTRL, NES_PPU_REG_PPUCTRL_I_BIT) ? 32 : 1);
 	}
 }
 
@@ -79,6 +77,7 @@ void NESPPU::WriteRegister(NESPPURegisterType reg, u8 val)
 {
 	// Update the internal data bus value to the value being written.
 	latches_.internalDataBusVal = val;
+	latches_.cyclesLeftUntilBusDecay = NES_PPU_DATA_BUS_DECAY_CYCLES;
 
 	switch (reg)
 	{
@@ -86,21 +85,69 @@ void NESPPU::WriteRegister(NESPPURegisterType reg, u8 val)
 		assert(false && "Unknown register type!");
 		return;
 
-	case NESPPURegisterType::PPUCTRL:
-		reg_.PPUCTRL = val;
+		// Check if we should ignore writes to some registers.
+		if (reg_.writeIgnoreCyclesLeft == 0)
+		{
+		case NESPPURegisterType::PPUCTRL:
+			reg_.PPUCTRL = val;
 
-		// Reset the Nmi Pull if we wrote 0 to V in PPUCTRL.
-		// This will allow multiple NMIs to be generated if toggled
-		// during V-BLANK.
-		if (!NESHelper::IsBitSet(val, NES_PPU_REG_PPUCTRL_V_BIT))
-			isNmiPulled_ = false;
+			// Reset the Nmi Pull if we wrote 0 to V in PPUCTRL.
+			// This will allow multiple NMIs to be generated if toggled
+			// during V-BLANK.
+			if (!NESHelper::IsBitSet(val, NES_PPU_REG_PPUCTRL_V_BIT))
+				isNmiPulled_ = false;
 
-		// t: ...BA.. ........ = d: ......BA
-		tScroll_ = (tScroll_ & 0x73FF) | ((val & 3) << 10);
-		break;
+			// t: ...BA.. ........ = d: ......BA
+			tScroll_ = (tScroll_ & 0x73FF) | ((val & 3) << 10);
+			break;
 
-	case NESPPURegisterType::PPUMASK:
-		reg_.PPUMASK = val;
+		case NESPPURegisterType::PPUMASK:
+			reg_.PPUMASK = val;
+			break;
+
+		case NESPPURegisterType::PPUSCROLL:
+			reg_.PPUSCROLL = val;
+
+			if (latches_.isAddressLatchOn)
+			{
+				// t: CBA..HG FED..... = d : HGFEDCBA
+				tScroll_ = (((tScroll_ & 0x7C1F) | ((val & 0xF8) << 2)) & 0xFFF) | ((val & 7) << 12);
+			}
+			else
+			{
+				// t: ....... ...HGFED = d: HGFED...
+				tScroll_ = (tScroll_ & 0x7FE0) | ((val & 0xF8) >> 3);
+
+				// x:              CBA = d: .....CBA
+				xScroll_ = val & 7;
+			}
+
+			latches_.isAddressLatchOn = !latches_.isAddressLatchOn; // Toggle state of the latch.
+			break;
+
+		case NESPPURegisterType::PPUADDR:
+			reg_.PPUADDR = val;
+
+			if (latches_.isAddressLatchOn)
+			{
+				// t: ....... HGFEDCBA = d: HGFEDCBA
+				// v                   = t
+				vScroll_ = tScroll_ = (tScroll_ & 0x7F00) | (val & 0xFF);
+			}
+			else
+			{
+				// t: .FEDCBA ........ = d: ..FEDCBA
+				// t: X...... ........ = 0
+				tScroll_ = (tScroll_ & 0xFF) | ((val & 0x3F) << 8);
+			}
+
+			latches_.isAddressLatchOn = !latches_.isAddressLatchOn; // Toggle state of the latch.
+			break;
+		}
+
+	case NESPPURegisterType::PPUDATA:
+		comm_->Write8(vScroll_, val);
+		HandlePPUDATAAccess();
 		break;
 
 	case NESPPURegisterType::OAMADDR:
@@ -108,58 +155,14 @@ void NESPPU::WriteRegister(NESPPURegisterType reg, u8 val)
 		break;
 
 	case NESPPURegisterType::OAMDATA:
-		reg_.OAMDATA = val;
-		break;
-
-	case NESPPURegisterType::PPUSCROLL:
-		reg_.PPUSCROLL = val;
-
-		if (latches_.isAddressLatchOn)
-		{
-			// t: CBA..HG FED..... = d : HGFEDCBA
-			tScroll_ = (((tScroll_ & 0x7C1F) | ((val & 0xF8) << 2)) & 0xFFF) | ((val & 7) << 12);
-		}
-		else
-		{
-			// t: ....... ...HGFED = d: HGFED...
-			tScroll_ = (tScroll_ & 0x7FE0) | ((val & 0xF8) >> 3);
-
-			// x:              CBA = d: .....CBA
-			xScroll_ = val & 7;
-		}
-
-		latches_.isAddressLatchOn = !latches_.isAddressLatchOn; // Toggle state of the latch.
-		break;
-
-	case NESPPURegisterType::PPUADDR:
-		reg_.PPUADDR = val;
-
-		if (latches_.isAddressLatchOn)
-		{
-			// t: ....... HGFEDCBA = d: HGFEDCBA
-			// v                   = t
-			vScroll_ = tScroll_ = (tScroll_ & 0x7F00) | (val & 0xFF);
-		}
-		else
-		{
-			// t: .FEDCBA ........ = d: ..FEDCBA
-			// t: X...... ........ = 0
-			tScroll_ = (tScroll_ & 0xFF) | ((val & 0x3F) << 8);
-		}
-
-		latches_.isAddressLatchOn = !latches_.isAddressLatchOn; // Toggle state of the latch.
-		break;
-
-	case NESPPURegisterType::PPUDATA:
-		std::cout << std::hex << vScroll_ << std::endl;
-		comm_->Write8(vScroll_, val);
-		HandlePPUDATAAccess();
+		primaryOam_.Write8(reg_.OAMADDR, val);
+		++reg_.OAMADDR;
 		break;
 
 	case NESPPURegisterType::OAMDMA:
-		reg_.OAMDMA = val;
-
-		// @TODO: OAMDMA
+		const auto oamDmaData = comm_->OAMDMARead(val);
+		for (u8 i = 0; i < 0xFF - reg_.OAMADDR; ++i)
+			primaryOam_.Write8((i + reg_.OAMADDR) & 0xFF, oamDmaData[i]);
 		break;
 	}
 }
@@ -185,11 +188,13 @@ u8 NESPPU::ReadRegister(NESPPURegisterType reg)
 		break;
 
 	case NESPPURegisterType::OAMDATA:
-		returnVal = reg_.OAMDATA;
+		// @TODO: Handle 0xFF Signal for clearing secondary OAM
+		returnVal = primaryOam_.Read8(reg_.OAMADDR);
 		break;
 
 	case NESPPURegisterType::PPUDATA:
 		returnVal = comm_->Read8(vScroll_);
+
 		if ((vScroll_ & 0x3FFF) < 0x3F00)
 		{
 			const auto bufData = ppuDataBuffered_;
@@ -219,12 +224,15 @@ void NESPPU::Power()
 {
 	assert(comm_ != nullptr);
 
+	isFrameFinished_ = false;
 	isEvenFrame_ = true;
+
 	xIncdThisTick_ = yIncdThisTick_ = false;
 	currentCycle_ = currentScanline_ = 0;
 
 	isNmiPulled_ = false;
 	tScroll_ = vScroll_ = xScroll_ = 0;
+	evalSpriteStep_ = activeSpriteCount_ = nSprite_ = mSprite_ = 0;
 
 	ppuDataBuffered_ = 0;
 
@@ -253,11 +261,14 @@ void NESPPU::Reset()
 {
 	assert(comm_ != nullptr);
 
+	isFrameFinished_ = false;
 	isEvenFrame_ = true;
+
 	currentCycle_ = currentScanline_ = 0;
 
 	isNmiPulled_ = false;
 	tScroll_ = vScroll_ = xScroll_ = 0;
+	evalSpriteStep_ = activeSpriteCount_ = nSprite_ = mSprite_ = 0;
 
 	ppuDataBuffered_ = 0;
 
@@ -267,6 +278,8 @@ void NESPPU::Reset()
 
 	reg_.PPUCTRL = reg_.PPUMASK = reg_.PPUSCROLL = 0;
 	reg_.PPUSTATUS &= 0x80; // Only retain bit 7. (PPUSTATUS V)
+
+	reg_.writeIgnoreCyclesLeft = NES_PPU_RESET_REG_IGNORE_WRITE_FOR_CPU_CYC;
 
 	// @TODO: Init OAM to pattern
 }
@@ -341,7 +354,7 @@ void NESPPU::TickFetchTileData()
 	switch (currentCycle_ % 8)
 	{
 	case 1:
-		// Fetch the Name table Byte
+		// Fetch the Name table Byte.
 		ntByte_ = comm_->Read8(0x2000 | (vScroll_ & 0xFFF));
 		break;
 
@@ -351,31 +364,108 @@ void NESPPU::TickFetchTileData()
 		break;
 
 	case 5:
-	{
 		// Fetch the Tile Bitmap Low Byte from Pattern table.
-		const u16 addr = (NESHelper::IsBitSet(reg_.PPUCTRL, NES_PPU_REG_PPUCTRL_B_BIT) ? 0x1000 : 0) + (ntByte_ * 16) +
-			((vScroll_ >> 12) & 7);
-		tileBitmapLo_ = comm_->Read8(addr);
-
-		//std::cout << "l: " << std::hex << addr << ", v: " << std::hex << +tileBitmapLo_ << std::endl;
-	}
-	break;
+		tileBitmapLo_ = comm_->Read8(
+			(NESHelper::IsBitSet(reg_.PPUCTRL, NES_PPU_REG_PPUCTRL_B_BIT) ? 0x1000 : 0) + 
+			(ntByte_ * 16) + ((vScroll_ >> 12) & 7)
+		);
+		break;
 
 	case 7:
 		// Fetch the Tile Bitmap High Byte from Pattern table.
-		const u16 addr = (NESHelper::IsBitSet(reg_.PPUCTRL, NES_PPU_REG_PPUCTRL_B_BIT) ? 0x1000 : 0) + (ntByte_ * 16) +
-			((vScroll_ >> 12) & 7) + 8;
-		tileBitmapHi_ = comm_->Read8(addr);
-
-		//std::cout << "h: " << std::hex << addr << ", v: " << std::hex << +tileBitmapHi_ << std::endl;
+		tileBitmapHi_ = comm_->Read8(
+			(NESHelper::IsBitSet(reg_.PPUCTRL, NES_PPU_REG_PPUCTRL_B_BIT) ? 0x1000 : 0) + 
+			(ntByte_ * 16) + ((vScroll_ >> 12) & 7) + 8
+		);
 		break;
 	}
+}
+
+
+void NESPPU::TickEvaluateSprites()
+{
+	if (currentCycle_ >= 1 && currentCycle_ <= 64 && currentCycle_ % 2 == 1)
+	{
+		if (currentCycle_ == 1)
+			activeSpriteCount_ = 0;
+
+		// Clear secondary OAM value each cycle to $FF.
+		secondaryOam_.Write8((currentCycle_ - 1) / 2, 0xFF);
+	}
+	else if (currentCycle_ >= 65 && currentCycle_ <= 256)
+	{
+		// Reset n and m on first cycle of the actual sprite eval step.
+		if (currentCycle_ == 65)
+			nSprite_ = mSprite_ = 0;
+
+		switch ((currentCycle_ - 65) % 4)
+		{
+		case 0:
+		{
+			// Check that Secondary OAM isn't yet full.
+			if (activeSpriteCount_ < 8)
+			{
+				// Read Sprite Y.
+				const u8 sprY = primaryOam_.Read8(4 * nSprite_);
+				if (sprY < 0xEF) // Sprites with Y = $EF to $FF are not considered.
+				{
+					secondaryOam_.Write8(activeSpriteCount_ * 4, sprY);
+
+					// Copy the rest of sprite data into secondary OAM.
+					for (u8 i = 1; i < 4; ++i)
+					{
+						secondaryOam_.Write8((activeSpriteCount_ * 4) + i,
+							primaryOam_.Read8((nSprite_ * 4) + i)
+						);
+					}
+
+					++activeSpriteCount_;
+				}
+			}
+		}
+		break;
+
+		case 1:
+			++nSprite_;
+			if (nSprite_ == 0)
+			{
+				// n has overflowed back to 0, which means all of primary OAM has been evaluated.
+				// @TODO: Goto 1.
+			}
+		}
+	}
+	else if (currentCycle_ >= 257 && currentCycle_ <= 320)
+	{
+		// @TODO
+	}
+	else if (currentCycle_ >= 321 && currentCycle_ <= 340)
+	{
+		// @TODO: Background render pipeline init.
+	}
+}
+
+
+void NESPPU::TickRenderPixel()
+{
+	if (currentCycle_ < 4)
+		return;
+
+	// @TODO: DEBUG!!!!
+	const u8 colLo = (tileBitmapLo_ >> (7 - (currentCycle_ % 8))) & 1;
+	const u8 colHi = (tileBitmapHi_ >> (7 - (currentCycle_ % 8))) & 1;
+	const u8 colNum = (colHi << 1) | colLo;
+
+	debug_.setPixel(currentCycle_, currentScanline_,
+		(colNum == 0 ? sf::Color::Black : ppuPalette[comm_->Read8(0x3F00 + (3 * atByte_) + colNum - 1)].ToSFColor())
+		);
 }
 
 
 void NESPPU::Tick()
 {
 	assert(comm_ != nullptr);
+
+	isFrameFinished_ = false; // We will set this true if this is the last tick of the frame.
 
 	// @TODO: Handle PAL (70 V-BLANK scanlines instead).
 
@@ -413,7 +503,8 @@ void NESPPU::Tick()
 
 				if (currentCycle_ == 1)
 				{
-					// Clear PPUSTATUS flags on cycle 1.
+					// Clear PPUSTATUS flags on cycle 1 and reset
+					// internal v-blank flag.
 					reg_.PPUSTATUS = 0;
 				}
 				else if (IsRenderingEnabled() && currentCycle_ >= 280 && currentCycle_ <= 304)
@@ -436,53 +527,33 @@ void NESPPU::Tick()
 					vScroll_ = (vScroll_ & 0x7BE0) | (tScroll_ & 0x41F);
 				}
 
-				TickFetchTileData();
-				// @TODO: Sprite layer
-
 				if ((currentCycle_ <= 256 && currentCycle_ % 8 == 0) ||
 					currentCycle_ == 328 || currentCycle_ == 336)
 					IncrementCoarseX();
 
-				// Sprite evaluation
-				if (currentCycle_ >= 65 && currentCycle_ <= 256)
-				{
-					// @TODO
-				}
+				//TickEvaluateSprites();
 
-				// Render this pixel.
-				if (currentCycle_ >= 4)
-				{
-					// @TODO: DEBUG!!!!
-					const u8 colLo = (tileBitmapLo_ >> (7 - ((currentCycle_ - 4) % 8))) & 1;
-					const u8 colHi = (tileBitmapHi_ >> (7 - ((currentCycle_ - 4) % 8))) & 1;
-					const u8 colNum = (colHi << 1) | colLo;
+				TickFetchTileData();
+				// @TODO: Sprite layer
 
-					sf::Color testC;
-					if (colNum == 0)
-						testC = sf::Color::Black;
-					else if (colNum == 1)
-						testC = sf::Color::Green;
-					else if (colNum == 2)
-						testC = sf::Color::Red;
-					else if (colNum == 3)
-						testC = sf::Color::Yellow;
-					else
-						testC = sf::Color::White;
-
-					//std::cout << ": " << +ntByte_ << "," << +atByte_ << "," << +tileBitmapLo_ << "," << +tileBitmapHi_ << std::endl;
-
-					debug_.setPixel(currentCycle_, currentScanline_,
-						//(colNum == 0 ? sf::Color::Black : ppuPalette[comm_->Read8(0x3F00 + (3 * atByte_) + colNum - 1)].ToSFColor())
-						//ppuPalette[comm_->Read8(0x3F00 + (3 * atByte_) + colNum - 1)].ToSFColor()
-						testC
-						);
-				}
+				TickRenderPixel();
 			}
 		}
 	}
 
 	++elapsedCycles_;
 	++currentCycle_;
+
+	// Decay the value inside of the internal data bus.
+	if (latches_.cyclesLeftUntilBusDecay > 0)
+		--latches_.cyclesLeftUntilBusDecay;
+	else
+		latches_.internalDataBusVal = 0;
+
+	// Update amount of cycles left to ignore writes to some registers.
+	if (reg_.writeIgnoreCyclesLeft > 0)
+		--reg_.writeIgnoreCyclesLeft;
+
 	xIncdThisTick_ = yIncdThisTick_ = false;
 
 	// Check if we're at the end of this scanline (which is one cycle earlier (339)
@@ -498,6 +569,7 @@ void NESPPU::Tick()
 		{
 			currentScanline_ = 0;
 			isEvenFrame_ = !isEvenFrame_;
+			isFrameFinished_ = true;
 		}
 	}
 }
