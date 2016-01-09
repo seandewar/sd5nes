@@ -4,6 +4,8 @@
 #include <stdexcept>
 #include <sstream>
 
+#include <iostream> // @TODO: debug
+
 #include "NESTypes.h"
 #include "NESHelper.h"
 #include "NESCPUConstants.h"
@@ -799,6 +801,7 @@ private:
 	inline void ExecuteOpKIL(NESCPUOpArgInfo& argInfo)
 	{
 		// Jam the CPU.
+		std::cout << "Jammed! " << reg_.ToString() << std::endl;
 		isJammed_ = true;
 	}
 

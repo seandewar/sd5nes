@@ -150,18 +150,11 @@ struct NESPPURegisters
 	/* OAM Read/Write Address (OAMADDR) */
 	u8 OAMADDR; 
 
-	/* Scroll Position (PPUSCROLL) W x2 */
-	u8 PPUSCROLL;
-
-	/* PPU Read/Write Address (PPUADDR) W x2 */
-	u8 PPUADDR;
-
 	/* Amount of cycles left to ignore writes to PPUCTRL, PPUMASK, PPUSCROLL and PPUADDR. */
 	unsigned int writeIgnoreCyclesLeft;
 
 	NESPPURegisters() :
 		PPUCTRL(0), PPUMASK(0), PPUSTATUS(0),
-		PPUSCROLL(0), PPUADDR(0),
 		OAMADDR(0),
 		writeIgnoreCyclesLeft(0)
 	{ }
@@ -290,9 +283,8 @@ private:
 	NESMemory<0x100> primaryOam_;
 	NESMemory<0x20> secondaryOam_;
 
-	unsigned int evalSpriteStep_;
 	u8 activeSpriteCount_;
-	u8 nSprite_, mSprite_;
+	u8 spriteY_, spriteTile_, spriteAttrib_, spriteX_;
 
 	bool isEvenFrame_;
 

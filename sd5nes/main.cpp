@@ -35,18 +35,23 @@ int main(int argc, char* argv[])
 	//sf::Sprite spr;
 
 	NESEmulator emu(window);
-	//emu.LoadROM("roms//instr_test-v4//rom_singles//07-abs_xy.nes");
+	//emu.LoadROM("roms//instr_test-v4//rom_singles//07-abs_xy.nes"); // PASS
 	//emu.LoadROM("roms//nestest.nes");
 	//emu.LoadROM("roms//smb_jp_usa.nes");
 	//emu.LoadROM("roms//palette.nes");
 	//emu.LoadROM("roms//registers.nes");
-	//emu.LoadROM("roms//blargg_ppu_tests_2005.09.15b//palette_ram.nes");
-	emu.LoadROM("roms//02.alignment.nes");
+	//emu.LoadROM("roms//blargg_ppu_tests_2005.09.15b//palette_ram.nes"); // PASS
+	//emu.LoadROM("roms//02.alignment.nes");
 	//emu.LoadROM("roms//blargg_ppu_tests_2005.09.15b//vbl_clear_time.nes");
-	//emu.LoadROM("roms//blargg_ppu_tests_2005.09.15b//vram_access.nes");
-	//emu.LoadROM("roms//blargg_ppu_tests_2005.09.15b//sprite_ram.nes");
+	//emu.LoadROM("roms//blargg_ppu_tests_2005.09.15b//vram_access.nes"); // PASS
+	//emu.LoadROM("roms//blargg_ppu_tests_2005.09.15b//sprite_ram.nes"); // PASS
 	//emu.LoadROM("roms//ppu_open_bus.nes");
 	//emu.LoadROM("roms//scanline.nes");
+	//emu.LoadROM("roms//sprite_overflow_tests//1.Basics.nes"); // PASS
+	//emu.LoadROM("roms//sprite_overflow_tests//2.Details.nes"); // PASS
+	//emu.LoadROM("roms//sprite_overflow_tests//3.Timing.nes");
+	//emu.LoadROM("roms//sprite_overflow_tests//4.Obscure.nes"); // PASS
+	//emu.LoadROM("roms//sprite_overflow_tests//5.Emulator.nes"); // PASS
 
 	// Main loop.
 	while (window.isOpen())

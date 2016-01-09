@@ -106,8 +106,6 @@ void NESPPU::WriteRegister(NESPPURegisterType reg, u8 val)
 			break;
 
 		case NESPPURegisterType::PPUSCROLL:
-			reg_.PPUSCROLL = val;
-
 			if (latches_.isAddressLatchOn)
 			{
 				// t: CBA..HG FED..... = d : HGFEDCBA
@@ -126,8 +124,6 @@ void NESPPU::WriteRegister(NESPPURegisterType reg, u8 val)
 			break;
 
 		case NESPPURegisterType::PPUADDR:
-			reg_.PPUADDR = val;
-
 			if (latches_.isAddressLatchOn)
 			{
 				// t: ....... HGFEDCBA = d: HGFEDCBA
@@ -161,7 +157,7 @@ void NESPPU::WriteRegister(NESPPURegisterType reg, u8 val)
 
 	case NESPPURegisterType::OAMDMA:
 		const auto oamDmaData = comm_->OAMDMARead(val);
-		for (u8 i = 0; i < 0xFF - reg_.OAMADDR; ++i)
+		for (u16 i = 0; i < 0x100 - reg_.OAMADDR; ++i)
 			primaryOam_.Write8((i + reg_.OAMADDR) & 0xFF, oamDmaData[i]);
 		break;
 	}
@@ -231,8 +227,8 @@ void NESPPU::Power()
 	currentCycle_ = currentScanline_ = 0;
 
 	isNmiPulled_ = false;
-	tScroll_ = vScroll_ = xScroll_ = 0;
-	evalSpriteStep_ = activeSpriteCount_ = nSprite_ = mSprite_ = 0;
+	tScroll_ = vScroll_ = xScroll_ = activeSpriteCount_ = 0;
+	spriteY_ = spriteX_ = spriteTile_ = spriteAttrib_ = 0;
 
 	ppuDataBuffered_ = 0;
 
@@ -241,7 +237,7 @@ void NESPPU::Power()
 	latches_.internalDataBusVal = 0;
 	latches_.isAddressLatchOn = false;
 
-	reg_.PPUCTRL = reg_.PPUMASK = reg_.PPUSCROLL = reg_.PPUADDR = reg_.OAMADDR = 0;
+	reg_.PPUCTRL = reg_.PPUMASK = reg_.OAMADDR = 0;
 
 	// Set up PPUSTATUS Power state - depends on a few random variables
 	// O and V are often set in PPUSTATUS
@@ -267,8 +263,8 @@ void NESPPU::Reset()
 	currentCycle_ = currentScanline_ = 0;
 
 	isNmiPulled_ = false;
-	tScroll_ = vScroll_ = xScroll_ = 0;
-	evalSpriteStep_ = activeSpriteCount_ = nSprite_ = mSprite_ = 0;
+	tScroll_ = vScroll_ = xScroll_ = activeSpriteCount_ = 0;
+	spriteY_ = spriteX_ = spriteTile_ = spriteAttrib_ = 0;
 
 	ppuDataBuffered_ = 0;
 
@@ -276,7 +272,7 @@ void NESPPU::Reset()
 
 	latches_.isAddressLatchOn = false;
 
-	reg_.PPUCTRL = reg_.PPUMASK = reg_.PPUSCROLL = 0;
+	reg_.PPUCTRL = reg_.PPUMASK = 0;
 	reg_.PPUSTATUS &= 0x80; // Only retain bit 7. (PPUSTATUS V)
 
 	reg_.writeIgnoreCyclesLeft = NES_PPU_RESET_REG_IGNORE_WRITE_FOR_CPU_CYC;
@@ -321,24 +317,22 @@ void NESPPU::IncrementFineY()
 	{
 		// Fine Y is currently 7 which means we need to check
 		// coarse Y (bits 5-9 in v).
-		vScroll_ &= 0xFFF; // Clear fine y scroll.
-
 		const u8 coarseY = (vScroll_ & 0x3E0) >> 5;
-		if (coarseY == 0x1D) // == 29
+		if (coarseY == 29)
 		{
 			// Switch vertical nt by toggling bit 11
-			// and clear coarse Y.
-			vScroll_ = (vScroll_ & 0x7C1F) ^ 0x800;
+			// and clear fine Y, coarse Y.
+			vScroll_ = (vScroll_ & 0xC1F) ^ 0x800;
 		}
 		else if (coarseY == 0x1F) // == 31 (max value)
 		{
-			// Clear coarse Y.
-			vScroll_ &= 0x7C1F;
+			// Clear fine Y, coarse Y.
+			vScroll_ &= 0xC1F;
 		}
 		else
 		{
-			// Increment coarse Y.
-			vScroll_ = (vScroll_ & 0x7C1F) | (((coarseY + 1) & 0xF) << 5);
+			// Clear fine Y, increment coarse Y.
+			vScroll_ = (vScroll_ & 0xC1F) | (((coarseY + 1) & 0x1F) << 5);
 		}
 	}
 	else
@@ -351,6 +345,10 @@ void NESPPU::IncrementFineY()
 
 void NESPPU::TickFetchTileData()
 {
+	// Only evaluate tile data on visible scanlines.
+	if (currentScanline_ > 239)
+		return;
+
 	switch (currentCycle_ % 8)
 	{
 	case 1:
@@ -384,6 +382,10 @@ void NESPPU::TickFetchTileData()
 
 void NESPPU::TickEvaluateSprites()
 {
+	// Only evaluate sprites during visible scanlines.
+	if (currentScanline_ > 239)
+		return;
+
 	if (currentCycle_ >= 1 && currentCycle_ <= 64 && currentCycle_ % 2 == 1)
 	{
 		if (currentCycle_ == 1)
@@ -392,55 +394,83 @@ void NESPPU::TickEvaluateSprites()
 		// Clear secondary OAM value each cycle to $FF.
 		secondaryOam_.Write8((currentCycle_ - 1) / 2, 0xFF);
 	}
-	else if (currentCycle_ >= 65 && currentCycle_ <= 256)
+	else if (currentCycle_ == 256) // @TODO: Cycle accuracy? CPU isn't truly cycle accurate anyway...
 	{
-		// Reset n and m on first cycle of the actual sprite eval step.
-		if (currentCycle_ == 65)
-			nSprite_ = mSprite_ = 0;
+		// Eval all 64 entries in OAM and try to find up to 8 sprites to render
+		// for this scanline.
+		u8 n = 0;
+		u8 m = 0;
+		while (n < 64)
+		{
+			const u16 oamAddr = (4 * n) + m;
+			const u8 sprY = primaryOam_.Read8(oamAddr);
+			const bool sprInRange = (sprY <= currentScanline_ &&
+				sprY + (NESHelper::IsBitSet(reg_.PPUCTRL, NES_PPU_REG_PPUCTRL_H_BIT) ? 16u : 8u) > currentScanline_);
 
-		switch ((currentCycle_ - 65) % 4)
-		{
-		case 0:
-		{
-			// Check that Secondary OAM isn't yet full.
-			if (activeSpriteCount_ < 8)
+			// Check if we already have 8 sprites found and check for overflow if we do.
+			// Otherwise, check if sprite is in range. If H is set in PPUCTRL, sprite is 16 px high.
+			if (activeSpriteCount_ == 8)
 			{
-				// Read Sprite Y.
-				const u8 sprY = primaryOam_.Read8(4 * nSprite_);
-				if (sprY < 0xEF) // Sprites with Y = $EF to $FF are not considered.
+				if (sprInRange)
 				{
-					secondaryOam_.Write8(activeSpriteCount_ * 4, sprY);
-
-					// Copy the rest of sprite data into secondary OAM.
-					for (u8 i = 1; i < 4; ++i)
-					{
-						secondaryOam_.Write8((activeSpriteCount_ * 4) + i,
-							primaryOam_.Read8((nSprite_ * 4) + i)
-						);
-					}
-
-					++activeSpriteCount_;
+					// Set overflow and stop here.
+					NESHelper::SetRefBit(reg_.PPUSTATUS, NES_PPU_REG_PPUSTATUS_O_BIT);
+					break;
+				}
+				else
+				{
+					// @NOTE: The m increment is a hardware bug and emulates the
+					// bug where the O flag in PPUSTATUS is sdmetimes not set.
+					++m;
+					if (m > 3) // Make sure m doesn't increment above 3.
+						m = 0;
 				}
 			}
-		}
-		break;
-
-		case 1:
-			++nSprite_;
-			if (nSprite_ == 0)
+			else if (sprInRange)
 			{
-				// n has overflowed back to 0, which means all of primary OAM has been evaluated.
-				// @TODO: Goto 1.
+				// Sprite is in range, copy to secondary OAM.
+				secondaryOam_.Write8(activeSpriteCount_, sprY);
+				for (u8 i = 1; i <= 3; ++i)
+					secondaryOam_.Write8(activeSpriteCount_ + i, primaryOam_.Read8(oamAddr + i));
+
+				++activeSpriteCount_;
 			}
+
+			++n;
 		}
+
+		// @NOTE: Secondary OAM always ends with Sprite 63's Y-position
+		// if it isn't already full (or before the $FFs from the init).
+		if (activeSpriteCount_ < 8)
+			secondaryOam_.Write8(activeSpriteCount_ * 4, primaryOam_.Read8(0xFC));
 	}
 	else if (currentCycle_ >= 257 && currentCycle_ <= 320)
 	{
-		// @TODO
-	}
-	else if (currentCycle_ >= 321 && currentCycle_ <= 340)
-	{
-		// @TODO: Background render pipeline init.
+		// Fetch sprites to render from secondary OAM.
+		const u8 spriteIndex = (currentCycle_ - 257) / 8;
+		const u8 sprAddr = spriteIndex * 4;
+		switch ((currentCycle_ - 257) % 8)
+		{
+		case 0:
+			spriteY_ = secondaryOam_.Read8(sprAddr);
+			break;
+
+		case 1:
+			spriteTile_ = secondaryOam_.Read8(sprAddr + 1);
+			break;
+
+		case 2:
+			spriteAttrib_ = secondaryOam_.Read8(sprAddr + 2);
+			break;
+
+		case 3:
+			spriteX_ = secondaryOam_.Read8(sprAddr + 3);
+			break;
+
+		default: // 4 to 7. (Cycles 5-8)
+			// @TODO Fetch sprite tile data.
+			break;
+		}
 	}
 }
 
@@ -455,9 +485,12 @@ void NESPPU::TickRenderPixel()
 	const u8 colHi = (tileBitmapHi_ >> (7 - (currentCycle_ % 8))) & 1;
 	const u8 colNum = (colHi << 1) | colLo;
 
-	debug_.setPixel(currentCycle_, currentScanline_,
+	const unsigned int drawX = currentCycle_;
+	const unsigned int drawY = currentScanline_;
+
+	debug_.setPixel(drawX, drawY,
 		(colNum == 0 ? sf::Color::Black : ppuPalette[comm_->Read8(0x3F00 + (3 * atByte_) + colNum - 1)].ToSFColor())
-		);
+	);
 }
 
 
@@ -531,7 +564,7 @@ void NESPPU::Tick()
 					currentCycle_ == 328 || currentCycle_ == 336)
 					IncrementCoarseX();
 
-				//TickEvaluateSprites();
+				TickEvaluateSprites();
 
 				TickFetchTileData();
 				// @TODO: Sprite layer

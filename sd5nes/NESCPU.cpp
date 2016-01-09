@@ -356,8 +356,8 @@ void NESCPU::ExecuteNextOp()
 	//std::cout << std::endl;
 	//
 	//static int a = 0;
-	//if (a < 50)
-	//std::cout << "Cyc: " << elapsedCycles_ << ", Reg: " << reg_.ToString() << "\t Ins: " << OpAsAsm(opMapping.opName, opMapping.addrMode, val) << std::endl;
+	//if (a > 300000)
+		//std::cout << "Cyc: " << elapsedCycles_ << ", Reg: " << reg_.ToString() << "\t Ins: " << OpAsAsm(opMapping.opName, opMapping.addrMode, val) << std::endl;
 	//++a;
 
 	// Execute instruction.
