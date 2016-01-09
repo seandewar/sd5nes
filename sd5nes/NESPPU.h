@@ -1,6 +1,7 @@
 #pragma once
 
 #include <array>
+#include <iostream> // @TODO: DEBUG
 
 #include <SFML\Graphics\Color.hpp>
 #include <SFML\Graphics\Image.hpp>
@@ -43,7 +44,17 @@ struct NESPPUColor
 {
 	u8 r, g, b;
 
-	// Converts an NESPPUColor into it's corrisponding SFML Color (sf::Color).
+	NESPPUColor() :
+		r(0), g(0), b(0)
+	{ }
+
+	NESPPUColor(u8 r, u8 g, u8 b) :
+		r(r), g(g), b(b)
+	{ }
+
+	/**
+	* Converts an NESPPUColor into it's corrisponding SFML Color (sf::Color).
+	*/
 	inline sf::Color ToSFColor() const { return sf::Color(r, g, b); }
 };
 
@@ -161,6 +172,9 @@ struct NESPPURegisters
 	{ }
 };
 
+/* Specifies an invalid index inside of OAM. */
+#define NES_INVALID_OAM_INDEX -1
+
 /**
 * Internal structure of a stored sprite
 * to be rendered for the next scanline.
@@ -170,10 +184,19 @@ struct NESPPUSprite
 	u8 x, y, tileIndex, attributes;
 	u8 tileBitmapHi, tileBitmapLo;
 
-	NESPPUSprite() :
+	NESPPUSprite(u8 primaryOamIndex = NES_INVALID_OAM_INDEX) :
+		primaryOamIndex_(primaryOamIndex),
 		x(0), y(0), tileIndex(0), attributes(0),
 		tileBitmapHi(0), tileBitmapLo(0)
 	{ }
+
+	/**
+	* Gets the original index in primary OAM of the Sprite.
+	*/
+	inline u8 GetPrimaryOAMIndex() const { return primaryOamIndex_; }
+
+private:
+	u8 primaryOamIndex_;
 };
 
 /* The amount of PPU cycles it takes for the value inside the internal data bus to decay. */
@@ -301,6 +324,7 @@ private:
 
 	u8 activeSpriteCount_;
 	std::array<NESPPUSprite, 8> activeSprites_;
+	bool sprite0HitThisFrame_;
 
 	bool isEvenFrame_;
 
@@ -313,15 +337,47 @@ private:
 	}
 
 	/**
+	* Gets the address of a background tile's (low) bitmap
+	* using its tileIndex.
+	*/
+	inline u16 GetBackgroundTileAddress(u8 tileIndex) const
+	{
+		return (NESHelper::IsBitSet(reg_.PPUCTRL, NES_PPU_REG_PPUCTRL_B_BIT) ? 0x1000 : 0) + (tileIndex * 16);
+	}
+
+	/**
 	* Gets the address of a sprite's (low) tile bitmap
 	* from its tileIndex.
 	*/
 	inline u16 GetSpriteTileAddress(u8 tileIndex) const
 	{
 		if (NESHelper::IsBitSet(reg_.PPUCTRL, NES_PPU_REG_PPUCTRL_H_BIT))
-			return (NESHelper::IsBitSet(tileIndex, 0) ? 0x1000 : 0) + tileIndex;
+			return (NESHelper::IsBitSet(tileIndex, 0) ? 0x1000 : 0) + (tileIndex * 32);
 		else
-			return (NESHelper::IsBitSet(reg_.PPUCTRL, NES_PPU_REG_PPUCTRL_S_BIT) ? 0x1000 : 0) + tileIndex;
+			return (NESHelper::IsBitSet(reg_.PPUCTRL, NES_PPU_REG_PPUCTRL_S_BIT) ? 0x1000 : 0) + (tileIndex * 16);
+	}
+
+	/**
+	* Gets the color of a tile bitmap line's pixel at a specified position.
+	* pos cannot be above 7.
+	*/
+	inline u8 GetTileBitmapLinePixel(u8 tileBmpHi, u8 tileBmpLo, u8 pos)
+	{
+		assert(pos < 8);
+
+		return (((tileBmpHi >> (7 - pos)) & 1) << 1) | (tileBmpLo >> (7 - pos)) & 1;
+	}
+
+	/**
+	* Gets a tile bitmap line while respecting horizontal and vertical flipping.
+	* lineNum should be in the range 0 to 7.
+	*/
+	inline u8 FetchTileBitmapLine(u16 tileAddr, u8 lineNum, bool flipHoriz, bool flipVert) const
+	{
+		assert(lineNum < 8);
+
+		const u8 tileBitmapLine = comm_->Read8(tileAddr + (flipVert ? 7 - lineNum : lineNum));
+		return (flipHoriz ? NESHelper::ReverseBits(tileBitmapLine) : tileBitmapLine);
 	}
 
 	/**
@@ -353,11 +409,6 @@ private:
 	* Handles the evaluation of sprites for this tick.
 	*/
 	void TickEvaluateSprites();
-
-	/**
-	* Handles the detection of sprite-0 hits.
-	*/
-	void TickHandleSpriteZeroHits();
 
 	/**
 	* Handles the rendering of pixels for this tick.

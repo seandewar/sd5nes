@@ -222,9 +222,10 @@ void NESPPU::Power()
 	isEvenFrame_ = true;
 
 	xIncdThisTick_ = yIncdThisTick_ = false;
-	currentCycle_ = currentScanline_ = 0;
+	currentCycle_ = 0;
+	currentScanline_ = 241;
 
-	isNmiPulled_ = false;
+	sprite0HitThisFrame_ = isNmiPulled_ = false;
 	tScroll_ = vScroll_ = xScroll_ = activeSpriteCount_ = 0;
 
 	ppuDataBuffered_ = 0;
@@ -257,9 +258,10 @@ void NESPPU::Reset()
 	isFrameFinished_ = false;
 	isEvenFrame_ = true;
 
-	currentCycle_ = currentScanline_ = 0;
+	currentCycle_ = 0;
+	currentScanline_ = 241;
 
-	isNmiPulled_ = false;
+	sprite0HitThisFrame_ = isNmiPulled_ = false;
 	tScroll_ = vScroll_ = xScroll_ = activeSpriteCount_ = 0;
 
 	ppuDataBuffered_ = 0;
@@ -359,17 +361,21 @@ void NESPPU::TickFetchTileData()
 
 	case 5:
 		// Fetch the Tile Bitmap Low Byte from Pattern table.
-		tileBitmapLo_ = comm_->Read8(
-			(NESHelper::IsBitSet(reg_.PPUCTRL, NES_PPU_REG_PPUCTRL_B_BIT) ? 0x1000 : 0) + 
-			(ntByte_ * 16) + ((vScroll_ >> 12) & 7)
+		tileBitmapLo_ = FetchTileBitmapLine(
+			GetBackgroundTileAddress(ntByte_),
+			(vScroll_ >> 12) & 7,
+			false,
+			false
 		);
 		break;
 
 	case 7:
 		// Fetch the Tile Bitmap High Byte from Pattern table.
-		tileBitmapHi_ = comm_->Read8(
-			(NESHelper::IsBitSet(reg_.PPUCTRL, NES_PPU_REG_PPUCTRL_B_BIT) ? 0x1000 : 0) + 
-			(ntByte_ * 16) + ((vScroll_ >> 12) & 7) + 8
+		tileBitmapHi_ = FetchTileBitmapLine(
+			GetBackgroundTileAddress(ntByte_) + 8,
+			(vScroll_ >> 12) & 7,
+			false,
+			false
 		);
 		break;
 	}
@@ -384,14 +390,14 @@ void NESPPU::TickEvaluateSprites()
 
 	if (currentCycle_ >= 1 && currentCycle_ <= 64 && currentCycle_ % 2 == 1)
 	{
-		if (currentCycle_ == 1)
-			activeSpriteCount_ = 0;
-
 		// Clear secondary OAM value every 2 cycles to $FF.
 		secondaryOam_.Write8((currentCycle_ - 1) / 2, 0xFF);
 	}
 	else if (currentCycle_ == 256) // @TODO: Cycle accuracy? CPU isn't truly cycle accurate anyway...
 	{
+		// Clear active sprite count.
+		activeSpriteCount_ = 0;
+
 		// Eval all 64 entries in OAM and try to find up to 8 sprites to render
 		// for the next scanline.
 		u8 n = 0;
@@ -400,9 +406,8 @@ void NESPPU::TickEvaluateSprites()
 		{
 			const u16 oamAddr = (4 * n) + m;
 			const u8 sprY = primaryOam_.Read8(oamAddr);
-
-			const bool sprInRange = (sprY <= currentScanline_ &&
-				sprY + GetSpriteHeight() > currentScanline_);
+			const bool sprInRange = (sprY <= currentScanline_ && 
+				static_cast<unsigned int>(sprY + GetSpriteHeight()) > currentScanline_);
 
 			// Check if we already have 8 sprites found and check for overflow if we do.
 			// Otherwise, check if sprite is in range. If H is set in PPUCTRL, sprite is 16 px high.
@@ -425,10 +430,16 @@ void NESPPU::TickEvaluateSprites()
 			}
 			else if (sprInRange)
 			{
-				// Sprite is in range, copy to secondary OAM.
-				secondaryOam_.Write8(activeSpriteCount_, sprY);
+				// Sprite is in range. Prepare the sprite for the secondary
+				// OAM fetch step (which is afterward the main eval step).
+				activeSprites_[activeSpriteCount_] = NESPPUSprite(n);
+
+				// Copy primary OAM entry to secondary OAM.
+				const u16 secondaryOamAddr = activeSpriteCount_ * 4;
+
+				secondaryOam_.Write8(secondaryOamAddr, sprY);
 				for (u8 i = 1; i <= 3; ++i)
-					secondaryOam_.Write8(activeSpriteCount_ + i, primaryOam_.Read8(oamAddr + i));
+					secondaryOam_.Write8(secondaryOamAddr + i, primaryOam_.Read8(oamAddr + i));
 
 				++activeSpriteCount_;
 			}
@@ -446,35 +457,46 @@ void NESPPU::TickEvaluateSprites()
 		// Fetch sprites to render from secondary OAM.
 		// for the next scanline.
 		const u8 spriteIndex = (currentCycle_ - 257) / 8;
+		if (spriteIndex >= activeSpriteCount_)
+			return;
+
+		auto& sprite = activeSprites_[spriteIndex];
 		const u8 sprAddr = spriteIndex * 4;
+
 		switch ((currentCycle_ - 257) % 8)
 		{
 		case 0:
-			activeSprites_[spriteIndex].y = secondaryOam_.Read8(sprAddr);
+			sprite.y = secondaryOam_.Read8(sprAddr);
 			break;
 
 		case 1:
-			activeSprites_[spriteIndex].tileIndex = secondaryOam_.Read8(sprAddr + 1);
+			sprite.tileIndex = secondaryOam_.Read8(sprAddr + 1);
 			break;
 
 		case 2:
-			activeSprites_[spriteIndex].attributes = secondaryOam_.Read8(sprAddr + 2);
+			sprite.attributes = secondaryOam_.Read8(sprAddr + 2);
 			break;
 
 		case 3:
-			activeSprites_[spriteIndex].x = secondaryOam_.Read8(sprAddr + 3);
+			sprite.x = secondaryOam_.Read8(sprAddr + 3);
 			break;
 
 		// Fetch tile bitmap of sprite (probably 2 cycles per memory access).
 		case 5:
-			activeSprites_[spriteIndex].tileBitmapLo = comm_->Read8(
-				GetSpriteTileAddress(activeSprites_[spriteIndex].tileIndex)
+			sprite.tileBitmapLo = FetchTileBitmapLine(
+				GetSpriteTileAddress(sprite.tileIndex),
+				currentScanline_ - sprite.y,
+				NESHelper::IsBitSet(sprite.attributes, 6),
+				NESHelper::IsBitSet(sprite.attributes, 7)
 			);
 			break;
 
 		case 7:
-			activeSprites_[spriteIndex].tileBitmapLo = comm_->Read8(
-				GetSpriteTileAddress(activeSprites_[spriteIndex].tileIndex) + 8
+			sprite.tileBitmapLo = FetchTileBitmapLine(
+				GetSpriteTileAddress(sprite.tileIndex) + GetSpriteHeight(),
+				currentScanline_ - sprite.y,
+				NESHelper::IsBitSet(sprite.attributes, 6),
+				NESHelper::IsBitSet(sprite.attributes, 7)
 			);
 			break;
 		}
@@ -482,86 +504,67 @@ void NESPPU::TickEvaluateSprites()
 }
 
 
-void NESPPU::TickHandleSpriteZeroHits()
-{
-	// Sprite-0 hits are not detected if not visible scanline, 
-	// cycle >= 255 or if BG or Sprite rendering is off.
-	if (currentScanline_ > 239 || currentCycle_ >= 255 ||
-		!NESHelper::IsBitSet(reg_.PPUMASK, NES_PPU_REG_PPUMASK_b_BIT) ||
-		!NESHelper::IsBitSet(reg_.PPUMASK, NES_PPU_REG_PPUMASK_s_BIT))
-		return;
-
-	// Sprite-0 hits are also not detected if the left side clipping region
-	// if it is enabled for the BG or Sprites in PPUMASK.
-	if (currentCycle_ <= 7 &&
-		(!NESHelper::IsBitSet(reg_.PPUMASK, NES_PPU_REG_PPUMASK_m_BIT) ||
-		!NESHelper::IsBitSet(reg_.PPUMASK, NES_PPU_REG_PPUMASK_M_BIT)))
-		return;
-
-	// Read Sprite-0 OAM data from primary OAM.
-	NESPPUSprite sprZero;
-	sprZero.y = primaryOam_.Read8(0);
-	sprZero.x = primaryOam_.Read8(3);
-
-	// Check if Sprite-0 is in range.
-	if (sprZero.y > currentScanline_ ||
-		sprZero.y + GetSpriteHeight() <= currentScanline_ ||
-		sprZero.x > currentCycle_ ||
-		sprZero.x + 8 <= currentCycle_)
-		return;
-	
-	sprZero.tileIndex = primaryOam_.Read8(1);
-	sprZero.attributes = primaryOam_.Read8(2);
-
-	// Fetch the tile bitmap data for sprite-0.
-	sprZero.tileBitmapLo = comm_->Read8(GetSpriteTileAddress(sprZero.tileIndex));
-	sprZero.tileBitmapHi = comm_->Read8(GetSpriteTileAddress(sprZero.tileIndex + 8));
-
-	// @TODO: Respect flipping.
-
-	const u8 sprZeroPixColLo = sprZero.tileBitmapLo >> (7 - (currentCycle_ - sprZero.x)) & 1;
-	const u8 sprZeroPixColHi = sprZero.tileBitmapHi >> (7 - (currentCycle_ - sprZero.x)) & 1;
-	const u8 sprZeroPixColor = (sprZeroPixColHi << 1) | sprZeroPixColLo;
-
-	// @TODO: DEBUG!!!
-	const u8 colLo = (tileBitmapLo_ >> (7 - (currentCycle_ % 8))) & 1;
-	const u8 colHi = (tileBitmapHi_ >> (7 - (currentCycle_ % 8))) & 1;
-	const u8 colNum = (colHi << 1) | colLo;
-
-	if (sprZeroPixColor == 0 || colNum == 0)
-		return;
-
-	NESHelper::SetRefBit(reg_.PPUSTATUS, NES_PPU_REG_PPUSTATUS_S_BIT);
-}
-
-
 void NESPPU::TickRenderPixel()
 {
-	// Only render on visible scanlines and cycles >= 4.
-	if (currentScanline_ > 239 || currentCycle_ < 4)
+	// Only render on visible scanlines.
+	// Sprite 0 hits happen on cycle 2 at the earliest.
+	if (currentScanline_ > 239 || currentCycle_ < 2)
 		return;
 
-	// @TODO: DEBUG!!!!
-	const u8 colLo = (tileBitmapLo_ >> (7 - (currentCycle_ % 8))) & 1;
-	const u8 colHi = (tileBitmapHi_ >> (7 - (currentCycle_ % 8))) & 1;
-	const u8 colNum = (colHi << 1) | colLo;
+	// Assume no color to begin with for the background and sprite pixels.
+	u8 bgPixel = 0;
+	u8 sprPixel = 0;
 
-	const unsigned int drawX = currentCycle_;
-	const unsigned int drawY = currentScanline_;
-
-	// @TODO: Respect flipping of sprite
-
-	debug_.setPixel(drawX, drawY,
-		(colNum == 0 ? sf::Color::Black : ppuPalette[comm_->Read8(0x3F00 + (3 * atByte_) + colNum - 1)].ToSFColor())
-	);
-
-	for (u8 i = 0; i < activeSpriteCount_; ++i)
+	// Check if we should render background pixels
+	if (!(currentCycle_ <= 7 && !NESHelper::IsBitSet(reg_.PPUMASK, NES_PPU_REG_PPUMASK_m_BIT)) &&
+		NESHelper::IsBitSet(reg_.PPUMASK, NES_PPU_REG_PPUMASK_b_BIT))
 	{
-		if (activeSprites_[i].x == drawX)
+		// Get the color of the background pixel at this position.
+		bgPixel = GetTileBitmapLinePixel(tileBitmapHi_, tileBitmapLo_,
+			(currentCycle_ + (xScroll_ & 7)) % 8
+		);
+	}
+
+	// Check if we should render sprite pixels
+	if (!(currentCycle_ <= 7 && !NESHelper::IsBitSet(reg_.PPUMASK, NES_PPU_REG_PPUMASK_M_BIT)) &&
+		NESHelper::IsBitSet(reg_.PPUMASK, NES_PPU_REG_PPUMASK_s_BIT))
+	{
+		// Loop through active sprites to see if any should be drawn.
+		for (u8 i = 0; i < activeSpriteCount_; ++i)
 		{
-			debug_.setPixel(drawX, drawY, sf::Color::Green);
-			break;
+			const auto& sprite = activeSprites_[i];
+			if (sprite.x <= currentCycle_ && sprite.x + 8u > currentCycle_)
+			{
+				// Sprite is in range!
+				sprPixel = GetTileBitmapLinePixel(sprite.tileBitmapHi, sprite.tileBitmapLo,
+					currentCycle_ - sprite.x
+				);
+
+				// Check for Sprite-0 hits. (Cannot happen on cycle 255 and if sprite 0 hit
+				// already happened this frame)
+				if (sprite.GetPrimaryOAMIndex() == 0 && bgPixel != 0 && sprPixel != 0 &&
+					currentCycle_ != 255 && !sprite0HitThisFrame_)
+				{
+					sprite0HitThisFrame_ = true;
+					NESHelper::SetRefBit(reg_.PPUSTATUS, NES_PPU_REG_PPUSTATUS_S_BIT);
+				}
+
+				// @TODO: Sprite Priority
+			}
 		}
+	}
+
+	// No pixel output until the 4th cycle.
+	if (currentCycle_ >= 4)
+	{
+		// Determine the color of the pixel to draw.
+		NESPPUColor pixelColor;
+		if (sprPixel != 0)
+			pixelColor = NESPPUColor(0, 255, 0); // @TODO
+		else if (bgPixel != 0)
+			pixelColor = ppuPalette[comm_->Read8(0x3F00 + (3 * atByte_) + bgPixel - 1)];
+
+		debug_.setPixel(currentCycle_, currentScanline_, pixelColor.ToSFColor());
 	}
 }
 
@@ -609,7 +612,8 @@ void NESPPU::Tick()
 				if (currentCycle_ == 1)
 				{
 					// Clear PPUSTATUS flags on cycle 1 and reset
-					// internal v-blank flag.
+					// internal v-blank flag. Reset sprite-0 hit status.
+					sprite0HitThisFrame_ = false;
 					reg_.PPUSTATUS = 0;
 				}
 				else if (IsRenderingEnabled() && currentCycle_ >= 280 && currentCycle_ <= 304)
@@ -638,7 +642,6 @@ void NESPPU::Tick()
 
 				TickEvaluateSprites();
 				TickFetchTileData();
-				TickHandleSpriteZeroHits();
 				TickRenderPixel();
 			}
 		}

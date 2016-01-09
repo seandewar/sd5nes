@@ -18,6 +18,17 @@ namespace NESHelper
 	bool GetRandomBool(double trueChance = 0.5);
 
 	/**
+	* Reverses the bits in an 8-bit value and returns the result.
+	*/
+	inline u8 ReverseBits(u8 val)
+	{
+		val = (val & 0xF0) >> 4 | (val & 0xF) << 4;
+		val = (val & 0xCC) >> 2 | (val & 0x33) << 2;
+		val = (val & 0xAA) >> 1 | (val & 0x55) << 1;
+		return val;
+	}
+
+	/**
 	* Gets the value of a bit in the specified position of an 8-bit value.
 	*/
 	inline bool IsBitSet(u8 val, u8 pos) 
