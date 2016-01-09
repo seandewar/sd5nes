@@ -52,6 +52,7 @@ int main(int argc, char* argv[])
 	//emu.LoadROM("roms//sprite_overflow_tests//3.Timing.nes");
 	//emu.LoadROM("roms//sprite_overflow_tests//4.Obscure.nes"); // PASS
 	//emu.LoadROM("roms//sprite_overflow_tests//5.Emulator.nes"); // PASS
+	emu.LoadROM("roms//sprite_hit_tests_2005.10.05//01.basics.nes");
 
 	// Main loop.
 	while (window.isOpen())
