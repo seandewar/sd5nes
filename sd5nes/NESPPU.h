@@ -6,6 +6,7 @@
 #include <SFML\Graphics\Image.hpp>
 
 #include "NESTypes.h"
+#include "NESHelper.h"
 #include "NESMemory.h"
 
 /* Typedefs for the individual tables + typedef for holding both palettes (BG and Sprite). */
@@ -160,6 +161,21 @@ struct NESPPURegisters
 	{ }
 };
 
+/**
+* Internal structure of a stored sprite
+* to be rendered for the next scanline.
+*/
+struct NESPPUSprite
+{
+	u8 x, y, tileIndex, attributes;
+	u8 tileBitmapHi, tileBitmapLo;
+
+	NESPPUSprite() :
+		x(0), y(0), tileIndex(0), attributes(0),
+		tileBitmapHi(0), tileBitmapLo(0)
+	{ }
+};
+
 /* The amount of PPU cycles it takes for the value inside the internal data bus to decay. */
 #define NES_PPU_DATA_BUS_DECAY_CYCLES 357368
 
@@ -284,22 +300,34 @@ private:
 	NESMemory<0x20> secondaryOam_;
 
 	u8 activeSpriteCount_;
-	u8 spriteY_, spriteTile_, spriteAttrib_, spriteX_;
+	std::array<NESPPUSprite, 8> activeSprites_;
 
 	bool isEvenFrame_;
 
 	/**
-	* Increments coarse X of v.
-	* Result of the increment overflows into horizontal nt select of v.
+	* Gets the address of a sprite's (low) tile bitmap
+	* from its tileIndex.
 	*/
-	void IncrementCoarseX();
+	inline u16 GetSpriteTileAddress(u8 tileIndex) const
+	{
+		if (NESHelper::IsBitSet(reg_.PPUCTRL, NES_PPU_REG_PPUCTRL_H_BIT))
+			return (NESHelper::IsBitSet(tileIndex, 0) ? 0x1000 : 0) + tileIndex;
+		else
+			return (NESHelper::IsBitSet(reg_.PPUCTRL, NES_PPU_REG_PPUCTRL_S_BIT) ? 0x1000 : 0) + tileIndex;
+	}
 
 	/**
-	* Increments fine Y of v.
+	* Increments X of v.
+	* Result of the increment overflows into horizontal nt select of v.
+	*/
+	void IncrementScrollX();
+
+	/**
+	* Increments Y of v.
 	* Result of the increment overflows into coarse Y of v.
 	* Will wrap between the vertical name tables.
 	*/
-	void IncrementFineY();
+	void IncrementScrollY();
 
 	/**
 	* Increments VRAM Address after accessing PPUDATA

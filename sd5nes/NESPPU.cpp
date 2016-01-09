@@ -1,7 +1,5 @@
 #include "NESPPU.h"
 
-#include "NESHelper.h"
-
 #include <iostream> // TODO: DEBUG!
 
 
@@ -56,14 +54,14 @@ void NESPPU::Initialize(INESPPUCommunicationsInterface& comm)
 
 void NESPPU::HandlePPUDATAAccess()
 {
-	// @NOTE: PPU has some strange behaviour where it increments both coarse X and fine Y
+	// @NOTE: PPU has some strange behaviour where it increments both X and Y of v
 	// if rendering is enabled and the PPU is currently handling
 	// the pre-render or visible scanlines.
 	if ((currentScanline_ <= 239 || currentScanline_ == 261) &&
 		IsRenderingEnabled())
 	{
-		IncrementCoarseX();
-		IncrementFineY();
+		IncrementScrollX();
+		IncrementScrollY();
 	}
 	else
 	{
@@ -228,7 +226,6 @@ void NESPPU::Power()
 
 	isNmiPulled_ = false;
 	tScroll_ = vScroll_ = xScroll_ = activeSpriteCount_ = 0;
-	spriteY_ = spriteX_ = spriteTile_ = spriteAttrib_ = 0;
 
 	ppuDataBuffered_ = 0;
 
@@ -264,7 +261,6 @@ void NESPPU::Reset()
 
 	isNmiPulled_ = false;
 	tScroll_ = vScroll_ = xScroll_ = activeSpriteCount_ = 0;
-	spriteY_ = spriteX_ = spriteTile_ = spriteAttrib_ = 0;
 
 	ppuDataBuffered_ = 0;
 
@@ -281,7 +277,7 @@ void NESPPU::Reset()
 }
 
 
-void NESPPU::IncrementCoarseX()
+void NESPPU::IncrementScrollX()
 {
 	// Do not double increment for this tick.
 	if (xIncdThisTick_)
@@ -304,7 +300,7 @@ void NESPPU::IncrementCoarseX()
 }
 
 
-void NESPPU::IncrementFineY()
+void NESPPU::IncrementScrollY()
 {
 	// Do not double increment for this tick.
 	if (yIncdThisTick_)
@@ -391,13 +387,13 @@ void NESPPU::TickEvaluateSprites()
 		if (currentCycle_ == 1)
 			activeSpriteCount_ = 0;
 
-		// Clear secondary OAM value each cycle to $FF.
+		// Clear secondary OAM value every 2 cycles to $FF.
 		secondaryOam_.Write8((currentCycle_ - 1) / 2, 0xFF);
 	}
 	else if (currentCycle_ == 256) // @TODO: Cycle accuracy? CPU isn't truly cycle accurate anyway...
 	{
 		// Eval all 64 entries in OAM and try to find up to 8 sprites to render
-		// for this scanline.
+		// for the next scanline.
 		u8 n = 0;
 		u8 m = 0;
 		while (n < 64)
@@ -447,28 +443,38 @@ void NESPPU::TickEvaluateSprites()
 	else if (currentCycle_ >= 257 && currentCycle_ <= 320)
 	{
 		// Fetch sprites to render from secondary OAM.
+		// for the next scanline.
 		const u8 spriteIndex = (currentCycle_ - 257) / 8;
 		const u8 sprAddr = spriteIndex * 4;
 		switch ((currentCycle_ - 257) % 8)
 		{
 		case 0:
-			spriteY_ = secondaryOam_.Read8(sprAddr);
+			activeSprites_[spriteIndex].y = secondaryOam_.Read8(sprAddr);
 			break;
 
 		case 1:
-			spriteTile_ = secondaryOam_.Read8(sprAddr + 1);
+			activeSprites_[spriteIndex].tileIndex = secondaryOam_.Read8(sprAddr + 1);
 			break;
 
 		case 2:
-			spriteAttrib_ = secondaryOam_.Read8(sprAddr + 2);
+			activeSprites_[spriteIndex].attributes = secondaryOam_.Read8(sprAddr + 2);
 			break;
 
 		case 3:
-			spriteX_ = secondaryOam_.Read8(sprAddr + 3);
+			activeSprites_[spriteIndex].x = secondaryOam_.Read8(sprAddr + 3);
 			break;
 
-		default: // 4 to 7. (Cycles 5-8)
-			// @TODO Fetch sprite tile data.
+		// Fetch tile bitmap of sprite (probably 2 cycles per memory access).
+		case 5:
+			activeSprites_[spriteIndex].tileBitmapLo = comm_->Read8(
+				GetSpriteTileAddress(activeSprites_[spriteIndex].tileIndex)
+			);
+			break;
+
+		case 7:
+			activeSprites_[spriteIndex].tileBitmapLo = comm_->Read8(
+				GetSpriteTileAddress(activeSprites_[spriteIndex].tileIndex) + 8
+			);
 			break;
 		}
 	}
@@ -491,6 +497,15 @@ void NESPPU::TickRenderPixel()
 	debug_.setPixel(drawX, drawY,
 		(colNum == 0 ? sf::Color::Black : ppuPalette[comm_->Read8(0x3F00 + (3 * atByte_) + colNum - 1)].ToSFColor())
 	);
+
+	for (u8 i = 0; i < activeSpriteCount_; ++i)
+	{
+		if (activeSprites_[i].x == drawX)
+		{
+			debug_.setPixel(drawX, drawY, sf::Color::Green);
+			break;
+		}
+	}
 }
 
 
@@ -553,7 +568,7 @@ void NESPPU::Tick()
 			if (IsRenderingEnabled())
 			{
 				if (currentCycle_ == 256)
-					IncrementFineY();
+					IncrementScrollY();
 				else if (currentCycle_ == 257)
 				{
 					// v: ....F.. ...EDCBA = t: ....F.. ...EDCBA
@@ -562,12 +577,10 @@ void NESPPU::Tick()
 
 				if ((currentCycle_ <= 256 && currentCycle_ % 8 == 0) ||
 					currentCycle_ == 328 || currentCycle_ == 336)
-					IncrementCoarseX();
+					IncrementScrollX();
 
 				TickEvaluateSprites();
-
 				TickFetchTileData();
-				// @TODO: Sprite layer
 
 				TickRenderPixel();
 			}
