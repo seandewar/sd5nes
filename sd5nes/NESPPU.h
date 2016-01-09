@@ -305,6 +305,14 @@ private:
 	bool isEvenFrame_;
 
 	/**
+	* Gets the height of sprites as defined in H in PPUCTRL.
+	*/
+	inline u8 GetSpriteHeight() const
+	{
+		return (NESHelper::IsBitSet(reg_.PPUCTRL, NES_PPU_REG_PPUCTRL_H_BIT) ? 16u : 8u);
+	}
+
+	/**
 	* Gets the address of a sprite's (low) tile bitmap
 	* from its tileIndex.
 	*/
@@ -345,6 +353,11 @@ private:
 	* Handles the evaluation of sprites for this tick.
 	*/
 	void TickEvaluateSprites();
+
+	/**
+	* Handles the detection of sprite-0 hits.
+	*/
+	void TickHandleSpriteZeroHits();
 
 	/**
 	* Handles the rendering of pixels for this tick.
