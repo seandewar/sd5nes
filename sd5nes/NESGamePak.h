@@ -77,6 +77,7 @@ private:
 	u8 ramBanks_;
 
 	/* MMC, SRAM, PRG-ROM and CHR-ROM of the cart. */
+	// @TODO: Only store ROM and copy somewhere for RAM.
 	std::unique_ptr<NESMMC> mmc_;
 	std::vector<const NESMemPRGROMBank> prgRomBanks_;
 	std::vector<NESMemCHRBank> chrBanks_;
