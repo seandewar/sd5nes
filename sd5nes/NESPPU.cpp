@@ -521,6 +521,7 @@ void NESPPU::TickRenderPixel()
 		return;
 
 	// Assume no color to begin with for the background and sprite pixels.
+	u8 bgAttrib = 0;
 	u8 bgPixel = 0;
 	u8 sprAttrib = 0;
 	u8 sprPixel = 0;
@@ -530,6 +531,7 @@ void NESPPU::TickRenderPixel()
 		NESHelper::IsBitSet(reg_.PPUMASK, NES_PPU_REG_PPUMASK_b_BIT))
 	{
 		// Get the color of the background pixel at this position.
+		bgAttrib = activeTiles_[1].atByte;
 		bgPixel = GetTileBitmapLinePixel(activeTiles_[1].tileBitmapHi, activeTiles_[1].tileBitmapLo,
 			(currentCycle_ + (xScroll_ & 7)) % 8
 		);
@@ -564,19 +566,24 @@ void NESPPU::TickRenderPixel()
 	}
 
 	// No pixel output until the 4th cycle.
-	if (currentCycle_ >= 4)
-	{
+	//if (currentCycle_ >= 4)
+	//{
 		// Determine the color of the pixel to draw.
 		NESPPUColor pixelColor;
-		if (sprPixel != 0)
-			pixelColor = GetPPUPaletteColor(comm_->Read8(0x3F10 + 1 + (3 * (sprAttrib & 3)) + bgPixel));
-		else if (bgPixel != 0)
-			pixelColor = GetPPUPaletteColor(comm_->Read8(0x3F00 + 1 + (3 * activeTiles_[1].atByte) + bgPixel));
-		else if (bgPixel == 0) // Use universal background color.
+		if (sprPixel != 0) // Use first 2 bits of attrib.
+			pixelColor = GetPPUPaletteColor(comm_->Read8(0x3F11 + (3 * (sprAttrib & 3)) + sprPixel));
+		else if (bgPixel != 0) // Get the correct attrib for which corner the tile is on.
+		{
+			const auto isBottom = (((currentScanline_ /*- ((vScroll_ >> 12) & 7)*/) % 16) >= 8);
+			const auto isRight = (((currentCycle_/*- (xScroll_ & 7)*/) % 16) >= 8);
+			const u8 bgPixAttrib = (bgAttrib >> ((isBottom ? 4 : 0) + (isRight ? 2 : 0))) & 3;
+			pixelColor = GetPPUPaletteColor(comm_->Read8(0x3F01 + (3 * bgPixAttrib) + bgPixel));
+		}
+		else if (bgPixel == 0) // Use universal background color at $3F00
 			pixelColor = GetPPUPaletteColor(comm_->Read8(0x3F00));
 
 		debug_.setPixel(currentCycle_, currentScanline_, pixelColor.ToSFColor());
-	}
+	//}
 }
 
 

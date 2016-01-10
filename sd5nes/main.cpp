@@ -14,13 +14,13 @@ int main(int argc, char* argv[])
 		sf::VideoMode(NES_EMU_DEFAULT_WINDOW_WIDTH, NES_EMU_DEFAULT_WINDOW_HEIGHT),
 		"SD5 NES"
 		);
-	window.setFramerateLimit(50);
+	//window.setFramerateLimit(90);
 
 	NESEmulator emu(window);
 	//emu.LoadROM("roms//instr_test-v4//rom_singles//07-abs_xy.nes"); // PASS
 	//emu.LoadROM("roms//nestest.nes");
-	emu.LoadROM("roms//smb_jp_usa.nes");
-	//emu.LoadROM("roms//digdug.nes");
+	//emu.LoadROM("roms//smb_jp_usa.nes");
+	emu.LoadROM("roms//digdug.nes");
 	//emu.LoadROM("roms//full_palette.nes");
 	//emu.LoadROM("roms//registers.nes");
 	//emu.LoadROM("roms//blargg_ppu_tests_2005.09.15b//palette_ram.nes"); // PASS
