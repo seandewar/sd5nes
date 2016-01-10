@@ -47,7 +47,7 @@ protected:
 class NESMMCNROM : public NESMMC
 {
 public:
-	NESMMCNROM(NESMemSRAM& sram, NESMemCHRROMBank* chr, NESMemPRGROMBank& prg1, NESMemPRGROMBank* prg2 = nullptr);
+	NESMMCNROM(NESMemSRAM& sram, NESMemCHRBank& chr, const NESMemPRGROMBank& prg1, const NESMemPRGROMBank* prg2 = nullptr);
 	virtual ~NESMMCNROM();
 
 	inline NESMMCType GetType() const override { return NESMMCType::NROM; }
@@ -56,6 +56,6 @@ public:
 	u8 Read8(u16 addr) const override;
 
 private:
-	NESMemCHRROMBank* chr_;
-	std::array<NESMemPRGROMBank*, 2> prg_;
+	NESMemCHRBank& chr_;
+	std::array<const NESMemPRGROMBank*, 2> prg_;
 };

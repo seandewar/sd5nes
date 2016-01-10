@@ -11,16 +11,14 @@
 #include "NESMemory.h"
 
 /* Typedefs for the individual tables + typedef for holding both palettes (BG and Sprite). */
-typedef NESMemory<0x1000> NESMemPatternTable;
 typedef NESMemory<0x400> NESMemNameTable;
 typedef NESMemory<0x20> NESMemPalettes;
 
 /**
-* Struct containing palette memory, pattern, name and attribute tables for the PPU.
+* Struct containing palette memory, name and attribute tables for the PPU.
 */
 struct NESPPUMemory
 {
-	std::array<NESMemPatternTable, 2> patternTables;
 	std::array<NESMemNameTable, 2> nameTables;
 	NESMemPalettes paletteMem;
 };

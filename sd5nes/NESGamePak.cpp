@@ -31,7 +31,7 @@ void NESGamePak::ResetLoadedState()
 	mmc_.reset();
 	romFileName_.clear();
 	prgRomBanks_.clear();
-	chrRomBanks_.clear();
+	chrBanks_.clear();
 }
 
 
@@ -64,7 +64,7 @@ std::vector<u8> NESGamePak::ReadROMFile(const std::string& fileName)
 void NESGamePak::ParseROMFileData(const std::vector<u8>& data)
 {
 	// @TODO Whole function might need some optimizations if too much
-	// stuff is being copied all around the place... ?
+	// stuff is being copied all around the place...?
 	NESReadBuffer buf(data);
 	std::vector<u8> romInfo; // Vector containing the different ROM info bytes.
 	try
@@ -109,7 +109,11 @@ void NESGamePak::ParseROMFileData(const std::vector<u8>& data)
 		for (int i = 0; i < romInfo[INES_PRGROM_BANKS_INDEX]; ++i)
 			prgRomBanks_.emplace_back(NESMemPRGROMBank(buf.ReadNext(0x4000)));
 		for (int i = 0; i < romInfo[INES_CHRROM_BANKS_INDEX]; ++i)
-			chrRomBanks_.emplace_back(NESMemCHRROMBank(buf.ReadNext(0x2000)));
+			chrBanks_.emplace_back(NESMemCHRBank(buf.ReadNext(0x2000)));
+
+		// If we have no CHR-ROM/RAM banks then just create an empty one.
+		if (chrBanks_.size() == 0)
+			chrBanks_.emplace_back(NESMemCHRBank());
 	}
 	catch (const NESReadBufferException&)
 	{
@@ -127,7 +131,7 @@ void NESGamePak::ParseROMFileData(const std::vector<u8>& data)
 
 		mmc_ = std::make_unique<NESMMCNROM>(
 			sram_, 
-			(chrRomBanks_.size() != 0 ? &chrRomBanks_[0] : nullptr), 
+			chrBanks_[0], 
 			prgRomBanks_[0],
 			(prgRomBanks_.size() > 1 ? &prgRomBanks_[1] : nullptr)
 		);
@@ -159,15 +163,15 @@ bool NESGamePak::IsROMLoaded() const
 }
 
 
-const std::vector<NESMemPRGROMBank>& NESGamePak::GetProgramROMBanks() const
+const std::vector<const NESMemPRGROMBank>& NESGamePak::GetProgramROMBanks() const
 {
 	return prgRomBanks_;
 }
 
 
-const std::vector<NESMemCHRROMBank>& NESGamePak::GetCharacterROMBanks() const
+const std::vector<NESMemCHRBank>& NESGamePak::GetCharacterBanks() const
 {
-	return chrRomBanks_;
+	return chrBanks_;
 }
 
 

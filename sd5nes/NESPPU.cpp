@@ -563,7 +563,12 @@ void NESPPU::TickRenderPixel()
 		if (sprPixel != 0)
 			pixelColor = NESPPUColor(0, 255, 0); // @TODO
 		else if (bgPixel != 0)
-			pixelColor = ppuPalette[comm_->Read8(0x3F00 + (3 * activeTiles_[1].atByte) + bgPixel - 1)];
+		{
+			const auto paletteIndex = comm_->Read8(0x3F00 + (3 * activeTiles_[1].atByte) + bgPixel) % 64; // @TODO FIX
+			pixelColor = ppuPalette[paletteIndex];
+		}
+		else if (bgPixel == 0) // Use universal background color.
+			pixelColor = ppuPalette[comm_->Read8(0x3F00)];
 
 		debug_.setPixel(currentCycle_, currentScanline_, pixelColor.ToSFColor());
 	}

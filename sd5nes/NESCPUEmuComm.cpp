@@ -1,13 +1,11 @@
 #include "NESCPUEmuComm.h"
 
-#include "NESMMC.h"
 
-NESCPUEmuComm::NESCPUEmuComm(NESMemCPURAM& ram, NESPPU& ppu, NESMMC* mmc) :
+NESCPUEmuComm::NESCPUEmuComm(NESMemCPURAM& ram, NESPPU& ppu, NESMMC& mmc) :
 ram_(ram),
 ppu_(ppu),
-mmc_(mmc)
+mmc_(&mmc)
 {
-	assert(mmc_ != nullptr);
 }
 
 

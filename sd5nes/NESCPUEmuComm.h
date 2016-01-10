@@ -2,8 +2,8 @@
 
 #include "NESCPU.h"
 #include "NESPPU.h"
+#include "NESMMC.h"
 
-class NESMMC;
 
 /**
 * Communications interface allowing the CPU to communicate with its
@@ -12,7 +12,7 @@ class NESMMC;
 class NESCPUEmuComm : public INESCPUCommunicationsInterface
 {
 public:
-	NESCPUEmuComm(NESMemCPURAM& ram, NESPPU& ppu, NESMMC* mmc);
+	NESCPUEmuComm(NESMemCPURAM& ram, NESPPU& ppu, NESMMC& mmc);
 	virtual ~NESCPUEmuComm();
 
 	void Write8(u16 addr, u8 val) override;

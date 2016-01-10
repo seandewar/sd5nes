@@ -1,9 +1,10 @@
 #include "NESPPUEmuComm.h"
 
 
-NESPPUEmuComm::NESPPUEmuComm(NESPPUMemory& mem, NESCPU& cpu, NESPPUMirroringType ntMirror) :
+NESPPUEmuComm::NESPPUEmuComm(NESPPUMemory& mem, NESCPU& cpu, NESMMC& mmc, NESPPUMirroringType ntMirror) :
 mem_(mem),
 cpu_(cpu),
+mmc_(&mmc),
 ntMirror_(ntMirror)
 {
 	assert(ntMirror != NESPPUMirroringType::UNKNOWN);
@@ -59,7 +60,7 @@ void NESPPUEmuComm::Write8(u16 addr, u8 val)
 	addr &= 0x3FFF; // Mirror ($0000 .. $3FFF) to $4000
 
 	if (addr < 0x2000) // Pattern tables
-		mem_.patternTables[addr / 0x1000].Write8(addr & 0xFFF, val);
+		mmc_->Write8(addr, val);
 	else if (addr < 0x3F00) // Name tables
 		mem_.nameTables[GetNameTableIndex(addr)].Write8(addr & 0x3FF, val);
 	else // Palette memory
@@ -75,7 +76,7 @@ u8 NESPPUEmuComm::Read8(u16 addr) const
 	addr &= 0x3FFF; // Mirror ($0000 .. $3FFF) to $4000
 
 	if (addr < 0x2000) // Pattern tables
-		return mem_.patternTables[addr / 0x1000].Read8(addr & 0xFFF);
+		return mmc_->Read8(addr);
 	else if (addr < 0x3F00) // Name tables
 		return mem_.nameTables[GetNameTableIndex(addr)].Read8(addr & 0x3FF);
 	else // Palette memory

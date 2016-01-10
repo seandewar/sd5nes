@@ -29,7 +29,7 @@ public:
 
 typedef NESMemory<0x2000> NESMemSRAM;
 typedef NESMemory<0x4000> NESMemPRGROMBank;
-typedef NESMemory<0x2000> NESMemCHRROMBank;
+typedef NESMemory<0x2000> NESMemCHRBank;
 
 class NESMMC;
 
@@ -49,10 +49,10 @@ public:
 	bool IsROMLoaded() const;
 
 	// Retrieves a const reference to the read-only PRG-ROM banks contained in the cartridge.
-	const std::vector<NESMemPRGROMBank>& GetProgramROMBanks() const;
+	const std::vector<const NESMemPRGROMBank>& GetProgramROMBanks() const;
 
-	// Retrieves a const reference to the read-only CHR-ROM banks contained in the cartridge.
-	const std::vector<NESMemCHRROMBank>& GetCharacterROMBanks() const;
+	// Retrieves a const reference to the CHR-ROM / CHR-RAM banks contained in the cartridge.
+	const std::vector<NESMemCHRBank>& GetCharacterBanks() const;
 
 	// Gets the mirroring type used by the ROM.
 	NESPPUMirroringType GetMirroringType() const;
@@ -78,8 +78,8 @@ private:
 
 	/* MMC, SRAM, PRG-ROM and CHR-ROM of the cart. */
 	std::unique_ptr<NESMMC> mmc_;
-	std::vector<NESMemPRGROMBank> prgRomBanks_;
-	std::vector<NESMemCHRROMBank> chrRomBanks_;
+	std::vector<const NESMemPRGROMBank> prgRomBanks_;
+	std::vector<NESMemCHRBank> chrBanks_;
 	NESMemSRAM sram_;
 
 	// Resets the state of loading.

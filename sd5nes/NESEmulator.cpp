@@ -26,8 +26,10 @@ void NESEmulator::LoadROM(const std::string& fileName)
 	// @TODO debugdebugdebug
 	cart_.LoadROM(fileName);
 
-	cpuComm_ = std::make_unique<NESCPUEmuComm>(cpuRam_, ppu_, cart_.GetMMC());
-	ppuComm_ = std::make_unique<NESPPUEmuComm>(ppuMem_, cpu_, cart_.GetMirroringType());
+	auto mmc = cart_.GetMMC();
+	assert(mmc != nullptr);
+	cpuComm_ = std::make_unique<NESCPUEmuComm>(cpuRam_, ppu_, *mmc);
+	ppuComm_ = std::make_unique<NESPPUEmuComm>(ppuMem_, cpu_, *mmc, cart_.GetMirroringType());
 
 	cpu_.Initialize(*cpuComm_);
 	ppu_.Initialize(*ppuComm_);

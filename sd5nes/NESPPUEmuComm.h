@@ -2,6 +2,7 @@
 
 #include "NESPPU.h"
 #include "NESCPU.h"
+#include "NESMMC.h"
 
 #define NES_INVALID_NAME_TABLE_INDEX -1
 
@@ -12,7 +13,7 @@
 class NESPPUEmuComm : public INESPPUCommunicationsInterface
 {
 public:
-	NESPPUEmuComm(NESPPUMemory& mem, NESCPU& cpu, NESPPUMirroringType ntMirror);
+	NESPPUEmuComm(NESPPUMemory& mem, NESCPU& cpu, NESMMC& mmc, NESPPUMirroringType ntMirror);
 	virtual ~NESPPUEmuComm();
 
 	/**
@@ -30,6 +31,7 @@ public:
 
 private:
 	NESPPUMemory& mem_;
+	NESMMC* mmc_;
 	NESPPUMirroringType ntMirror_;
 
 	NESCPU& cpu_;
