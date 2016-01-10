@@ -34,6 +34,9 @@ void NESEmulator::LoadROM(const std::string& fileName)
 
 	cpu_.Power();
 	ppu_.Power();
+
+	for (unsigned int i = 0; i < 3; ++i)
+		ppu_.Tick();
 }
 
 

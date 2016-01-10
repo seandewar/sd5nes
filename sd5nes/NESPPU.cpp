@@ -225,12 +225,10 @@ void NESPPU::Power()
 	currentCycle_ = 0;
 	currentScanline_ = 241;
 
-	sprite0HitThisFrame_ = isNmiPulled_ = false;
+	isNmiPulled_ = false;
 	tScroll_ = vScroll_ = xScroll_ = activeSpriteCount_ = 0;
 
 	ppuDataBuffered_ = 0;
-
-	ntByte_ = atByte_ = tileBitmapHi_ = tileBitmapLo_ = 0;
 
 	latches_.internalDataBusVal = 0;
 	latches_.isAddressLatchOn = false;
@@ -261,12 +259,10 @@ void NESPPU::Reset()
 	currentCycle_ = 0;
 	currentScanline_ = 241;
 
-	sprite0HitThisFrame_ = isNmiPulled_ = false;
+	isNmiPulled_ = false;
 	tScroll_ = vScroll_ = xScroll_ = activeSpriteCount_ = 0;
 
 	ppuDataBuffered_ = 0;
-
-	ntByte_ = atByte_ = tileBitmapHi_ = tileBitmapLo_ = 0;
 
 	latches_.isAddressLatchOn = false;
 
@@ -349,20 +345,27 @@ void NESPPU::TickFetchTileData()
 
 	switch (currentCycle_ % 8)
 	{
+	case 0:
+		// Store buffering tile as the active background tile.
+		activeTiles_[1] = activeTiles_[0];
+		activeTiles_[0] = bufferingTile_;
+		bufferingTile_ = NESPPUBGTileData();
+		break;
+
 	case 1:
 		// Fetch the Name table Byte.
-		ntByte_ = comm_->Read8(0x2000 | (vScroll_ & 0xFFF));
+		bufferingTile_.ntByte = comm_->Read8(0x2000 | (vScroll_ & 0xFFF));
 		break;
 
 	case 3:
 		// Fetch the Attribute table Byte.
-		atByte_ = comm_->Read8(0x23C0 | (vScroll_ & 0xC00) | ((vScroll_ >> 4) & 0x38) | ((vScroll_ >> 2) & 7));
+		bufferingTile_.atByte = comm_->Read8(0x23C0 | (vScroll_ & 0xC00) | ((vScroll_ >> 4) & 0x38) | ((vScroll_ >> 2) & 7));
 		break;
 
 	case 5:
 		// Fetch the Tile Bitmap Low Byte from Pattern table.
-		tileBitmapLo_ = FetchTileBitmapLine(
-			GetBackgroundTileAddress(ntByte_),
+		bufferingTile_.tileBitmapLo = FetchTileBitmapLine(
+			GetBackgroundTileAddress(bufferingTile_.ntByte),
 			(vScroll_ >> 12) & 7,
 			false,
 			false
@@ -371,8 +374,8 @@ void NESPPU::TickFetchTileData()
 
 	case 7:
 		// Fetch the Tile Bitmap High Byte from Pattern table.
-		tileBitmapHi_ = FetchTileBitmapLine(
-			GetBackgroundTileAddress(ntByte_) + 8,
+		bufferingTile_.tileBitmapHi = FetchTileBitmapLine(
+			GetBackgroundTileAddress(bufferingTile_.ntByte) + 8,
 			(vScroll_ >> 12) & 7,
 			false,
 			false
@@ -493,7 +496,7 @@ void NESPPU::TickEvaluateSprites()
 
 		case 7:
 			sprite.tileBitmapLo = FetchTileBitmapLine(
-				GetSpriteTileAddress(sprite.tileIndex) + GetSpriteHeight(),
+				GetSpriteTileAddress(sprite.tileIndex) + 8,
 				currentScanline_ - sprite.y,
 				NESHelper::IsBitSet(sprite.attributes, 6),
 				NESHelper::IsBitSet(sprite.attributes, 7)
@@ -520,7 +523,7 @@ void NESPPU::TickRenderPixel()
 		NESHelper::IsBitSet(reg_.PPUMASK, NES_PPU_REG_PPUMASK_b_BIT))
 	{
 		// Get the color of the background pixel at this position.
-		bgPixel = GetTileBitmapLinePixel(tileBitmapHi_, tileBitmapLo_,
+		bgPixel = GetTileBitmapLinePixel(activeTiles_[1].tileBitmapHi, activeTiles_[1].tileBitmapLo,
 			(currentCycle_ + (xScroll_ & 7)) % 8
 		);
 	}
@@ -533,6 +536,7 @@ void NESPPU::TickRenderPixel()
 		for (u8 i = 0; i < activeSpriteCount_; ++i)
 		{
 			const auto& sprite = activeSprites_[i];
+			
 			if (sprite.x <= currentCycle_ && sprite.x + 8u > currentCycle_)
 			{
 				// Sprite is in range!
@@ -540,14 +544,11 @@ void NESPPU::TickRenderPixel()
 					currentCycle_ - sprite.x
 				);
 
-				// Check for Sprite-0 hits. (Cannot happen on cycle 255 and if sprite 0 hit
-				// already happened this frame)
+				// Check for Sprite-0 hits. (Cannot happen on cycle >= 255 and if sprite 0 hit
+				// already happened this frame).
 				if (sprite.GetPrimaryOAMIndex() == 0 && bgPixel != 0 && sprPixel != 0 &&
-					currentCycle_ != 255 && !sprite0HitThisFrame_)
-				{
-					sprite0HitThisFrame_ = true;
+					currentCycle_ < 255)
 					NESHelper::SetRefBit(reg_.PPUSTATUS, NES_PPU_REG_PPUSTATUS_S_BIT);
-				}
 
 				// @TODO: Sprite Priority
 			}
@@ -562,7 +563,7 @@ void NESPPU::TickRenderPixel()
 		if (sprPixel != 0)
 			pixelColor = NESPPUColor(0, 255, 0); // @TODO
 		else if (bgPixel != 0)
-			pixelColor = ppuPalette[comm_->Read8(0x3F00 + (3 * atByte_) + bgPixel - 1)];
+			pixelColor = ppuPalette[comm_->Read8(0x3F00 + (3 * activeTiles_[1].atByte) + bgPixel - 1)];
 
 		debug_.setPixel(currentCycle_, currentScanline_, pixelColor.ToSFColor());
 	}
@@ -611,9 +612,7 @@ void NESPPU::Tick()
 
 				if (currentCycle_ == 1)
 				{
-					// Clear PPUSTATUS flags on cycle 1 and reset
-					// internal v-blank flag. Reset sprite-0 hit status.
-					sprite0HitThisFrame_ = false;
+					// Clear PPUSTATUS flags on cycle 1.
 					reg_.PPUSTATUS = 0;
 				}
 				else if (IsRenderingEnabled() && currentCycle_ >= 280 && currentCycle_ <= 304)

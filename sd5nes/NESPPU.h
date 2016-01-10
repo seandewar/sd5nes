@@ -199,6 +199,25 @@ private:
 	u8 primaryOamIndex_;
 };
 
+/**
+* Internal structure of a stored background tile's data.
+*/
+struct NESPPUBGTileData
+{
+	u8 ntByte, atByte;
+	u8 tileBitmapHi, tileBitmapLo;
+
+	NESPPUBGTileData() :
+		ntByte(0), atByte(0),
+		tileBitmapHi(0), tileBitmapLo(0)
+	{ }
+
+	NESPPUBGTileData(u8 nt, u8 at, u8 tileBmpHi, u8 tileBmpLo) :
+		ntByte(nt), atByte(at), 
+		tileBitmapHi(tileBmpHi), tileBitmapLo(tileBmpLo)
+	{ }
+};
+
 /* The amount of PPU cycles it takes for the value inside the internal data bus to decay. */
 #define NES_PPU_DATA_BUS_DECAY_CYCLES 357368
 
@@ -298,6 +317,9 @@ private:
 	NESPPURegisters reg_;
 	NESPPULatches latches_;
 
+	NESMemory<0x100> primaryOam_;
+	NESMemory<0x20> secondaryOam_;
+
 	bool isFrameFinished_;
 
 	unsigned int elapsedCycles_;
@@ -316,15 +338,11 @@ private:
 	// Buffered data of PPUDATA.
 	u8 ppuDataBuffered_;
 
-	u8 ntByte_, atByte_;
-	u8 tileBitmapHi_, tileBitmapLo_;
-
-	NESMemory<0x100> primaryOam_;
-	NESMemory<0x20> secondaryOam_;
+	std::array<NESPPUBGTileData, 2> activeTiles_;
+	NESPPUBGTileData bufferingTile_;
 
 	u8 activeSpriteCount_;
 	std::array<NESPPUSprite, 8> activeSprites_;
-	bool sprite0HitThisFrame_;
 
 	bool isEvenFrame_;
 
@@ -370,13 +388,16 @@ private:
 
 	/**
 	* Gets a tile bitmap line while respecting horizontal and vertical flipping.
-	* lineNum should be in the range 0 to 7.
+	* Also supports tiles for sprites of 16 height.
+	* lineNum should be in the range 0 to 15.
 	*/
 	inline u8 FetchTileBitmapLine(u16 tileAddr, u8 lineNum, bool flipHoriz, bool flipVert) const
 	{
-		assert(lineNum < 8);
+		assert(lineNum < 16);
 
-		const u8 tileBitmapLine = comm_->Read8(tileAddr + (flipVert ? 7 - lineNum : lineNum));
+		//const u16 tileBmpAddr = tileAddr + (lineNum >= 8 ? 8 : 0) + (flipVert ? 7 - lineNum : lineNum);
+		const u16 tileBmpAddr = tileAddr + (flipVert ? (lineNum >= 8 ? 15 : 7) - lineNum : lineNum);
+		const u8 tileBitmapLine = comm_->Read8(tileBmpAddr);
 		return (flipHoriz ? NESHelper::ReverseBits(tileBitmapLine) : tileBitmapLine);
 	}
 

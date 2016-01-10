@@ -34,7 +34,6 @@ chr_(chr)
 {
 	prg_[0] = &prg1;
 	prg_[1] = (prg2 != nullptr ? prg2 : &prg1);
-
 }
 
 
