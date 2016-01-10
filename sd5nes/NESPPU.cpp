@@ -5,9 +5,9 @@
 
 NESPPU::NESPPU(sf::Image& debug) :
 comm_(nullptr),
-isFrameFinished_(false),
 currentCycle_(0),
 elapsedCycles_(0),
+elapsedFrames_(0),
 debug_(debug) // @TODO Debug!!
 {
 }
@@ -175,6 +175,10 @@ u8 NESPPU::ReadRegister(NESPPURegisterType reg)
 	case NESPPURegisterType::PPUSTATUS:
 		returnVal = reg_.PPUSTATUS;
 
+		// Notify that PPUSTATUS was read this tick to emulate race condition where
+		// no V-BLANK NMI will be triggered at the start of V-BLANK.
+		ppuStatusReadThisTick_ = true;
+
 		// The V-Blank flag is cleared upon read
 		NESHelper::ClearRefBit(reg_.PPUSTATUS, NES_PPU_REG_PPUSTATUS_V_BIT);
 
@@ -218,14 +222,15 @@ void NESPPU::Power()
 {
 	assert(comm_ != nullptr);
 
-	isFrameFinished_ = false;
+	elapsedFrames_ = elapsedCycles_ = 0;
+
 	isEvenFrame_ = true;
 
 	xIncdThisTick_ = yIncdThisTick_ = false;
 	currentCycle_ = 0;
 	currentScanline_ = 241;
 
-	isNmiPulled_ = false;
+	ppuStatusReadThisTick_ = isNmiPulled_ = false;
 	tScroll_ = vScroll_ = xScroll_ = activeSpriteCount_ = 0;
 
 	ppuDataBuffered_ = 0;
@@ -253,13 +258,14 @@ void NESPPU::Reset()
 {
 	assert(comm_ != nullptr);
 
-	isFrameFinished_ = false;
+	elapsedFrames_ = elapsedCycles_ = 0;
+
 	isEvenFrame_ = true;
 
 	currentCycle_ = 0;
 	currentScanline_ = 241;
 
-	isNmiPulled_ = false;
+	ppuStatusReadThisTick_ = isNmiPulled_ = false;
 	tScroll_ = vScroll_ = xScroll_ = activeSpriteCount_ = 0;
 
 	ppuDataBuffered_ = 0;
@@ -396,7 +402,7 @@ void NESPPU::TickEvaluateSprites()
 		// Clear secondary OAM value every 2 cycles to $FF.
 		secondaryOam_.Write8((currentCycle_ - 1) / 2, 0xFF);
 	}
-	else if (currentCycle_ == 256) // @TODO: Cycle accuracy? CPU isn't truly cycle accurate anyway...
+	else if (currentCycle_ == 256) // @TODO: Cycle accuracy? CPU isn't truly cycle accurate anyway... (and frankly I just don't care anymore)
 	{
 		// Clear active sprite count.
 		activeSpriteCount_ = 0;
@@ -409,7 +415,7 @@ void NESPPU::TickEvaluateSprites()
 		{
 			const u16 oamAddr = (4 * n) + m;
 			const u8 sprY = primaryOam_.Read8(oamAddr);
-			const bool sprInRange = (sprY <= currentScanline_ && 
+			const auto sprInRange = (sprY <= currentScanline_ && 
 				static_cast<unsigned int>(sprY + GetSpriteHeight()) > currentScanline_);
 
 			// Check if we already have 8 sprites found and check for overflow if we do.
@@ -516,6 +522,7 @@ void NESPPU::TickRenderPixel()
 
 	// Assume no color to begin with for the background and sprite pixels.
 	u8 bgPixel = 0;
+	u8 sprAttrib = 0;
 	u8 sprPixel = 0;
 
 	// Check if we should render background pixels
@@ -540,6 +547,7 @@ void NESPPU::TickRenderPixel()
 			if (sprite.x <= currentCycle_ && sprite.x + 8u > currentCycle_)
 			{
 				// Sprite is in range!
+				sprAttrib = sprite.attributes;
 				sprPixel = GetTileBitmapLinePixel(sprite.tileBitmapHi, sprite.tileBitmapLo,
 					currentCycle_ - sprite.x
 				);
@@ -561,14 +569,11 @@ void NESPPU::TickRenderPixel()
 		// Determine the color of the pixel to draw.
 		NESPPUColor pixelColor;
 		if (sprPixel != 0)
-			pixelColor = NESPPUColor(0, 255, 0); // @TODO
+			pixelColor = GetPPUPaletteColor(comm_->Read8(0x3F10 + 1 + (3 * (sprAttrib & 3)) + bgPixel));
 		else if (bgPixel != 0)
-		{
-			const auto paletteIndex = comm_->Read8(0x3F00 + (3 * activeTiles_[1].atByte) + bgPixel) % 64; // @TODO FIX
-			pixelColor = ppuPalette[paletteIndex];
-		}
+			pixelColor = GetPPUPaletteColor(comm_->Read8(0x3F00 + 1 + (3 * activeTiles_[1].atByte) + bgPixel));
 		else if (bgPixel == 0) // Use universal background color.
-			pixelColor = ppuPalette[comm_->Read8(0x3F00)];
+			pixelColor = GetPPUPaletteColor(comm_->Read8(0x3F00));
 
 		debug_.setPixel(currentCycle_, currentScanline_, pixelColor.ToSFColor());
 	}
@@ -578,8 +583,6 @@ void NESPPU::TickRenderPixel()
 void NESPPU::Tick()
 {
 	assert(comm_ != nullptr);
-
-	isFrameFinished_ = false; // We will set this true if this is the last tick of the frame.
 
 	// @TODO: Handle PAL (70 V-BLANK scanlines instead).
 
@@ -592,7 +595,9 @@ void NESPPU::Tick()
 			/*** V-BLANK period (241 - 260)           ***/
 
 			// Set V-BLANK on cycle 1 of scanline 241.
-			if (currentScanline_ == 241 && currentCycle_ == 1)
+			// @NOTE: Check that PPUSTATUS was NOT read this tick so that we can emulate
+			// race condition causing V-BLANK NMI to not trigger.
+			if (currentScanline_ == 241 && currentCycle_ == 1 && !ppuStatusReadThisTick_)
 			{
 				// Set V flag in PPUSTATUS and make sure Nmi isn't pulled.
 				NESHelper::SetRefBit(reg_.PPUSTATUS, NES_PPU_REG_PPUSTATUS_V_BIT);
@@ -619,6 +624,7 @@ void NESPPU::Tick()
 				{
 					// Clear PPUSTATUS flags on cycle 1.
 					reg_.PPUSTATUS = 0;
+					isNmiPulled_ = false;
 				}
 				else if (IsRenderingEnabled() && currentCycle_ >= 280 && currentCycle_ <= 304)
 				{
@@ -651,6 +657,10 @@ void NESPPU::Tick()
 		}
 	}
 
+	// Used for determining if we should skip the last cycle of scanline 261.
+	const auto oddFrameSkip = (currentScanline_ == 261 && currentCycle_ == 339 
+		&& !isEvenFrame_ && IsRenderingEnabled());
+
 	++elapsedCycles_;
 	++currentCycle_;
 
@@ -664,12 +674,11 @@ void NESPPU::Tick()
 	if (reg_.writeIgnoreCyclesLeft > 0)
 		--reg_.writeIgnoreCyclesLeft;
 
-	xIncdThisTick_ = yIncdThisTick_ = false;
+	ppuStatusReadThisTick_ = xIncdThisTick_ = yIncdThisTick_ = false;
 
 	// Check if we're at the end of this scanline (which is one cycle earlier (339)
 	// on the pre-render scanline (261) when on an odd frame).
-	if (currentCycle_ > 340 || 
-		(currentScanline_ == 261 && currentCycle_ == 339 && !isEvenFrame_))
+	if (currentCycle_ > 340 || oddFrameSkip)
 	{
 		currentCycle_ = 0;
 		++currentScanline_;
@@ -679,7 +688,8 @@ void NESPPU::Tick()
 		{
 			currentScanline_ = 0;
 			isEvenFrame_ = !isEvenFrame_;
-			isFrameFinished_ = true;
+			
+			++elapsedFrames_;
 		}
 	}
 }

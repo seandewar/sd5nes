@@ -294,6 +294,63 @@ NESCPUOpArgInfo NESCPU::ReadOpArgInfo(NESCPUOpAddrMode addrMode)
 }
 
 
+//void NESCPU::FetchOp()
+//{
+//	// Fetch the amount of cycles not yet handled by the previous instruction.
+//	const auto unhandledCycles = (currentOp_.IsValid() ? currentOp_.opCyclesLeft : 0);
+//
+//	try
+//	{
+//		// Get the next opcode.
+//		currentOp_ = NESCPUExecutingOpInfo(comm_->Read8(reg_.PC));
+//	}
+//	catch (const NESMemoryException&)
+//	{
+//		throw NESCPUExecutionException("Could not read the next opcode for program execution.", reg_);
+//	}
+//
+//	// Get opcode mapping info.
+//	assert("Invalid opcode!" && opInfos_[currentOp_.op].opFunc != nullptr);
+//
+//	// Add the amount of unhandled cycles to the current instruction's cycle count.
+//	currentOp_.opCyclesLeft = opInfos_[currentOp_.op].cycleCount + unhandledCycles;
+//	currentOp_.opChangedPC = false;
+//}
+//
+//
+//void NESCPU::ExecuteOp()
+//{
+//	// Get arg info for executing instruction.
+//	auto argInfo = ReadOpArgInfo(opInfos_[currentOp_.op].addrMode);
+//
+//	u16 val;
+//	if (argInfo.addrMode == NESCPUOpAddrMode::IMMEDIATE)
+//		val = comm_->Read8(argInfo.argAddr);
+//	else if (argInfo.addrMode == NESCPUOpAddrMode::ACCUMULATOR)
+//		val = 0;
+//	else
+//		val = argInfo.argAddr;
+//	//
+//	//std::cout << "SP: $" << std::hex << +reg_.SP << ",  " <<  << std::endl;
+//	//std::cout << "stack: ";
+//	//for (u8 i = 0xFF; i >= 0 && i > reg_.SP; --i)
+//	//	std::cout << std::hex << +comm_->Read8(NES_CPU_STACK_START + i) << ", ";
+//	//std::cout << std::endl;
+//	//
+//	//static int a = 0;
+//	//if (a > 300000)
+//	//std::cout << "Cyc: " << elapsedCycles_ << ", Reg: " << reg_.ToString() << "\t Ins: " << OpAsAsm(opInfos_[currentOp_.op].opName, opInfos_[currentOp_.op].addrMode, val) << std::endl;
+//	//++a;
+//
+//	// Execute instruction.
+//	(this->*opInfos_[currentOp_.op].opFunc)(argInfo);
+//
+//	// Go to the next instruction if the CPU isn't now jammed...
+//	if (!currentOp_.opChangedPC && !isJammed_)
+//		reg_.PC += GetOpSizeFromAddrMode(opInfos_[currentOp_.op].addrMode);
+//}
+
+
 void NESCPU::ExecuteNextOp()
 {
 	if (isJammed_ || stallTicksLeft_ > 0)
@@ -357,7 +414,7 @@ void NESCPU::ExecuteNextOp()
 	//
 	//static int a = 0;
 	//if (a > 300000)
-		//std::cout << "Cyc: " << elapsedCycles_ << ", Reg: " << reg_.ToString() << "\t Ins: " << OpAsAsm(opMapping.opName, opMapping.addrMode, val) << std::endl;
+	//std::cout << "Cyc: " << elapsedCycles_ << ", Reg: " << reg_.ToString() << "\t Ins: " << OpAsAsm(opMapping.opName, opMapping.addrMode, val) << std::endl;
 	//++a;
 
 	// Execute instruction.
@@ -373,45 +430,52 @@ NESCPUInterruptType NESCPU::HandleInterrupts()
 {
 	auto handledInt = NESCPUInterruptType::NONE;
 
-	// Handle interrupts while accounting for priority.
-	// Only IRQ's check for the interrupt disable flag (I).
+	// Determine which interrupt to handle depending on priority.
 	if (intReset_)
-	{
 		handledInt = NESCPUInterruptType::RESET;
-
-		UpdateRegPC(NESHelper::MemoryRead16(*comm_, 0xFFFC));
-		reg_.SP = 0xFA; // SP and P changed from reset.
-		reg_.SetP(0x24);
-		intReset_ = false;
-	}
 	else if (!isJammed_ && stallTicksLeft_ == 0)
 	{
 		if (intNmi_) // @TODO: Check for NMI Edge!
-		{
 			handledInt = NESCPUInterruptType::NMI;
-
-			UpdateRegPC(NESHelper::MemoryRead16(*comm_, 0xFFFA));
-			intNmi_ = false;
-		}
 		else if (intIrq_ && !NESHelper::IsBitSet(reg_.GetP(), NES_CPU_REG_P_I_BIT))
-		{
 			handledInt = NESCPUInterruptType::IRQ;
-
-			UpdateRegPC(NESHelper::MemoryRead16(*comm_, 0xFFFE));
-			intIrq_ = false;
-		}
 	}
 
+	// Check if we have any interrupts we need to currently handle.
 	if (handledInt != NESCPUInterruptType::NONE)
 	{
-		// If it wasn't a reset, we need to push the next PC and status register (P).
 		if (handledInt != NESCPUInterruptType::RESET)
 		{
-			StackPush16(reg_.PC + 1);
+			// If it wasn't a reset, we need to push the next PC and status register (P).
+			StackPush16(reg_.PC);
 			StackPush8(reg_.GetP());
 		}
+		else
+		{
+			// SP and P changed from reset.
+			reg_.SP = 0xFA;
+			reg_.SetP(0x24);
+		}
 
-		// Make sure the interrupt disable flag is set if we interrupted.
+		switch (handledInt)
+		{
+		case NESCPUInterruptType::RESET:
+			UpdateRegPC(NESHelper::MemoryRead16(*comm_, 0xFFFC));
+			intReset_ = false;
+			break;
+
+		case NESCPUInterruptType::NMI:
+			UpdateRegPC(NESHelper::MemoryRead16(*comm_, 0xFFFA));
+			intNmi_ = false;
+			break;
+
+		case NESCPUInterruptType::IRQ:
+			UpdateRegPC(NESHelper::MemoryRead16(*comm_, 0xFFFE));
+			intIrq_ = false;
+			break;
+		}
+
+		// We interrupted, so make sure the interupt disable flag is set.
 		reg_.SetP(NESHelper::SetBit(reg_.GetP(), NES_CPU_REG_P_I_BIT));
 
 		// Interrupts take 7 cycles to execute.
@@ -420,6 +484,61 @@ NESCPUInterruptType NESCPU::HandleInterrupts()
 
 	return handledInt;
 }
+
+
+//void NESCPU::Tick()
+//{
+//	assert(comm_ != nullptr);
+//
+//	// Check that the current instruction has finished executing.
+//	if (currentOp_.opCyclesLeft == 0 && !isJammed_ && stallTicksLeft_ == 0)
+//	{
+//		// Check for interrupts - we can fetch next instruction now
+//		// if no interrupts were handled.
+//		if (HandleInterrupts() == NESCPUInterruptType::NONE)
+//		{
+//			// If we have yet to fetch any instructions, do so now.
+//			if (!currentOp_.IsValid())
+//				FetchOp();
+//			else
+//			{
+//				// Execute the instruction we previously fetched.
+//				ExecuteOp();
+//				FetchOp();
+//			}
+//		}
+//	}
+//
+//	// @TODO Debug!
+//	static bool testDone = false;
+//	if (comm_->Read8(0x6000) != 0x80 &&
+//		comm_->Read8(0x6001) == 0xDE &&
+//		comm_->Read8(0x6002) == 0xB0 &&
+//		comm_->Read8(0x6003) == 0x61 &&
+//		!testDone)
+//	{
+//		testDone = true;
+//		std::cout << "Test status: $" << std::hex << +comm_->Read8(0x6000) << std::endl;
+//		std::cout << "Message: " << std::endl;
+//		for (u16 i = 0x6004;; ++i)
+//		{
+//			const u8 c = comm_->Read8(i);
+//			if (c == 0)
+//				break;
+//
+//			std::cout << c;
+//		}
+//		std::cout << std::endl;
+//	}
+//	else if (comm_->Read8(0x6000) == 0x81)
+//		intReset_ = true;
+//
+//	++elapsedCycles_;
+//	if (currentOp_.opCyclesLeft != 0)
+//		--currentOp_.opCyclesLeft;
+//	if (stallTicksLeft_ != 0)
+//		--stallTicksLeft_;
+//}
 
 
 void NESCPU::Tick()

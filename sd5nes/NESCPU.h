@@ -179,11 +179,26 @@ struct NESCPUExecutingOpInfo
 	int opCyclesLeft;
 	bool opChangedPC;
 
-	NESCPUExecutingOpInfo(u8 op = NES_OP_KIL_IMPLIED1) :
+	NESCPUExecutingOpInfo() :
+		isValid_(false),
+		op(NES_OP_KIL_IMPLIED1), opCyclesLeft(0),
+		opChangedPC(false)
+	{ }
+
+	NESCPUExecutingOpInfo(u8 op) :
+		isValid_(true),
 		op(op),
 		opCyclesLeft(0),
 		opChangedPC(false)
 	{ }
+
+	/**
+	* Whether or not the structure is currently valid.
+	*/
+	inline bool IsValid() const { return isValid_; }
+
+private:
+	bool isValid_;
 };
 
 /**
@@ -317,9 +332,19 @@ private:
 	*/
 	NESCPUInterruptType HandleInterrupts();
 
+	///**
+	//* Fetches the next instruction to be executed.
+	//*/
+	//void FetchOp();
+
+	///**
+	//* Executes the next opcode at the PC.
+	//* Can throw NESCPUExecutionException.
+	//*/
+	//void ExecuteOp();
+
 	/**
-	* Executes the next opcode at the PC.
-	* Can throw NESCPUExecutionException.
+	* Executes the next instruction.
 	*/
 	void ExecuteNextOp();
 

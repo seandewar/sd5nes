@@ -303,9 +303,14 @@ public:
 	inline bool IsRenderingEnabled() const { return ((reg_.PPUMASK & 0x18) != 0); }
 
 	/**
-	* Whether or not the frame has completely finished rendering on the last tick.
+	* Gets the number of elapsed frames since reset / power.
 	*/
-	inline bool IsFrameFinished() const { return isFrameFinished_; }
+	inline unsigned int GetElapsedFramesCount() const { return elapsedFrames_; }
+
+	/**
+	* Gets the number of elapsed PPU cycles since reset / power.
+	*/
+	inline unsigned int GetElapsedCyclesCount() const { return elapsedCycles_; }
 
 private:
 	sf::Image& debug_; // @TODO DEBUG!!
@@ -318,14 +323,13 @@ private:
 	NESMemory<0x100> primaryOam_;
 	NESMemory<0x20> secondaryOam_;
 
-	bool isFrameFinished_;
-
+	unsigned int elapsedFrames_;
 	unsigned int elapsedCycles_;
 
 	unsigned int currentScanline_;
 	unsigned int currentCycle_;
 
-	bool isNmiPulled_;
+	bool isNmiPulled_, ppuStatusReadThisTick_;
 	bool xIncdThisTick_, yIncdThisTick_;
 
 	// v (current v-ram addr) [15-bits used], t (temp v-ram addr) [15-bits used]
@@ -377,7 +381,7 @@ private:
 	* Gets the color of a tile bitmap line's pixel at a specified position.
 	* pos cannot be above 7.
 	*/
-	inline u8 GetTileBitmapLinePixel(u8 tileBmpHi, u8 tileBmpLo, u8 pos)
+	inline u8 GetTileBitmapLinePixel(u8 tileBmpHi, u8 tileBmpLo, u8 pos) const
 	{
 		assert(pos < 8);
 
@@ -398,6 +402,11 @@ private:
 		const u8 tileBitmapLine = comm_->Read8(tileBmpAddr);
 		return (flipHoriz ? NESHelper::ReverseBits(tileBitmapLine) : tileBitmapLine);
 	}
+
+	/**
+	* Gets the color of a PPU palette value.
+	*/
+	inline NESPPUColor GetPPUPaletteColor(u8 palette) const { return ppuPalette[palette & 0x3F]; }
 
 	/**
 	* Increments X of v.

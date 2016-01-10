@@ -48,17 +48,15 @@ void NESEmulator::Frame()
 	sf::Texture tex;
 
 	// Keep ticking until a frame is fully rendered by the PPU.
-	do
+	const auto elapsedFrames = ppu_.GetElapsedFramesCount();
+	while (elapsedFrames == ppu_.GetElapsedFramesCount())
 	{
 		cpu_.Tick();
 
-		for (unsigned int i = 0; i < 3; ++i)
-		{
-			ppu_.Tick();
-			if (ppu_.IsFrameFinished())
-				break;
-		}
-	} while (!ppu_.IsFrameFinished());
+		ppu_.Tick();
+		ppu_.Tick();
+		ppu_.Tick();
+	} 
 
 	tex.loadFromImage(debug_);
 	spr.setTexture(tex);

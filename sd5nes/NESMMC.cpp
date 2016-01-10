@@ -14,14 +14,14 @@ NESMMC::~NESMMC()
 
 void NESMMC::Write8(u16 addr, u8 val)
 {
-	if (addr > 0x6000 && addr < 0x8000) // Cartridge SRAM
+	if (addr >= 0x6000 && addr < 0x8000) // Cartridge SRAM
 		sram_.Write8(addr - 0x6000, val);
 }
 
 
 u8 NESMMC::Read8(u16 addr) const
 {
-	if (addr > 0x6000 && addr < 0x8000) // Cartridge SRAM
+	if (addr >= 0x6000 && addr < 0x8000) // Cartridge SRAM
 		return sram_.Read8(addr - 0x6000);
 	else
 		return 0;
@@ -45,7 +45,7 @@ NESMMCNROM::~NESMMCNROM()
 void NESMMCNROM::Write8(u16 addr, u8 val)
 {
 	if (addr < 0x2000) // CHR-ROM / CHR-RAM
-			chr_.Write8(addr, val);
+		chr_.Write8(addr, val);
 	else
 		NESMMC::Write8(addr, val);
 }
