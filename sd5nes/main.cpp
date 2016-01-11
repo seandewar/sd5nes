@@ -14,7 +14,7 @@ int main(int argc, char* argv[])
 		sf::VideoMode(NES_EMU_DEFAULT_WINDOW_WIDTH, NES_EMU_DEFAULT_WINDOW_HEIGHT),
 		"SD5 NES"
 		);
-	//window.setFramerateLimit(90);
+	window.setFramerateLimit(50);
 
 	NESEmulator emu(window);
 	//emu.LoadROM("roms//instr_test-v4//rom_singles//07-abs_xy.nes"); // PASS

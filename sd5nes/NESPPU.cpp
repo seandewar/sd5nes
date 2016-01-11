@@ -577,7 +577,7 @@ void NESPPU::TickRenderPixel()
 	{
 		const auto isBottom = ((currentScanline_ % 32) >= 16);
 		const auto isRight = ((currentCycle_ % 32) >= 16);
-		const u8 bgPixAttrib = bgAttrib;// >> ((isBottom ? 4 : 0) + (isRight ? 2 : 0)) & 3;
+		const u8 bgPixAttrib = bgAttrib >> ((isBottom ? 4 : 0) + (isRight ? 2 : 0)) & 3;
 		pixelColor = GetPPUPaletteColor(comm_->Read8(0x3F01 + (3 * bgPixAttrib) + bgPixel));
 	}
 	else if (bgPixel == 0) // Use universal background color at $3F00

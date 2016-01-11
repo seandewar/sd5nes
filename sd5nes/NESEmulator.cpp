@@ -60,7 +60,5 @@ void NESEmulator::Frame()
 
 	tex.loadFromImage(debug_);
 	spr.setTexture(tex);
-	spr.setPosition(0.0f, 0.0f);
-	spr.setScale(2.0f, 2.0f);
 	target_.draw(spr);
 }
