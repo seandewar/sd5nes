@@ -394,7 +394,7 @@ private:
 	{
 		assert(lineNum < 16);
 
-		// If vertical flipping is enabled, check which line we're meant to flip.
+		// If vertical flipping is enabled, check which line we should be on instead.
 		if (flipVert)
 			lineNum = (NESHelper::IsBitSet(reg_.PPUCTRL, NES_PPU_REG_PPUCTRL_H_BIT) ? 16 : 8) - lineNum;
 
