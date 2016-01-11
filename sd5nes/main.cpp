@@ -20,7 +20,7 @@ int main(int argc, char* argv[])
 	//emu.LoadROM("roms//instr_test-v4//rom_singles//07-abs_xy.nes"); // PASS
 	//emu.LoadROM("roms//nestest.nes");
 	//emu.LoadROM("roms//smb_jp_usa.nes");
-	emu.LoadROM("roms//digdug.nes");
+	//emu.LoadROM("roms//digdug.nes");
 	//emu.LoadROM("roms//full_palette.nes");
 	//emu.LoadROM("roms//registers.nes");
 	//emu.LoadROM("roms//blargg_ppu_tests_2005.09.15b//palette_ram.nes"); // PASS
@@ -38,7 +38,7 @@ int main(int argc, char* argv[])
 	//emu.LoadROM("roms//sprite_hit_tests_2005.10.05//01.basics.nes"); // PASS
 	//emu.LoadROM("roms//sprite_hit_tests_2005.10.05//02.alignment.nes"); // PASS
 	//emu.LoadROM("roms//sprite_hit_tests_2005.10.05//03.corners.nes"); // PASS
-	//emu.LoadROM("roms//sprite_hit_tests_2005.10.05//04.flip.nes"); // PASS
+	emu.LoadROM("roms//sprite_hit_tests_2005.10.05//04.flip.nes");
 	//emu.LoadROM("roms//sprite_hit_tests_2005.10.05//05.left_clip.nes"); // PASS
 	//emu.LoadROM("roms//sprite_hit_tests_2005.10.05//06.right_edge.nes"); // PASS
 	//emu.LoadROM("roms//sprite_hit_tests_2005.10.05//07.screen_bottom.nes");

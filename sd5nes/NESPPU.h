@@ -396,7 +396,7 @@ private:
 
 		// If vertical flipping is enabled, check which line we should be on instead.
 		if (flipVert)
-			lineNum = (NESHelper::IsBitSet(reg_.PPUCTRL, NES_PPU_REG_PPUCTRL_H_BIT) ? 16 : 8) - lineNum;
+			lineNum = (NESHelper::IsBitSet(reg_.PPUCTRL, NES_PPU_REG_PPUCTRL_H_BIT) ? 15 : 7) - lineNum;
 
 		const u16 tileBmpAddr = tileAddr + (lineNum >= 8 ? 8 : 0) + lineNum;
 		const u8 tileBitmapLine = comm_->Read8(tileBmpAddr);
