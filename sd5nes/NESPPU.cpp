@@ -558,8 +558,7 @@ void NESPPU::TickRenderPixel()
 				if (sprPixel == 0)
 					continue;
 
-				// Check for Sprite-0 hits. (Cannot happen on cycle >= 255 and if sprite 0 hit
-				// already happened this frame).
+				// Check for Sprite-0 hits. (Cannot happen on cycle >= 255).
 				if (sprite.GetPrimaryOAMIndex() == 0 && bgPixel != 0 && currentCycle_ < 255)
 					NESHelper::SetRefBit(reg_.PPUSTATUS, NES_PPU_REG_PPUSTATUS_S_BIT);
 
@@ -620,10 +619,9 @@ void NESPPU::Tick()
 			{
 				// Set V flag in PPUSTATUS and make sure Nmi isn't pulled.
 				NESHelper::SetRefBit(reg_.PPUSTATUS, NES_PPU_REG_PPUSTATUS_V_BIT);
-				isNmiPulled_ = false;
 			}
 
-			if (currentScanline_ >= 241 &&
+			if (currentScanline_ >= 241 && currentCycle_ >= 3 &&
 				NESHelper::IsBitSet(reg_.PPUSTATUS, NES_PPU_REG_PPUSTATUS_V_BIT) &&
 				NESHelper::IsBitSet(reg_.PPUCTRL, NES_PPU_REG_PPUCTRL_V_BIT) &&
 				!isNmiPulled_)

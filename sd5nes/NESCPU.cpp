@@ -486,61 +486,6 @@ NESCPUInterruptType NESCPU::HandleInterrupts()
 }
 
 
-//void NESCPU::Tick()
-//{
-//	assert(comm_ != nullptr);
-//
-//	// Check that the current instruction has finished executing.
-//	if (currentOp_.opCyclesLeft == 0 && !isJammed_ && stallTicksLeft_ == 0)
-//	{
-//		// Check for interrupts - we can fetch next instruction now
-//		// if no interrupts were handled.
-//		if (HandleInterrupts() == NESCPUInterruptType::NONE)
-//		{
-//			// If we have yet to fetch any instructions, do so now.
-//			if (!currentOp_.IsValid())
-//				FetchOp();
-//			else
-//			{
-//				// Execute the instruction we previously fetched.
-//				ExecuteOp();
-//				FetchOp();
-//			}
-//		}
-//	}
-//
-//	// @TODO Debug!
-//	static bool testDone = false;
-//	if (comm_->Read8(0x6000) != 0x80 &&
-//		comm_->Read8(0x6001) == 0xDE &&
-//		comm_->Read8(0x6002) == 0xB0 &&
-//		comm_->Read8(0x6003) == 0x61 &&
-//		!testDone)
-//	{
-//		testDone = true;
-//		std::cout << "Test status: $" << std::hex << +comm_->Read8(0x6000) << std::endl;
-//		std::cout << "Message: " << std::endl;
-//		for (u16 i = 0x6004;; ++i)
-//		{
-//			const u8 c = comm_->Read8(i);
-//			if (c == 0)
-//				break;
-//
-//			std::cout << c;
-//		}
-//		std::cout << std::endl;
-//	}
-//	else if (comm_->Read8(0x6000) == 0x81)
-//		intReset_ = true;
-//
-//	++elapsedCycles_;
-//	if (currentOp_.opCyclesLeft != 0)
-//		--currentOp_.opCyclesLeft;
-//	if (stallTicksLeft_ != 0)
-//		--stallTicksLeft_;
-//}
-
-
 void NESCPU::Tick()
 {
 	assert(comm_ != nullptr);
@@ -548,10 +493,8 @@ void NESCPU::Tick()
 	// Check that the current instruction has finished executing.
 	if (currentOp_.opCyclesLeft == 0)
 	{
-		// Check for interrupts - we can execute next instruction now
-		// if no interrupts were handled.
-		if (HandleInterrupts() == NESCPUInterruptType::NONE)
-			ExecuteNextOp();
+		ExecuteNextOp();
+		HandleInterrupts();
 	}
 
 	++elapsedCycles_;

@@ -38,7 +38,7 @@ int main(int argc, char* argv[])
 	//emu.LoadROM("roms//sprite_hit_tests_2005.10.05//01.basics.nes"); // PASS
 	//emu.LoadROM("roms//sprite_hit_tests_2005.10.05//02.alignment.nes"); // PASS
 	//emu.LoadROM("roms//sprite_hit_tests_2005.10.05//03.corners.nes"); // PASS
-	emu.LoadROM("roms//sprite_hit_tests_2005.10.05//04.flip.nes");
+	//emu.LoadROM("roms//sprite_hit_tests_2005.10.05//04.flip.nes"); // PASS
 	//emu.LoadROM("roms//sprite_hit_tests_2005.10.05//05.left_clip.nes"); // PASS
 	//emu.LoadROM("roms//sprite_hit_tests_2005.10.05//06.right_edge.nes"); // PASS
 	//emu.LoadROM("roms//sprite_hit_tests_2005.10.05//07.screen_bottom.nes");
@@ -49,13 +49,13 @@ int main(int argc, char* argv[])
 	//emu.LoadROM("roms//ppu_vbl_nmi//01-vbl_basics.nes"); // PASS
 	//emu.LoadROM("roms//ppu_vbl_nmi//02-vbl_set_time.nes"); // PASS
 	//emu.LoadROM("roms//ppu_vbl_nmi//03-vbl_clear_time.nes"); // PASS
-	//emu.LoadROM("roms//ppu_vbl_nmi//04-nmi_control.nes");
+	//emu.LoadROM("roms//ppu_vbl_nmi//04-nmi_control.nes"); // PASS
 	//emu.LoadROM("roms//ppu_vbl_nmi//05-nmi_timing.nes");
-	//emu.LoadROM("roms//ppu_vbl_nmi//06-suppression.nes");
+	//emu.LoadROM("roms//ppu_vbl_nmi//06-suppression.nes"); // PASS
 	//emu.LoadROM("roms//ppu_vbl_nmi//07-nmi_on_timing.nes");
 	//emu.LoadROM("roms//ppu_vbl_nmi//08-nmi_off_timing.nes");
-	//emu.LoadROM("roms//ppu_vbl_nmi//09-even_odd_frames.nes");
-	//emu.LoadROM("roms//ppu_vbl_nmi//10-even_odd_timing.nes");
+	//emu.LoadROM("roms//ppu_vbl_nmi//09-even_odd_frames.nes"); // PASS
+	emu.LoadROM("roms//ppu_vbl_nmi//10-even_odd_timing.nes");
 	//emu.LoadROM("roms//nes_instr_misc//01-abs_x_wrap.nes");
 	//emu.LoadROM("roms//cpu_interrupts_v2//1-cli_latency.nes");
 	//emu.LoadROM("roms//cpu_interrupts_v2//2-nmi_and_brk.nes");

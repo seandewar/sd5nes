@@ -68,7 +68,7 @@ void NESPPUEmuComm::Write8(u16 addr, u8 val)
 		std::cout << "Palette write: $" << std::hex << addr << ", val: $" << std::hex << +val << std::endl;
 
 		mem_.paletteMem.Write8(addr & 0x1F, val);
-		mem_.paletteMem.Write8((addr & 0x1F) ^ 0x10, val); // @TODO HACK HACK
+		mem_.paletteMem.Write8((addr & 0x1F) ^ 0x10, val);
 	}
 }
 

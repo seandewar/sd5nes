@@ -159,9 +159,9 @@ struct NESCPUOpInfo
 	const bool isOfficialOp;
 	const NESOpFuncPointer opFunc;
 	const NESCPUOpAddrMode addrMode;
-	const int cycleCount;
+	const unsigned int cycleCount;
 
-	NESCPUOpInfo(const std::string& opName, bool isOfficialOp, NESOpFuncPointer opFunc, NESCPUOpAddrMode addrMode, int cycleCount) :
+	NESCPUOpInfo(const std::string& opName, bool isOfficialOp, NESOpFuncPointer opFunc, NESCPUOpAddrMode addrMode, unsigned int cycleCount) :
 		opName(opName),
 		isOfficialOp(isOfficialOp),
 		opFunc(opFunc),
@@ -176,7 +176,7 @@ struct NESCPUOpInfo
 struct NESCPUExecutingOpInfo
 {
 	u8 op;
-	int opCyclesLeft;
+	unsigned int opCyclesLeft;
 	bool opChangedPC;
 
 	NESCPUExecutingOpInfo() :
@@ -331,17 +331,6 @@ private:
 	* Returns NESCPUInterruptType::NONE if no interrupt was handled.
 	*/
 	NESCPUInterruptType HandleInterrupts();
-
-	///**
-	//* Fetches the next instruction to be executed.
-	//*/
-	//void FetchOp();
-
-	///**
-	//* Executes the next opcode at the PC.
-	//* Can throw NESCPUExecutionException.
-	//*/
-	//void ExecuteOp();
 
 	/**
 	* Executes the next instruction.
