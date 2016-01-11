@@ -371,7 +371,7 @@ private:
 	*/
 	inline u16 GetSpriteTileAddress(u8 tileIndex) const
 	{
-		return (NESHelper::IsBitSet(reg_.PPUCTRL, NES_PPU_REG_PPUCTRL_S_BIT) ? 0 : 0x1000) + (tileIndex * 16);
+		return (NESHelper::IsBitSet(reg_.PPUCTRL, NES_PPU_REG_PPUCTRL_S_BIT) ? 0x1000 : 0) + (tileIndex * 16);
 	}
 
 	/**
@@ -394,8 +394,11 @@ private:
 	{
 		assert(lineNum < 16);
 
-		//const u16 tileBmpAddr = tileAddr + (lineNum >= 8 ? 8 : 0) + (flipVert ? 7 - lineNum : lineNum);
-		const u16 tileBmpAddr = tileAddr + (flipVert ? (lineNum >= 8 ? 15 : 7) - lineNum : lineNum);
+		// If vertical flipping is enabled, check which line we're meant to flip.
+		if (flipVert)
+			lineNum = (NESHelper::IsBitSet(reg_.PPUCTRL, NES_PPU_REG_PPUCTRL_H_BIT) ? 16 : 8) - lineNum;
+
+		const u16 tileBmpAddr = tileAddr + (lineNum >= 8 ? 8 : 0) + lineNum;
 		const u8 tileBitmapLine = comm_->Read8(tileBmpAddr);
 		return (flipHoriz ? NESHelper::ReverseBits(tileBitmapLine) : tileBitmapLine);
 	}
