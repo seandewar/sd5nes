@@ -65,6 +65,8 @@ void NESPPUEmuComm::Write8(u16 addr, u8 val)
 		mem_.nameTables[GetNameTableIndex(addr)].Write8(addr & 0x3FF, val);
 	else // Palette memory
 	{
+		std::cout << "Palette write: $" << std::hex << addr << ", val: $" << std::hex << +val << std::endl;
+
 		mem_.paletteMem.Write8(addr & 0x1F, val);
 		mem_.paletteMem.Write8((addr & 0x1F) ^ 0x10, val); // @TODO HACK HACK
 	}

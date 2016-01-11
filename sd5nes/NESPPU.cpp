@@ -554,34 +554,46 @@ void NESPPU::TickRenderPixel()
 					currentCycle_ - sprite.x
 				);
 
+				// If this is a transparent pixel, just continue to the next entry.
+				if (sprPixel == 0)
+					continue;
+
 				// Check for Sprite-0 hits. (Cannot happen on cycle >= 255 and if sprite 0 hit
 				// already happened this frame).
-				if (sprite.GetPrimaryOAMIndex() == 0 && bgPixel != 0 && sprPixel != 0 &&
-					currentCycle_ < 255)
+				if (sprite.GetPrimaryOAMIndex() == 0 && bgPixel != 0 && currentCycle_ < 255)
 					NESHelper::SetRefBit(reg_.PPUSTATUS, NES_PPU_REG_PPUSTATUS_S_BIT);
 
-				// @TODO: Sprite Priority
+				// Check sprite priority - background flag is bit 5, we do not render this
+				// pixel of the sprite if the background flag is set and a background pixel is
+				// being drawn.
+				if (NESHelper::IsBitSet(sprite.attributes, 5) && bgPixel != 0)
+					sprPixel = 0;
+
+				break;
 			}
 		}
 	}
 
-	// No pixel output until the 4th cycle.
-	//if (currentCycle_ < 4)
-	//	return;
-
 	// Determine the color of the pixel to draw.
 	NESPPUColor pixelColor;
-	if (sprPixel != 0) // Use first 2 bits of attrib.
-		pixelColor = GetPPUPaletteColor(comm_->Read8(0x3F10 + (3 * (sprAttrib & 3)) + sprPixel));
-	else if (bgPixel != 0) // Get the correct attrib for which corner the tile is on.
+	if (sprPixel != 0)
 	{
+		// Use first 2 bits of attrib.
+		pixelColor = GetPPUPaletteColor(comm_->Read8(0x3F10 + (4 * (sprAttrib & 3)) + sprPixel));
+	}
+	else if (bgPixel != 0)
+	{
+		// Get the correct attrib for which corner the tile is on.
 		const auto isBottom = ((((vScroll_ >> 12) & 3) % 32) >= 16);
 		const auto isRight = (((xScroll_ & 3) % 32) >= 16);
-		const u8 bgPixAttrib = bgAttrib >> ((isBottom ? 4 : 0) + (isRight ? 2 : 0)) & 3;
-		pixelColor = GetPPUPaletteColor(comm_->Read8(0x3F00 + (3 * bgPixAttrib) + bgPixel));
+		const u8 bgPixAttrib = (bgAttrib >> ((isBottom ? 4 : 0) + (isRight ? 2 : 0))) & 3;
+		pixelColor = GetPPUPaletteColor(comm_->Read8(0x3F00 + (4 * bgPixAttrib) + bgPixel));
 	}
-	else if (bgPixel == 0) // Use universal background color at $3F00
+	else if (bgPixel == 0)
+	{
+		// Use universal background color at $3F00
 		pixelColor = GetPPUPaletteColor(comm_->Read8(0x3F00));
+	}
 
 	debug_.setPixel(currentCycle_, currentScanline_, pixelColor.ToSFColor());
 }
