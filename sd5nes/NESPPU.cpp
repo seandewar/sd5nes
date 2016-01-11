@@ -566,24 +566,32 @@ void NESPPU::TickRenderPixel()
 	}
 
 	// No pixel output until the 4th cycle.
-	//if (currentCycle_ >= 4)
-	//{
-		// Determine the color of the pixel to draw.
-		NESPPUColor pixelColor;
-		if (sprPixel != 0) // Use first 2 bits of attrib.
-			pixelColor = GetPPUPaletteColor(comm_->Read8(0x3F11 + (3 * (sprAttrib & 3)) + sprPixel));
-		else if (bgPixel != 0) // Get the correct attrib for which corner the tile is on.
-		{
-			const auto isBottom = (((currentScanline_ /*- ((vScroll_ >> 12) & 7)*/) % 16) >= 8);
-			const auto isRight = (((currentCycle_/*- (xScroll_ & 7)*/) % 16) >= 8);
-			const u8 bgPixAttrib = (bgAttrib >> ((isBottom ? 4 : 0) + (isRight ? 2 : 0))) & 3;
-			pixelColor = GetPPUPaletteColor(comm_->Read8(0x3F01 + (3 * bgPixAttrib) + bgPixel));
-		}
-		else if (bgPixel == 0) // Use universal background color at $3F00
-			pixelColor = GetPPUPaletteColor(comm_->Read8(0x3F00));
+	//if (currentCycle_ < 4)
+	//	return;
 
-		debug_.setPixel(currentCycle_, currentScanline_, pixelColor.ToSFColor());
-	//}
+	// Determine the color of the pixel to draw.
+	NESPPUColor pixelColor;
+	if (sprPixel != 0) // Use first 2 bits of attrib.
+		pixelColor = GetPPUPaletteColor(comm_->Read8(0x3F11 + (3 * (sprAttrib & 3)) + sprPixel));
+	else if (bgPixel != 0) // Get the correct attrib for which corner the tile is on.
+	{
+		const auto isBottom = ((currentScanline_ % 32) >= 16);
+		const auto isRight = ((currentCycle_ % 32) >= 16);
+		const u8 bgPixAttrib = bgAttrib;// >> ((isBottom ? 4 : 0) + (isRight ? 2 : 0)) & 3;
+		pixelColor = GetPPUPaletteColor(comm_->Read8(0x3F01 + (3 * bgPixAttrib) + bgPixel));
+	}
+	else if (bgPixel == 0) // Use universal background color at $3F00
+		pixelColor = GetPPUPaletteColor(comm_->Read8(0x3F00));
+
+	// br bl tr tl
+
+	// debug
+	//const auto isBottom = ((currentScanline_ % 32) >= 16);
+	//const auto isRight = ((currentCycle_ % 32) >= 16);
+	//const u8 bgPixAttrib = bgAttrib;// >> ((isBottom ? 4 : 0) + (isRight ? 2 : 0)) & 3;
+	//pixelColor = GetPPUPaletteColor(comm_->Read8(0x3F01 + (3 * bgPixAttrib) + 1));
+
+	debug_.setPixel(currentCycle_, currentScanline_, pixelColor.ToSFColor());
 }
 
 
