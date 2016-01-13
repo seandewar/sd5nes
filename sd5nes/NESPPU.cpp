@@ -516,8 +516,7 @@ void NESPPU::TickEvaluateSprites()
 void NESPPU::TickRenderPixel()
 {
 	// Only render on visible scanlines.
-	// Sprite 0 hits happen on cycle 2 at the earliest.
-	if (currentScanline_ > 239 || currentCycle_ < 2)
+	if (currentScanline_ > 239)
 		return;
 
 	// Assume no color to begin with for the background and sprite pixels.
@@ -558,8 +557,8 @@ void NESPPU::TickRenderPixel()
 				if (sprPixel == 0)
 					continue;
 
-				// Check for Sprite-0 hits. (Cannot happen on cycle >= 255).
-				if (sprite.GetPrimaryOAMIndex() == 0 && bgPixel != 0 && currentCycle_ < 255)
+				// Check for Sprite-0 hits. (Cannot happen on cycle >= 255 or cycle < 2).
+				if (sprite.GetPrimaryOAMIndex() == 0 && bgPixel != 0 && currentCycle_ < 255 && currentCycle_ >= 2)
 					NESHelper::SetRefBit(reg_.PPUSTATUS, NES_PPU_REG_PPUSTATUS_S_BIT);
 
 				// Check sprite priority - background flag is bit 5, we do not render this
@@ -583,10 +582,19 @@ void NESPPU::TickRenderPixel()
 	else if (bgPixel != 0)
 	{
 		// Get the correct attrib for which corner the tile is on.
-		const auto isBottom = ((((vScroll_ >> 12) & 3) % 32) >= 16);
-		const auto isRight = (((xScroll_ & 3) % 32) >= 16);
+		const auto isBottom = (((((vScroll_ & 0x60) >> 2) | ((vScroll_ >> 12) & 7)) % 32) >= 16);
+		const auto isRight = (((((vScroll_ & 3) << 3) | (xScroll_ & 7)) % 32) >= 16);
 		const u8 bgPixAttrib = (bgAttrib >> ((isBottom ? 4 : 0) + (isRight ? 2 : 0))) & 3;
+
 		pixelColor = GetPPUPaletteColor(comm_->Read8(0x3F00 + (4 * bgPixAttrib) + bgPixel));
+		//if (!isBottom && !isRight)
+		//	pixelColor = NESPPUColor(255, 0, 0);
+		//else if (!isBottom && isRight)
+		//	pixelColor = NESPPUColor(0, 255, 0);
+		//else if (isBottom && !isRight)
+		//	pixelColor = NESPPUColor(0, 0, 255);
+		//else if (isBottom && isRight)
+		//	pixelColor = NESPPUColor(155, 155, 0);
 	}
 	else if (bgPixel == 0)
 	{

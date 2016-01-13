@@ -1,10 +1,12 @@
 #include "NESCPUEmuComm.h"
 
 
-NESCPUEmuComm::NESCPUEmuComm(NESMemCPURAM& ram, NESPPU& ppu, NESMMC& mmc) :
+NESCPUEmuComm::NESCPUEmuComm(NESMemCPURAM& ram, NESPPU& ppu, NESMMC& mmc, 
+	const NESControllerPorts& controllers) :
 ram_(ram),
 ppu_(ppu),
-mmc_(&mmc)
+mmc_(mmc),
+controllers_(controllers)
 {
 }
 
@@ -59,10 +61,14 @@ void NESCPUEmuComm::Write8(u16 addr, u8 val)
 		ppu_.WriteRegister(GetPPURegister(0x2000 + (addr & 7)), val);
 	else if (addr == 0x4014) // PPU I/O OAMDATA Register
 		ppu_.WriteRegister(GetPPURegister(0x4014), val);
-	else if (addr < 0x4020) // pAPU I/O Registers
+	else if (addr < 0x4016) // pAPU I/O Registers
+		return; // @TODO
+	else if (addr == 0x4016) // Controller Strobe
+		return;
+	else if (addr == 0x4017) // pAPU Frame Counter
 		return; // @TODO
 	else // Use the MMC
-		mmc_->Write8(addr, val);
+		mmc_.Write8(addr, val);
 }
 
 
@@ -74,8 +80,10 @@ u8 NESCPUEmuComm::Read8(u16 addr) const
 		return ppu_.ReadRegister(GetPPURegister(0x2000 + (addr & 7)));
 	else if (addr == 0x4014) // PPU I/O OAMDATA Register
 		return ppu_.ReadRegister(GetPPURegister(0x4014));
-	else if (addr < 0x4020) // pAPU I/O Registers
+	else if (addr < 0x4016) // pAPU I/O Registers
 		return 0; // @TODO
+	else if (addr < 0x4018) // Controllers 1 and 2
+		return 0;
 	else // Use the MMC
-		return mmc_->Read8(addr);
+		return mmc_.Read8(addr);
 }

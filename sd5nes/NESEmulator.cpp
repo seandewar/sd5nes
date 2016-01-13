@@ -11,7 +11,11 @@ NESEmulator::NESEmulator(sf::RenderTarget& target) :
 target_(target),
 ppu_(debug_) // @TODO DEBUG!
 {
-	// @TODO DEBUG!!
+	// Init controller ports
+	for (auto& port : controllers_)
+		port = nullptr;
+
+	// @TODO: DEBUG!!
 	debug_.create(341, 262, sf::Color::Black);
 }
 
@@ -21,14 +25,67 @@ NESEmulator::~NESEmulator()
 }
 
 
+bool NESEmulator::AddController(NESControllerPort port, const INESController& controller)
+{
+	std::size_t controllerIndex;
+	switch (port)
+	{
+	case NESControllerPort::CONTROLLER_1:
+		controllerIndex = 0;
+		break;
+
+	case NESControllerPort::CONTROLLER_2:
+		controllerIndex = 1;
+		break;
+
+	default:
+		assert(false && "Unknown controller port!");
+		return false;
+	}
+
+	if (controllers_[controllerIndex] != nullptr)
+		return false;
+
+	controllers_[controllerIndex] = &controller;
+	return true;
+}
+
+
+bool NESEmulator::RemoveController(NESControllerPort port)
+{
+	std::size_t controllerIndex;
+	switch (port)
+	{
+	case NESControllerPort::CONTROLLER_1:
+		controllerIndex = 0;
+		break;
+
+	case NESControllerPort::CONTROLLER_2:
+		controllerIndex = 1;
+		break;
+
+	default:
+		assert(false && "Unknown controller port!");
+		return false;
+	}
+
+	if (controllers_[controllerIndex] == nullptr)
+		return false;
+
+	controllers_[controllerIndex] = nullptr;
+	return true;
+}
+
+
 void NESEmulator::LoadROM(const std::string& fileName)
 {
-	// @TODO debugdebugdebug
+	// @TODO: debugdebugdebug
 	cart_.LoadROM(fileName);
 
 	auto mmc = cart_.GetMMC();
 	assert(mmc != nullptr);
-	cpuComm_ = std::make_unique<NESCPUEmuComm>(cpuRam_, ppu_, *mmc);
+
+	cpuComm_ = std::make_unique<NESCPUEmuComm>(cpuRam_, ppu_, *mmc, controllers_);
 	ppuComm_ = std::make_unique<NESPPUEmuComm>(ppuMem_, cpu_, *mmc, cart_.GetMirroringType());
 
 	cpu_.Initialize(*cpuComm_);
@@ -42,10 +99,18 @@ void NESEmulator::LoadROM(const std::string& fileName)
 }
 
 
+void NESEmulator::PollControllers()
+{
+
+}
+
+
 void NESEmulator::Frame()
 {
 	sf::Sprite spr;
 	sf::Texture tex;
+
+	PollControllers();
 
 	// Keep ticking until a frame is fully rendered by the PPU.
 	const auto elapsedFrames = ppu_.GetElapsedFramesCount();

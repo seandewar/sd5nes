@@ -4,8 +4,6 @@
 #include <stdexcept>
 #include <sstream>
 
-#include <iostream> // @TODO: debug
-
 #include "NESTypes.h"
 #include "NESHelper.h"
 #include "NESCPUConstants.h"
@@ -295,7 +293,10 @@ private:
 
 	NESCPURegisters reg_;
 	NESCPUExecutingOpInfo currentOp_;
+
+	NESCPUInterruptType nextInt_;
 	bool intReset_, intNmi_, intIrq_;
+
 	bool isJammed_;
 	unsigned int stallTicksLeft_;
 
@@ -325,6 +326,12 @@ private:
 	* Writes an op's result to the intended piece of memory / register.
 	*/
 	void WriteOpResult(NESCPUOpAddrMode addrMode, u8 result);
+
+	/**
+	* Polls for the next interrupt to be executed while accounting for interrupt priority.
+	* Returns the type of interrupt that will be triggered on the next call to HandleInterrupt().
+	*/
+	NESCPUInterruptType PollInterrupts();
 
 	/**
 	* Handles the execution of pending interrupts while accounting for interrupt priority.
@@ -815,7 +822,6 @@ private:
 	inline void ExecuteOpKIL(NESCPUOpArgInfo& argInfo)
 	{
 		// Jam the CPU.
-		std::cout << "Jammed! " << reg_.ToString() << std::endl;
 		isJammed_ = true;
 	}
 

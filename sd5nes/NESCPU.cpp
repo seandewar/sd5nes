@@ -157,7 +157,9 @@ void NESCPU::Power()
 	stallTicksLeft_ = 0;
 	isJammed_ = false;
 
-	intReset_ = true; // Trigger a Reset interrupt.
+	// Schedule a reset.
+	nextInt_ = NESCPUInterruptType::NONE;
+	intReset_ = true;
 	intNmi_ = intIrq_ = false;
 
 	reg_.PC = 0xC000;
@@ -426,25 +428,32 @@ void NESCPU::ExecuteNextOp()
 }
 
 
-NESCPUInterruptType NESCPU::HandleInterrupts()
+NESCPUInterruptType NESCPU::PollInterrupts()
 {
-	auto handledInt = NESCPUInterruptType::NONE;
+	auto nextInt = NESCPUInterruptType::NONE;
 
-	// Determine which interrupt to handle depending on priority.
+	// Determine which interrupt to schedule depending on priority.
 	if (intReset_)
-		handledInt = NESCPUInterruptType::RESET;
+		nextInt = NESCPUInterruptType::RESET;
 	else if (!isJammed_ && stallTicksLeft_ == 0)
 	{
 		if (intNmi_) // @TODO: Check for NMI Edge!
-			handledInt = NESCPUInterruptType::NMI;
+			nextInt = NESCPUInterruptType::NMI;
 		else if (intIrq_ && !NESHelper::IsBitSet(reg_.GetP(), NES_CPU_REG_P_I_BIT))
-			handledInt = NESCPUInterruptType::IRQ;
+			nextInt = NESCPUInterruptType::IRQ;
 	}
 
+	nextInt_ = nextInt; // Schedule the interrupt.
+	return nextInt;
+}
+
+
+NESCPUInterruptType NESCPU::HandleInterrupts()
+{
 	// Check if we have any interrupts we need to currently handle.
-	if (handledInt != NESCPUInterruptType::NONE)
+	if (nextInt_ != NESCPUInterruptType::NONE)
 	{
-		if (handledInt != NESCPUInterruptType::RESET)
+		if (nextInt_ != NESCPUInterruptType::RESET)
 		{
 			// If it wasn't a reset, we need to push the next PC and status register (P).
 			StackPush16(reg_.PC);
@@ -457,7 +466,7 @@ NESCPUInterruptType NESCPU::HandleInterrupts()
 			reg_.SetP(0x24);
 		}
 
-		switch (handledInt)
+		switch (nextInt_)
 		{
 		case NESCPUInterruptType::RESET:
 			UpdateRegPC(NESHelper::MemoryRead16(*comm_, 0xFFFC));
@@ -482,7 +491,8 @@ NESCPUInterruptType NESCPU::HandleInterrupts()
 		OpAddCycles(7);
 	}
 
-	return handledInt;
+	nextInt_ = NESCPUInterruptType::NONE;
+	return nextInt_;
 }
 
 
@@ -490,10 +500,11 @@ void NESCPU::Tick()
 {
 	assert(comm_ != nullptr);
 
-	// Check that the current instruction has finished executing.
 	if (currentOp_.opCyclesLeft == 0)
 	{
 		ExecuteNextOp();
+
+		PollInterrupts();
 		HandleInterrupts();
 	}
 

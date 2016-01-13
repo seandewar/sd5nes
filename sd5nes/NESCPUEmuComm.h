@@ -4,6 +4,9 @@
 #include "NESPPU.h"
 #include "NESMMC.h"
 
+class INESController;
+
+typedef std::array<const INESController*, 2> NESControllerPorts;
 
 /**
 * Communications interface allowing the CPU to communicate with its
@@ -12,7 +15,7 @@
 class NESCPUEmuComm : public INESCPUCommunicationsInterface
 {
 public:
-	NESCPUEmuComm(NESMemCPURAM& ram, NESPPU& ppu, NESMMC& mmc);
+	NESCPUEmuComm(NESMemCPURAM& ram, NESPPU& ppu, NESMMC& mmc, const NESControllerPorts& controllers);
 	virtual ~NESCPUEmuComm();
 
 	void Write8(u16 addr, u8 val) override;
@@ -23,6 +26,7 @@ private:
 
 	NESMemCPURAM& ram_;
 	NESPPU& ppu_;
-	NESMMC* mmc_;
+	NESMMC& mmc_;
+	const NESControllerPorts& controllers_;
 };
 

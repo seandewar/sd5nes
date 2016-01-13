@@ -14,13 +14,17 @@ int main(int argc, char* argv[])
 		sf::VideoMode(NES_EMU_DEFAULT_WINDOW_WIDTH, NES_EMU_DEFAULT_WINDOW_HEIGHT),
 		"SD5 NES"
 		);
-	window.setFramerateLimit(50);
+	window.setFramerateLimit(60);
 
 	NESEmulator emu(window);
+
+	NESStandardController controller;
+	emu.AddController(NESControllerPort::CONTROLLER_1, controller);
+
 	//emu.LoadROM("roms//instr_test-v4//rom_singles//07-abs_xy.nes"); // PASS
 	//emu.LoadROM("roms//nestest.nes");
 	//emu.LoadROM("roms//smb_jp_usa.nes");
-	//emu.LoadROM("roms//digdug.nes");
+	emu.LoadROM("roms//digdug.nes");
 	//emu.LoadROM("roms//full_palette.nes");
 	//emu.LoadROM("roms//registers.nes");
 	//emu.LoadROM("roms//blargg_ppu_tests_2005.09.15b//palette_ram.nes"); // PASS
@@ -49,13 +53,13 @@ int main(int argc, char* argv[])
 	//emu.LoadROM("roms//ppu_vbl_nmi//01-vbl_basics.nes"); // PASS
 	//emu.LoadROM("roms//ppu_vbl_nmi//02-vbl_set_time.nes"); // PASS
 	//emu.LoadROM("roms//ppu_vbl_nmi//03-vbl_clear_time.nes"); // PASS
-	//emu.LoadROM("roms//ppu_vbl_nmi//04-nmi_control.nes"); // PASS
+	//emu.LoadROM("roms//ppu_vbl_nmi//04-nmi_control.nes");
 	//emu.LoadROM("roms//ppu_vbl_nmi//05-nmi_timing.nes");
 	//emu.LoadROM("roms//ppu_vbl_nmi//06-suppression.nes"); // PASS
 	//emu.LoadROM("roms//ppu_vbl_nmi//07-nmi_on_timing.nes");
 	//emu.LoadROM("roms//ppu_vbl_nmi//08-nmi_off_timing.nes");
 	//emu.LoadROM("roms//ppu_vbl_nmi//09-even_odd_frames.nes"); // PASS
-	emu.LoadROM("roms//ppu_vbl_nmi//10-even_odd_timing.nes");
+	//emu.LoadROM("roms//ppu_vbl_nmi//10-even_odd_timing.nes");
 	//emu.LoadROM("roms//nes_instr_misc//01-abs_x_wrap.nes");
 	//emu.LoadROM("roms//cpu_interrupts_v2//1-cli_latency.nes");
 	//emu.LoadROM("roms//cpu_interrupts_v2//2-nmi_and_brk.nes");
@@ -75,6 +79,16 @@ int main(int argc, char* argv[])
 				break;
 			}
 		}
+
+		// Update controller state
+		controller.SetButtonState(NESControllerButton::A, sf::Keyboard::isKeyPressed(sf::Keyboard::X));
+		controller.SetButtonState(NESControllerButton::B, sf::Keyboard::isKeyPressed(sf::Keyboard::Z));
+		controller.SetButtonState(NESControllerButton::SELECT, sf::Keyboard::isKeyPressed(sf::Keyboard::RShift));
+		controller.SetButtonState(NESControllerButton::START, sf::Keyboard::isKeyPressed(sf::Keyboard::Return));
+		controller.SetButtonState(NESControllerButton::UP, sf::Keyboard::isKeyPressed(sf::Keyboard::Up));
+		controller.SetButtonState(NESControllerButton::DOWN, sf::Keyboard::isKeyPressed(sf::Keyboard::Down));
+		controller.SetButtonState(NESControllerButton::LEFT, sf::Keyboard::isKeyPressed(sf::Keyboard::Left));
+		controller.SetButtonState(NESControllerButton::RIGHT, sf::Keyboard::isKeyPressed(sf::Keyboard::Right));
 
 		window.clear();
 		emu.Frame();
