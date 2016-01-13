@@ -89,7 +89,7 @@ void NESPPU::WriteRegister(NESPPURegisterType reg, u8 val)
 		case NESPPURegisterType::PPUCTRL:
 			reg_.PPUCTRL = val;
 
-			// Reset the Nmi Pull if we wrote 0 to V in PPUCTRL.
+			// Reset the NMI Pull if we wrote 0 to V in PPUCTRL.
 			// This will allow multiple NMIs to be generated if toggled
 			// during V-BLANK.
 			if (!NESHelper::IsBitSet(val, NES_PPU_REG_PPUCTRL_V_BIT))
@@ -155,7 +155,7 @@ void NESPPU::WriteRegister(NESPPURegisterType reg, u8 val)
 
 	case NESPPURegisterType::OAMDMA:
 		const auto oamDmaData = comm_->OAMDMARead(val);
-		for (u16 i = 0; i < 0x100 - reg_.OAMADDR; ++i)
+		for (u16 i = 0; i < 0x100; ++i)
 			primaryOam_.Write8((i + reg_.OAMADDR) & 0xFF, oamDmaData[i]);
 		break;
 	}
@@ -501,7 +501,7 @@ void NESPPU::TickEvaluateSprites()
 			break;
 
 		case 7:
-			sprite.tileBitmapLo = FetchTileBitmapLine(
+			sprite.tileBitmapHi = FetchTileBitmapLine(
 				GetSpriteTileAddress(sprite.tileIndex) + 8,
 				currentScanline_ - sprite.y,
 				NESHelper::IsBitSet(sprite.attributes, 6),
@@ -544,7 +544,7 @@ void NESPPU::TickRenderPixel()
 		for (u8 i = 0; i < activeSpriteCount_; ++i)
 		{
 			const auto& sprite = activeSprites_[i];
-			
+
 			if (sprite.x <= currentCycle_ && sprite.x + 8u > currentCycle_)
 			{
 				// Sprite is in range!
@@ -587,14 +587,6 @@ void NESPPU::TickRenderPixel()
 		const u8 bgPixAttrib = (bgAttrib >> ((isBottom ? 4 : 0) + (isRight ? 2 : 0))) & 3;
 
 		pixelColor = GetPPUPaletteColor(comm_->Read8(0x3F00 + (4 * bgPixAttrib) + bgPixel));
-		//if (!isBottom && !isRight)
-		//	pixelColor = NESPPUColor(255, 0, 0);
-		//else if (!isBottom && isRight)
-		//	pixelColor = NESPPUColor(0, 255, 0);
-		//else if (isBottom && !isRight)
-		//	pixelColor = NESPPUColor(0, 0, 255);
-		//else if (isBottom && isRight)
-		//	pixelColor = NESPPUColor(155, 155, 0);
 	}
 	else if (bgPixel == 0)
 	{
@@ -625,7 +617,7 @@ void NESPPU::Tick()
 			// race condition causing V-BLANK NMI to not trigger.
 			if (currentScanline_ == 241 && currentCycle_ == 1 && !ppuStatusReadThisTick_)
 			{
-				// Set V flag in PPUSTATUS and make sure Nmi isn't pulled.
+				// Set V flag in PPUSTATUS and make sure NMI isn't pulled.
 				NESHelper::SetRefBit(reg_.PPUSTATUS, NES_PPU_REG_PPUSTATUS_V_BIT);
 			}
 

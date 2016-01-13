@@ -371,7 +371,9 @@ private:
 	*/
 	inline u16 GetSpriteTileAddress(u8 tileIndex) const
 	{
-		return (NESHelper::IsBitSet(reg_.PPUCTRL, NES_PPU_REG_PPUCTRL_S_BIT) ? 0x1000 : 0) + (tileIndex * 16);
+		const auto shouldChangeSpriteTable = (NESHelper::IsBitSet(reg_.PPUCTRL, NES_PPU_REG_PPUCTRL_S_BIT) &&
+			!NESHelper::IsBitSet(reg_.PPUCTRL, NES_PPU_REG_PPUCTRL_H_BIT));
+		return (shouldChangeSpriteTable ? 0x1000 : 0) + (tileIndex * 16);
 	}
 
 	/**
