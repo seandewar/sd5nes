@@ -29,7 +29,8 @@ enum class NESControllerButton
 	UP,
 	DOWN,
 	LEFT,
-	RIGHT
+	RIGHT,
+	UNKNOWN
 };
 
 /**
@@ -65,6 +66,11 @@ public:
 	inline bool IsUpDownOrLeftRightAllowed() const { return allowUpDownOrLeftRight_; }
 
 private:
+	/**
+	* Gets the corrisponding NESControllerButton from its number.
+	*/
+	static NESControllerButton GetButtonFromNumber(unsigned int buttonNumber);
+
 	std::unordered_map<NESControllerButton, bool> buttonStates_;
 
 	// Whether or not pressing Up+Down / Left+Right simultaneously should be allowed.

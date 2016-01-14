@@ -33,7 +33,7 @@ public:
 	* Adds a controller to the specified controller port if it is empty.
 	* Returns true if the port was empty and the controller was added, false otherwise.
 	*/
-	bool AddController(NESControllerPort port, const INESController& controller);
+	bool AddController(NESControllerPort port, INESController& controller);
 
 	/**
 	* Removes the controller from the specified controller port.
@@ -68,10 +68,4 @@ private:
 	NESPPUMemory ppuMem_;
 	std::unique_ptr<NESPPUEmuComm> ppuComm_;
 	NESPPU ppu_;
-
-	/**
-	* Polls the controller ports and writes to the controller port address
-	* using the CPU controller interface.
-	*/
-	void PollControllers();
 };

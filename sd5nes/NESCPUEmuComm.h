@@ -6,7 +6,7 @@
 
 class INESController;
 
-typedef std::array<const INESController*, 2> NESControllerPorts;
+typedef std::array<INESController*, 2> NESControllerPorts;
 
 /**
 * Communications interface allowing the CPU to communicate with its

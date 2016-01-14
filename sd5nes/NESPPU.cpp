@@ -108,6 +108,9 @@ void NESPPU::WriteRegister(NESPPURegisterType reg, u8 val)
 			{
 				// t: CBA..HG FED..... = d : HGFEDCBA
 				tScroll_ = (((tScroll_ & 0x7C1F) | ((val & 0xF8) << 2)) & 0xFFF) | ((val & 7) << 12);
+
+				//tScroll_ = (tScroll_ & 0xFFF) | ((val & 7) << 12);
+				//tScroll_ = (tScroll_ & 0x7C1F) | ((val & 0xF8) << 2);
 			}
 			else
 			{
@@ -532,7 +535,7 @@ void NESPPU::TickRenderPixel()
 		// Get the color of the background pixel at this position.
 		bgAttrib = activeTiles_[1].atByte;
 		bgPixel = GetTileBitmapLinePixel(activeTiles_[1].tileBitmapHi, activeTiles_[1].tileBitmapLo,
-			(currentCycle_ + (xScroll_ & 7)) % 8
+			(currentCycle_) % 8 // @TODO: Fix scrolling
 		);
 	}
 
@@ -583,7 +586,7 @@ void NESPPU::TickRenderPixel()
 	{
 		// Get the correct attrib for which corner the tile is on.
 		const auto isBottom = (((((vScroll_ & 0x60) >> 2) | ((vScroll_ >> 12) & 7)) % 32) >= 16);
-		const auto isRight = (((((vScroll_ & 3) << 3) | (xScroll_ & 7)) % 32) >= 16);
+		const auto isRight = (((((vScroll_ & 3) << 3) | (xScroll_ & 7)) % 32) < 16);
 		const u8 bgPixAttrib = (bgAttrib >> ((isBottom ? 4 : 0) + (isRight ? 2 : 0))) & 3;
 
 		pixelColor = GetPPUPaletteColor(comm_->Read8(0x3F00 + (4 * bgPixAttrib) + bgPixel));

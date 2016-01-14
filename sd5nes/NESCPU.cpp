@@ -502,7 +502,8 @@ void NESCPU::Tick()
 
 	if (currentOp_.opCyclesLeft == 0)
 	{
-		ExecuteNextOp();
+		if (elapsedCycles_ != 0) // @TODO: HACK HACK
+			ExecuteNextOp();
 
 		PollInterrupts();
 		HandleInterrupts();

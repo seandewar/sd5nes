@@ -23,8 +23,8 @@ int main(int argc, char* argv[])
 
 	//emu.LoadROM("roms//instr_test-v4//rom_singles//07-abs_xy.nes"); // PASS
 	//emu.LoadROM("roms//nestest.nes");
-	//emu.LoadROM("roms//smb_jp_usa.nes");
-	emu.LoadROM("roms//digdug.nes");
+	emu.LoadROM("roms//smb_jp_usa.nes");
+	//emu.LoadROM("roms//digdug.nes");
 	//emu.LoadROM("roms//full_palette.nes");
 	//emu.LoadROM("roms//registers.nes");
 	//emu.LoadROM("roms//blargg_ppu_tests_2005.09.15b//palette_ram.nes"); // PASS

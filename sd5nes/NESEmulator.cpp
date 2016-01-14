@@ -25,7 +25,7 @@ NESEmulator::~NESEmulator()
 }
 
 
-bool NESEmulator::AddController(NESControllerPort port, const INESController& controller)
+bool NESEmulator::AddController(NESControllerPort port, INESController& controller)
 {
 	std::size_t controllerIndex;
 	switch (port)
@@ -99,18 +99,10 @@ void NESEmulator::LoadROM(const std::string& fileName)
 }
 
 
-void NESEmulator::PollControllers()
-{
-
-}
-
-
 void NESEmulator::Frame()
 {
 	sf::Sprite spr;
 	sf::Texture tex;
-
-	PollControllers();
 
 	// Keep ticking until a frame is fully rendered by the PPU.
 	const auto elapsedFrames = ppu_.GetElapsedFramesCount();
