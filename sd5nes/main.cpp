@@ -34,6 +34,8 @@ int main(int argc, char* argv[])
 	//emu.LoadROM("roms//blargg_ppu_tests_2005.09.15b//sprite_ram.nes"); // PASS
 	//emu.LoadROM("roms//ppu_open_bus.nes");
 	//emu.LoadROM("roms//scanline.nes");
+	//emu.LoadROM("roms//oam_read.nes"); // PASS
+	//emu.LoadROM("roms//oam_stress.nes");
 	//emu.LoadROM("roms//sprite_overflow_tests//1.Basics.nes"); // PASS
 	//emu.LoadROM("roms//sprite_overflow_tests//2.Details.nes"); // PASS
 	//emu.LoadROM("roms//sprite_overflow_tests//3.Timing.nes");
@@ -63,6 +65,8 @@ int main(int argc, char* argv[])
 	//emu.LoadROM("roms//nes_instr_misc//01-abs_x_wrap.nes");
 	//emu.LoadROM("roms//cpu_interrupts_v2//1-cli_latency.nes");
 	//emu.LoadROM("roms//cpu_interrupts_v2//2-nmi_and_brk.nes");
+	//emu.LoadROM("roms//instr_timing//rom_singles//1-instr_timing.nes");
+	//emu.LoadROM("roms//instr_timing//rom_singles//2-branch_timing.nes");
 
 	// Main loop.
 	while (window.isOpen())

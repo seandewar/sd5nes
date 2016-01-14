@@ -419,7 +419,7 @@ void NESPPU::TickEvaluateSprites()
 			const u16 oamAddr = (4 * n) + m;
 			const u8 sprY = primaryOam_.Read8(oamAddr);
 			const auto sprInRange = (sprY <= currentScanline_ && 
-				static_cast<unsigned int>(sprY + GetSpriteHeight()) > currentScanline_);
+				static_cast<unsigned int>(sprY) + GetSpriteHeight() > currentScanline_);
 
 			// Check if we already have 8 sprites found and check for overflow if we do.
 			// Otherwise, check if sprite is in range. If H is set in PPUCTRL, sprite is 16 px high.
@@ -434,7 +434,7 @@ void NESPPU::TickEvaluateSprites()
 				else
 				{
 					// @NOTE: The m increment is a hardware bug and emulates the
-					// bug where the O flag in PPUSTATUS is sdmetimes not set.
+					// bug where the O flag in PPUSTATUS is sometimes not set.
 					++m;
 					if (m > 3) // Make sure m doesn't increment above 3.
 						m = 0;
@@ -532,11 +532,12 @@ void NESPPU::TickRenderPixel()
 	if (!(currentCycle_ <= 7 && !NESHelper::IsBitSet(reg_.PPUMASK, NES_PPU_REG_PPUMASK_m_BIT)) &&
 		NESHelper::IsBitSet(reg_.PPUMASK, NES_PPU_REG_PPUMASK_b_BIT))
 	{
+		const auto bgTilePixelX = (currentCycle_ % 8) + (xScroll_ & 7);
+		const auto bgTile = activeTiles_[(bgTilePixelX < 8 ? 1 : 0)];
+
 		// Get the color of the background pixel at this position.
-		bgAttrib = activeTiles_[1].atByte;
-		bgPixel = GetTileBitmapLinePixel(activeTiles_[1].tileBitmapHi, activeTiles_[1].tileBitmapLo,
-			(currentCycle_) % 8 // @TODO: Fix scrolling
-		);
+		bgAttrib = bgTile.atByte;
+		bgPixel = GetTileBitmapLinePixel(bgTile.tileBitmapHi, bgTile.tileBitmapLo, bgTilePixelX % 8);
 	}
 
 	// Check if we should render sprite pixels
@@ -586,7 +587,7 @@ void NESPPU::TickRenderPixel()
 	{
 		// Get the correct attrib for which corner the tile is on.
 		const auto isBottom = (((((vScroll_ & 0x60) >> 2) | ((vScroll_ >> 12) & 7)) % 32) >= 16);
-		const auto isRight = (((((vScroll_ & 3) << 3) | (xScroll_ & 7)) % 32) < 16);
+		const auto isRight = (((((vScroll_ & 3) << 3) + (xScroll_ & 7) + (currentCycle_ % 8)) % 32) < 16);
 		const u8 bgPixAttrib = (bgAttrib >> ((isBottom ? 4 : 0) + (isRight ? 2 : 0))) & 3;
 
 		pixelColor = GetPPUPaletteColor(comm_->Read8(0x3F00 + (4 * bgPixAttrib) + bgPixel));

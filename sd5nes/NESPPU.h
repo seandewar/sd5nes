@@ -205,14 +205,13 @@ struct NESPPUBGTileData
 	u8 ntByte, atByte;
 	u8 tileBitmapHi, tileBitmapLo;
 
-	NESPPUBGTileData() :
-		ntByte(0), atByte(0),
-		tileBitmapHi(0), tileBitmapLo(0)
+	NESPPUBGTileData(u8 nt, u8 at, u8 tileBmpHi, u8 tileBmpLo) :
+		ntByte(nt), atByte(at),
+		tileBitmapHi(tileBmpHi), tileBitmapLo(tileBmpLo)
 	{ }
 
-	NESPPUBGTileData(u8 nt, u8 at, u8 tileBmpHi, u8 tileBmpLo) :
-		ntByte(nt), atByte(at), 
-		tileBitmapHi(tileBmpHi), tileBitmapLo(tileBmpLo)
+	NESPPUBGTileData() :
+		NESPPUBGTileData(0, 0, 0, 0)
 	{ }
 };
 
@@ -300,7 +299,11 @@ public:
 	* Returns whether or not rendering is enabled.
 	* (Rendering is disabled if bits 3 and 4 in PPUMASK are cleared).
 	*/
-	inline bool IsRenderingEnabled() const { return ((reg_.PPUMASK & 0x18) != 0); }
+	inline bool IsRenderingEnabled() const 
+	{ 
+		return (NESHelper::IsBitSet(reg_.PPUMASK, NES_PPU_REG_PPUMASK_b_BIT) ||
+			NESHelper::IsBitSet(reg_.PPUMASK, NES_PPU_REG_PPUMASK_s_BIT));
+	}
 
 	/**
 	* Gets the number of elapsed frames since reset / power.

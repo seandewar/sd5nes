@@ -158,9 +158,8 @@ void NESCPU::Power()
 	isJammed_ = false;
 
 	// Schedule a reset.
-	nextInt_ = NESCPUInterruptType::NONE;
-	intReset_ = true;
-	intNmi_ = intIrq_ = false;
+	nextInt_ = NESCPUInterruptType::RESET;
+	intReset_ = intNmi_ = intIrq_ = false;
 
 	reg_.PC = 0xC000;
 	reg_.SP = 0xFD;
@@ -415,8 +414,8 @@ void NESCPU::ExecuteNextOp()
 	//std::cout << std::endl;
 	//
 	//static int a = 0;
-	//if (a > 300000)
-	//std::cout << "Cyc: " << elapsedCycles_ << ", Reg: " << reg_.ToString() << "\t Ins: " << OpAsAsm(opMapping.opName, opMapping.addrMode, val) << std::endl;
+	//if (a < 20)
+	//	std::cout << "Cyc: " << elapsedCycles_ << ", Reg: " << reg_.ToString() << "\t Ins: " << OpAsAsm(opMapping.opName, opMapping.addrMode, val) << std::endl;
 	//++a;
 
 	// Execute instruction.
@@ -500,13 +499,18 @@ void NESCPU::Tick()
 {
 	assert(comm_ != nullptr);
 
-	if (currentOp_.opCyclesLeft == 0)
+	if (!isJammed_ && stallTicksLeft_ == 0)
 	{
-		if (elapsedCycles_ != 0) // @TODO: HACK HACK
-			ExecuteNextOp();
-
-		PollInterrupts();
-		HandleInterrupts();
+		if (currentOp_.opCyclesLeft == 0)
+		{
+			if (nextInt_ != NESCPUInterruptType::NONE)
+				HandleInterrupts();
+			else
+			{
+				PollInterrupts();
+				ExecuteNextOp();
+			}
+		}
 	}
 
 	++elapsedCycles_;
