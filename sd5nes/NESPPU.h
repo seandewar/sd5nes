@@ -261,11 +261,6 @@ public:
 	~NESPPU();
 
 	/**
-	* Debug : Draws sprites from the pattern table.
-	*/
-	void DebugDrawPatterns(sf::Image& target, int colorOffset);
-
-	/**
 	* Initialize the PPU.
 	*/
 	void Initialize(INESPPUCommunicationsInterface& comm);

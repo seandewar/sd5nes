@@ -18,34 +18,6 @@ NESPPU::~NESPPU()
 }
 
 
-void NESPPU::DebugDrawPatterns(sf::Image& target, int colorOffset)
-{
-	target.create(240, 248, sf::Color::Black);
-
-	int o = 0;
-	// Loop through the pattern tables.
-	for (std::size_t i = 0; i < 0x2000; ++i)
-	{
-		const u8 pLo = comm_->Read8(i);
-		const u8 pHi = comm_->Read8(i + 8);
-
-		for (int j = 7; j >= 0; --j)
-		{
-			// Get the color.
-			const u8 colHi = (pHi >> j) & 1;
-			const u8 colLo = (pLo >> j) & 1;
-			const auto col = (colHi << 1) | colLo;
-
-			target.setPixel((7 - j) + (o * 8), (i % (8 * 30)),
-				col == 0 ? sf::Color::Black : ppuPalette[col + colorOffset].ToSFColor());
-		}
-
-		if (i % (8 * 30) == 0 && i != 0)
-			++o;
-	}
-}
-
-
 void NESPPU::Initialize(INESPPUCommunicationsInterface& comm)
 {
 	comm_ = &comm;
@@ -57,8 +29,7 @@ void NESPPU::HandlePPUDATAAccess()
 	// @NOTE: PPU has some strange behaviour where it increments both X and Y of v
 	// if rendering is enabled and the PPU is currently handling
 	// the pre-render or visible scanlines.
-	if ((currentScanline_ <= 239 || currentScanline_ == 261) &&
-		IsRenderingEnabled())
+	if ((currentScanline_ <= 239 || currentScanline_ == 261) && IsRenderingEnabled())
 	{
 		IncrementScrollX();
 		IncrementScrollY();
@@ -528,6 +499,7 @@ void NESPPU::TickRenderPixel()
 	// Assume no color to begin with for the background and sprite pixels.
 	u8 bgAttrib = 0;
 	u8 bgPixel = 0;
+
 	u8 sprAttrib = 0;
 	u8 sprPixel = 0;
 
