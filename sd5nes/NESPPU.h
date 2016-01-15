@@ -1,7 +1,6 @@
 #pragma once
 
 #include <array>
-#include <iostream> // @TODO: DEBUG
 
 #include <SFML\Graphics\Color.hpp>
 #include <SFML\Graphics\Image.hpp>

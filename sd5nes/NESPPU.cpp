@@ -1,7 +1,5 @@
 #include "NESPPU.h"
 
-#include <iostream> // TODO: DEBUG!
-
 
 NESPPU::NESPPU(sf::Image& debug) :
 comm_(nullptr),
