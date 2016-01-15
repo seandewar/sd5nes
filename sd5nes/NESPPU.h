@@ -298,17 +298,17 @@ public:
 	/**
 	* Gets the universal backdrop color at $3F00.
 	*/
-	inline NESPPUColor GetBackdropColor() const { return GetPPUPaletteColor(comm_->Read8(0x3F00)); }
+	inline NESPPUColor GetBackdropColor() const 
+	{ 
+		assert(comm_ != nullptr);
+		return GetPPUPaletteColor(comm_->Read8(0x3F00)); 
+	}
 
 	/**
 	* Returns whether or not rendering is enabled.
 	* (Rendering is disabled if bits 3 and 4 in PPUMASK are cleared).
 	*/
-	inline bool IsRenderingEnabled() const 
-	{ 
-		return (NESHelper::IsBitSet(reg_.PPUMASK, NES_PPU_REG_PPUMASK_b_BIT) ||
-			NESHelper::IsBitSet(reg_.PPUMASK, NES_PPU_REG_PPUMASK_s_BIT));
-	}
+	inline bool IsRenderingEnabled() const { return ((reg_.PPUMASK & 0x18) != 0); }
 
 	/**
 	* Gets the number of elapsed frames since reset / power.

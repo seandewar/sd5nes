@@ -34,7 +34,7 @@ namespace NESHelper
 	inline bool IsBitSet(u8 val, u8 pos) 
 	{
 		assert(pos < 8); 
-		return (((val >> pos) & 1) == 1); 
+		return ((val & (1 << pos)) != 0); 
 	}
 
 	/**
