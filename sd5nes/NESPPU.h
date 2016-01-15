@@ -375,13 +375,16 @@ private:
 
 	/**
 	* Gets the address of a sprite's (low) tile bitmap
-	* from its tileIndex.
+	* from its tileIndex. Considers bit 0 of tileIndex as pattern table select if
+	* H in PPUCTRL is set (sprites of 16px height instead of 8px), otherwise considers
+	* the setting of S in PPUCTRL instead (for 8px high sprites).
 	*/
 	inline u16 GetSpriteTileAddress(u8 tileIndex) const
 	{
-		const auto shouldChangeSpriteTable = (NESHelper::IsBitSet(reg_.PPUCTRL, NES_PPU_REG_PPUCTRL_S_BIT) &&
-			!NESHelper::IsBitSet(reg_.PPUCTRL, NES_PPU_REG_PPUCTRL_H_BIT));
-		return (shouldChangeSpriteTable ? 0x1000 : 0) + (tileIndex * 16);
+		if (NESHelper::IsBitSet(reg_.PPUCTRL, NES_PPU_REG_PPUCTRL_H_BIT))
+			return (NESHelper::IsBitSet(tileIndex, 0) ? 0x1000 : 0) + ((tileIndex >> 1) * 32);
+		else
+			return (NESHelper::IsBitSet(reg_.PPUCTRL, NES_PPU_REG_PPUCTRL_S_BIT) ? 0x1000 : 0) + (tileIndex * 16);
 	}
 
 	/**
