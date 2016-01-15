@@ -2,28 +2,21 @@
 
 #include <array>
 #include <vector>
-#include <stdexcept>
 #include <cassert>
 
 #include "NESTypes.h"
+#include "NESException.h"
 #include "NESMemoryConstants.h"
 
 /**
 * Exception thrown during memory access errors.
 */
-class NESMemoryException : public std::runtime_error
+class NESMemoryException : public NESException
 {
 public:
-	explicit NESMemoryException(const char* msg) :
-		std::runtime_error(msg)
-	{ }
-
-	explicit NESMemoryException(const std::string& msg) :
-		std::runtime_error(msg)
-	{ }
-
-	virtual ~NESMemoryException()
-	{ }
+	explicit NESMemoryException(const char* msg) : NESException(msg) { }
+	explicit NESMemoryException(const std::string& msg) : NESException(msg) { }
+	virtual ~NESMemoryException() { }
 };
 
 /**

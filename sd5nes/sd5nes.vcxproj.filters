@@ -101,5 +101,8 @@
     <ClInclude Include="NESController.h">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="NESException.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
   </ItemGroup>
 </Project>

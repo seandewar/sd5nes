@@ -1,26 +1,19 @@
 #pragma once
 
 #include <vector>
-#include <stdexcept>
 
 #include "NESTypes.h"
+#include "NESException.h"
 
 /**
 * Errors relating to read errors from the NESReadBuffer class.
 */
-class NESReadBufferException : public std::runtime_error
+class NESReadBufferException : public NESException
 {
 public:
-	explicit NESReadBufferException(const char* msg) :
-		std::runtime_error(msg)
-	{ }
-
-	explicit NESReadBufferException(const std::string& msg) :
-		std::runtime_error(msg)
-	{ }
-
-	virtual ~NESReadBufferException()
-	{ }
+	explicit NESReadBufferException(const char* msg) : NESException(msg) { }
+	explicit NESReadBufferException(const std::string& msg) : NESException(msg) { }
+	virtual ~NESReadBufferException() { }
 };
 
 /**

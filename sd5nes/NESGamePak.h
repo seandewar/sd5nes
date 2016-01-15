@@ -3,8 +3,8 @@
 #include <string>
 #include <vector>
 #include <memory>
-#include <stdexcept>
 
+#include "NESException.h"
 #include "NESMemory.h"
 #include "NESTypes.h"
 #include "NESPPU.h"
@@ -12,19 +12,12 @@
 /**
 * Errors relating towards the loading and parsing of ROM files.
 */
-class NESGamePakLoadException : public std::runtime_error
+class NESGamePakLoadException : public NESException
 {
 public:
-	explicit NESGamePakLoadException(const char* msg) :
-		std::runtime_error(msg)
-	{ }
-
-	explicit NESGamePakLoadException(const std::string& msg) :
-		std::runtime_error(msg)
-	{ }
-
-	virtual ~NESGamePakLoadException()
-	{ }
+	explicit NESGamePakLoadException(const char* msg) : NESException(msg) { }
+	explicit NESGamePakLoadException(const std::string& msg) : NESException(msg) { }
+	virtual ~NESGamePakLoadException() { }
 };
 
 typedef NESMemory<0x2000> NESMemSRAM;

@@ -72,7 +72,7 @@ void NESGamePak::ParseROMFileData(const std::vector<u8>& data)
 		// Read file type & support iNES files.
 		// @TODO Support others?
 		const auto type = buf.ReadNextStr(4);
-		if (type != std::string("NES") + (char)0x1A)
+		if (type != std::string("NES") + static_cast<char>(0x1A))
 			throw NESGamePakLoadException("Unexpected ROM image format!");
 
 		// Read ROM info bytes & skip past the 7 reserved bytes.
@@ -101,7 +101,7 @@ void NESGamePak::ParseROMFileData(const std::vector<u8>& data)
 	try
 	{
 		// If there is a trainer, ignore it.
-		// @TODO Do something with trainer in future?
+		// @TODO: Do something with trainer in future?
 		if (hasTrainer_)
 			buf.ReadNext(512);
 
@@ -124,7 +124,6 @@ void NESGamePak::ParseROMFileData(const std::vector<u8>& data)
 	const u8 mapperNum = (romInfo[INES_ROM_CONTROL_2_INDEX] & 0xF0) | (romInfo[INES_ROM_CONTROL_1_INDEX] >> 4);
 	switch (mapperNum)
 	{
-	// @TODO init mmc_
 	case 0:
 		if (prgRomBanks_.size() == 0)
 			throw NESGamePakLoadException("No PRG-ROM banks for NROM mapper!");

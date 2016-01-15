@@ -94,6 +94,7 @@
     <ClInclude Include="NESCPUOpConstants.h" />
     <ClInclude Include="NESEmulationConstants.h" />
     <ClInclude Include="NESEmulator.h" />
+    <ClInclude Include="NESException.h" />
     <ClInclude Include="NESGamePak.h" />
     <ClInclude Include="NESHelper.h" />
     <ClInclude Include="NESMemoryConstants.h" />

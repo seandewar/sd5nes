@@ -1,9 +1,9 @@
 #pragma once
 
 #include <array>
-#include <stdexcept>
 #include <sstream>
 
+#include "NESException.h"
 #include "NESTypes.h"
 #include "NESHelper.h"
 #include "NESCPUConstants.h"
@@ -71,21 +71,20 @@ private:
 /**
 * Exception relating to the execution of CPU instructions.
 */
-class NESCPUExecutionException : public std::runtime_error
+class NESCPUExecutionException : public NESException
 {
 public:
-	explicit NESCPUExecutionException(const char* msg, NESCPURegisters reg) :
-		std::runtime_error(msg),
+	explicit NESCPUExecutionException(const char* msg, NESCPURegisters reg) : 
+		NESException(msg),
 		reg_(reg)
 	{ }
 
 	explicit NESCPUExecutionException(const std::string& msg, NESCPURegisters reg) :
-		std::runtime_error(msg),
+		NESException(msg),
 		reg_(reg)
 	{ }
 
-	virtual ~NESCPUExecutionException()
-	{ }
+	virtual ~NESCPUExecutionException() { }
 
 	inline NESCPURegisters GetCPURegisters() const { return reg_; }
 
