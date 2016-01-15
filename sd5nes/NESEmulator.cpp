@@ -14,9 +14,6 @@ ppu_(debug_) // @TODO DEBUG!
 	// Init controller ports
 	for (auto& port : controllers_)
 		port = nullptr;
-
-	// @TODO: DEBUG!!
-	debug_.create(341, 262, sf::Color::Black);
 }
 
 
@@ -100,6 +97,9 @@ void NESEmulator::Frame()
 {
 	sf::Sprite spr;
 	sf::Texture tex;
+
+	// @TODO: DEBUG!!
+	debug_.create(341, 262, ppu_.GetBackdropColor().ToSFColor());
 
 	// Keep ticking until a frame is fully rendered by the PPU.
 	const auto elapsedFrames = ppu_.GetElapsedFramesCount();

@@ -296,6 +296,11 @@ public:
 	u8 ReadRegister(NESPPURegisterType reg);
 
 	/**
+	* Gets the universal backdrop color at $3F00.
+	*/
+	inline NESPPUColor GetBackdropColor() const { return GetPPUPaletteColor(comm_->Read8(0x3F00)); }
+
+	/**
 	* Returns whether or not rendering is enabled.
 	* (Rendering is disabled if bits 3 and 4 in PPUMASK are cleared).
 	*/

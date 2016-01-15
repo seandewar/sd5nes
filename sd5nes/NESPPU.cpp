@@ -520,7 +520,10 @@ void NESPPU::TickRenderPixel()
 {
 	// Only render on visible scanlines.
 	if (currentScanline_ > 239)
+	{
+		activeSpriteCount_ = 0;
 		return;
+	}
 
 	// Assume no color to begin with for the background and sprite pixels.
 	u8 bgAttrib = 0;
@@ -592,13 +595,9 @@ void NESPPU::TickRenderPixel()
 
 		pixelColor = GetPPUPaletteColor(comm_->Read8(0x3F00 + (4 * bgPixAttrib) + bgPixel));
 	}
-	else if (bgPixel == 0)
-	{
-		// Use universal background color at $3F00
-		pixelColor = GetPPUPaletteColor(comm_->Read8(0x3F00));
-	}
 
-	debug_.setPixel(currentCycle_, currentScanline_, pixelColor.ToSFColor());
+	if (sprPixel != 0 || bgPixel != 0)
+		debug_.setPixel(currentCycle_, currentScanline_, pixelColor.ToSFColor()); // @TODO: DEBUG!
 }
 
 
