@@ -398,7 +398,10 @@ void NESPPU::TickEvaluateSprites()
 {
 	// Only evaluate sprites during visible scanlines.
 	if (currentScanline_ > 239)
+	{
+		activeSpriteCount_ = 0;
 		return;
+	}
 
 	if (currentCycle_ >= 1 && currentCycle_ <= 64 && currentCycle_ % 2 == 1)
 	{
@@ -520,10 +523,7 @@ void NESPPU::TickRenderPixel()
 {
 	// Only render on visible scanlines.
 	if (currentScanline_ > 239)
-	{
-		activeSpriteCount_ = 0;
 		return;
-	}
 
 	// Assume no color to begin with for the background and sprite pixels.
 	u8 bgAttrib = 0;
