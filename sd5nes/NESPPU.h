@@ -414,9 +414,15 @@ private:
 	}
 
 	/**
-	* Gets the color of a PPU palette value.
+	* Gets the color of a PPU palette value. Considers bit G in PPUMASK for greyscale colors.
 	*/
-	inline NESPPUColor GetPPUPaletteColor(u8 palette) const { return ppuPalette[palette & 0x3F]; }
+	inline NESPPUColor GetPPUPaletteColor(u8 palette) const 
+	{
+		if (NESHelper::IsBitSet(reg_.PPUMASK, NES_PPU_REG_PPUMASK_G_BIT))
+			return ppuPalette[palette & 0x30];
+		else
+			return ppuPalette[palette & 0x3F]; 
+	}
 
 	/**
 	* Increments X of v.
