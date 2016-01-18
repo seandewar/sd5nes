@@ -21,17 +21,16 @@ void NESGamePak::ResetLoadedState()
 {
 	isRomLoaded_ = false;
 
-	mirrorType_ = NESPPUMirroringType::UNKNOWN;
+	mirrorType_ = NESNameTableMirroringType::UNKNOWN;
 	hasBatteryPackedRam_ = false;
 	hasTrainer_ = false;
-	ramBanks_ = 0;
-
-	sram_.ZeroMemory(); // @TODO: Support saving...
 
 	mmc_.reset();
 	romFileName_.clear();
-	prgRomBanks_.clear();
+
+	prgBanks_.clear();
 	chrBanks_.clear();
+	sramBanks_.clear();
 }
 
 
@@ -79,15 +78,25 @@ void NESGamePak::ParseROMFileData(const std::vector<u8>& data)
 		romInfo = buf.ReadNext(5);
 		buf.ReadNext(7);
 
-		// Read number of 8KB RAM banks. Assume 1 bank if this is 0 for compatibility reasons.
-		ramBanks_ = (romInfo[INES_RAM_BANKS_INDEX] == 0 ? 1 : romInfo[INES_RAM_BANKS_INDEX]);
+		// Read number of 8KB SRAM banks, and create the specified amount.
+		for (std::size_t i = 0; i < romInfo[INES_RAM_BANKS_INDEX]; ++i)
+			sramBanks_.emplace_back();
 
-		// Check if bit 3 is 1 = four screen mirroring.
-		// If bit 3 is 0, check bit 0. If bit 0 is 1 = vertical. 0 = horizontal.
+		// Assume 1 bank if this is 0 for compatibility reasons.
+		if (sramBanks_.size() == 0)
+			sramBanks_.emplace_back();
+
+		// Check if bit 3 is set = four screen mirroring.
+		// If bit 3 is clear, check bit 0. If bit 0 is set = vertical, clear = horizontal.
 		if ((romInfo[INES_ROM_CONTROL_1_INDEX] & 8) == 8)
-			mirrorType_ = NESPPUMirroringType::FOUR_SCREEN;
+			mirrorType_ = NESNameTableMirroringType::FOUR_SCREEN;
 		else
-			mirrorType_ = ((romInfo[INES_ROM_CONTROL_1_INDEX] & 1) == 1 ? NESPPUMirroringType::VERTICAL : NESPPUMirroringType::HORIZONTAL);
+		{
+			if ((romInfo[INES_ROM_CONTROL_1_INDEX] & 1) == 1)
+				mirrorType_ = NESNameTableMirroringType::VERTICAL;
+			else
+				mirrorType_ = NESNameTableMirroringType::HORIZONTAL;
+		}
 
 		// Check bits 1 and 2 = battery packed RAM & trainer respectively.
 		hasBatteryPackedRam_ = ((romInfo[INES_ROM_CONTROL_1_INDEX] & 2) == 2);
@@ -106,14 +115,19 @@ void NESGamePak::ParseROMFileData(const std::vector<u8>& data)
 			buf.ReadNext(512);
 
 		// Copy contents of PRGROM and CHRROM into memory.
-		for (int i = 0; i < romInfo[INES_PRGROM_BANKS_INDEX]; ++i)
-			prgRomBanks_.emplace_back(NESMemPRGROMBank(buf.ReadNext(0x4000)));
-		for (int i = 0; i < romInfo[INES_CHRROM_BANKS_INDEX]; ++i)
-			chrBanks_.emplace_back(NESMemCHRBank(buf.ReadNext(0x2000)));
+		for (std::size_t i = 0; i < romInfo[INES_PRGROM_BANKS_INDEX]; ++i)
+			prgBanks_.emplace_back(buf.ReadNext(0x4000));
 
-		// If we have no CHR-ROM/RAM banks then just create an empty one.
+		if (prgBanks_.size() == 0)
+			throw NESGamePakLoadException("No PRG-ROM found in ROM!");
+
+		for (std::size_t i = 0; i < romInfo[INES_CHRROM_BANKS_INDEX]; ++i)
+			chrBanks_.emplace_back(buf.ReadNext(0x2000));
+
+		// If we have no CHR-ROM banks then just create an empty one.
+		// 0 = uses CHR-RAM.
 		if (chrBanks_.size() == 0)
-			chrBanks_.emplace_back(NESMemCHRBank());
+			chrBanks_.emplace_back();
 	}
 	catch (const NESReadBufferException&)
 	{
@@ -124,16 +138,35 @@ void NESGamePak::ParseROMFileData(const std::vector<u8>& data)
 	const u8 mapperNum = (romInfo[INES_ROM_CONTROL_2_INDEX] & 0xF0) | (romInfo[INES_ROM_CONTROL_1_INDEX] >> 4);
 	switch (mapperNum)
 	{
-	case 0:
-		if (prgRomBanks_.size() == 0)
-			throw NESGamePakLoadException("No PRG-ROM banks for NROM mapper!");
-
+	case 0: // NROM
 		mmc_ = std::make_unique<NESMMCNROM>(
-			sram_, 
+			sramBanks_[0], 
 			chrBanks_[0], 
-			prgRomBanks_[0],
-			(prgRomBanks_.size() > 1 ? &prgRomBanks_[1] : nullptr)
+			prgBanks_[0],
+			(prgBanks_.size() > 1 ? &prgBanks_[1] : nullptr)
 		);
+		break;
+
+	case 1: // Nintendo MMC1 @TODO
+		{
+			// Create arrays of bank mappings to be used by the MMC.
+			std::vector<NESMemSRAMBank*> sram;
+			sram.reserve(sramBanks_.size());
+			for (auto& bank : sramBanks_)
+				sram.emplace_back(&bank);
+
+			std::vector<NESMemCHRBank*> chr;
+			chr.reserve(chrBanks_.size());
+			for (auto& bank : chrBanks_)
+				chr.emplace_back(&bank);
+
+			std::vector<const NESMemPRGROMBank*> prg;
+			prg.reserve(prgBanks_.size());
+			for (auto& bank : prgBanks_)
+				prg.emplace_back(&bank);
+
+			mmc_ = std::make_unique<NESMMC1>(sram, chr, prg, mirrorType_);
+		}
 		break;
 
 	// Unknown mapper type!
@@ -164,7 +197,7 @@ bool NESGamePak::IsROMLoaded() const
 
 const std::vector<const NESMemPRGROMBank>& NESGamePak::GetProgramROMBanks() const
 {
-	return prgRomBanks_;
+	return prgBanks_;
 }
 
 
@@ -174,7 +207,7 @@ const std::vector<NESMemCHRBank>& NESGamePak::GetCharacterBanks() const
 }
 
 
-NESPPUMirroringType NESGamePak::GetMirroringType() const
+NESNameTableMirroringType NESGamePak::GetMirroringType() const
 {
 	return mirrorType_;
 }

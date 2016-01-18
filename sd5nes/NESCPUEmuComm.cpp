@@ -3,7 +3,7 @@
 #include "NESController.h"
 
 
-NESCPUEmuComm::NESCPUEmuComm(NESMemCPURAM& ram, NESPPU& ppu, NESMMC& mmc, 
+NESCPUEmuComm::NESCPUEmuComm(NESMemCPURAM& ram, NESPPU& ppu, INESMMC& mmc, 
 	const NESControllerPorts& controllers) :
 ram_(ram),
 ppu_(ppu),

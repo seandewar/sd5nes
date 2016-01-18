@@ -15,7 +15,7 @@ typedef std::array<INESController*, 2> NESControllerPorts;
 class NESCPUEmuComm : public INESCPUCommunicationsInterface
 {
 public:
-	NESCPUEmuComm(NESMemCPURAM& ram, NESPPU& ppu, NESMMC& mmc, const NESControllerPorts& controllers);
+	NESCPUEmuComm(NESMemCPURAM& ram, NESPPU& ppu, INESMMC& mmc, const NESControllerPorts& controllers);
 	virtual ~NESCPUEmuComm();
 
 	void Write8(u16 addr, u8 val) override;
@@ -26,7 +26,7 @@ private:
 
 	NESMemCPURAM& ram_;
 	NESPPU& ppu_;
-	NESMMC& mmc_;
+	INESMMC& mmc_;
 	const NESControllerPorts& controllers_;
 };
 

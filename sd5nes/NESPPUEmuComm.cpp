@@ -1,13 +1,13 @@
 #include "NESPPUEmuComm.h"
 
 
-NESPPUEmuComm::NESPPUEmuComm(NESPPUMemory& mem, NESCPU& cpu, NESMMC& mmc, NESPPUMirroringType ntMirror) :
+NESPPUEmuComm::NESPPUEmuComm(NESPPUMemory& mem, NESCPU& cpu, INESMMC& mmc, NESNameTableMirroringType ntMirror) :
 mem_(mem),
 cpu_(cpu),
 mmc_(&mmc),
 ntMirror_(ntMirror)
 {
-	assert(ntMirror != NESPPUMirroringType::UNKNOWN);
+	assert(ntMirror != NESNameTableMirroringType::UNKNOWN);
 }
 
 
@@ -20,16 +20,16 @@ std::size_t NESPPUEmuComm::GetNameTableIndex(u16 addr) const
 {
 	switch (ntMirror_)
 	{
-	case NESPPUMirroringType::VERTICAL:
+	case NESNameTableMirroringType::VERTICAL:
 		return (addr & 0x7FF) / 0x400;
 
-	case NESPPUMirroringType::HORIZONTAL:
+	case NESNameTableMirroringType::HORIZONTAL:
 		return (addr & 0xFFF) / 0x800;
 
-	case NESPPUMirroringType::ONE_SCREEN:
+	case NESNameTableMirroringType::ONE_SCREEN:
 		return 0;
 
-	case NESPPUMirroringType::FOUR_SCREEN:
+	case NESNameTableMirroringType::FOUR_SCREEN:
 		// @TODO NOT IMPLEMENTED YET!
 
 	default:
@@ -68,7 +68,7 @@ void NESPPUEmuComm::Write8(u16 addr, u8 val)
 		mem_.paletteMem.Write8(addr & 0x1F, val);
 
 		// Mirror $3F00, $3F04, $3F08, $3F0C to $3F10, $3F14, $3F18, $3F1C.
-		if (addr % 4 == 0)
+		if ((addr & 3) == 0)
 			mem_.paletteMem.Write8((addr & 0x1F) ^ 0x10, val);
 	}
 }

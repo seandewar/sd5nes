@@ -43,6 +43,11 @@ public:
 	virtual ~NESStandardController();
 
 	/**
+	* Releases all buttons so that they are not being pressed.
+	*/
+	virtual void ResetButtonStates();
+
+	/**
 	* Sets whether or not a controller button is currently being pressed.
 	*/
 	virtual void SetButtonState(NESControllerButton button, bool isPressed);

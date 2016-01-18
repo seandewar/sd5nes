@@ -1,6 +1,7 @@
 #pragma once
 
 #include <array>
+#include <vector>
 
 #include "NESGamePak.h"
 
@@ -9,45 +10,33 @@
 */
 enum class NESMMCType
 {
-	NROM, // NROM - No mapper.
-	UNKNOWN // Unknown mapper.
+	NROM,
+	MMC1,
+	UNKNOWN
 };
 
 /**
 * Base class for MMCs.
 */
-class NESMMC : public INESMemoryInterface
+class INESMMC : public INESMemoryInterface
 {
 public:
-	explicit NESMMC(NESMemSRAM& sram);
-	virtual ~NESMMC();
+	INESMMC() { }
+	virtual ~INESMMC() { }
 
-	/**
-	* Gets the type of MMC used.
-	*/
 	virtual NESMMCType GetType() const = 0;
-
-	/**
-	* Write 8-bits to MMC mapped memory.
-	*/
-	virtual void Write8(u16 addr, u8 val);
-
-	/**
-	* Reads 8-bits from MMC mapped memory.
-	*/
-	virtual u8 Read8(u16 addr) const;
-
-protected:
-	NESMemSRAM& sram_;
 };
 
 /**
-* NROM MMC.
+* NROM (No mapper).
 */
-class NESMMCNROM : public NESMMC
+class NESMMCNROM : public INESMMC
 {
 public:
-	NESMMCNROM(NESMemSRAM& sram, NESMemCHRBank& chr, const NESMemPRGROMBank& prg1, const NESMemPRGROMBank* prg2 = nullptr);
+	NESMMCNROM(NESMemSRAMBank& sram,
+			   NESMemCHRBank& chr,
+			   const NESMemPRGROMBank& prg1,
+			   const NESMemPRGROMBank* prg2 = nullptr);
 	virtual ~NESMMCNROM();
 
 	inline NESMMCType GetType() const override { return NESMMCType::NROM; }
@@ -56,6 +45,44 @@ public:
 	u8 Read8(u16 addr) const override;
 
 private:
+	NESMemSRAMBank& sram_;
 	NESMemCHRBank& chr_;
 	std::array<const NESMemPRGROMBank*, 2> prg_;
+};
+
+/**
+* Nintendo MMC1.
+*/
+class NESMMC1 : public INESMMC
+{
+public:
+	NESMMC1(const std::vector<NESMemSRAMBank*>& sram,
+			const std::vector<NESMemCHRBank*>& chr,
+			const std::vector<const NESMemPRGROMBank*>& prg,
+			NESNameTableMirroringType& ntMirror);
+	virtual ~NESMMC1();
+
+	inline NESMMCType GetType() const override { return NESMMCType::MMC1; }
+
+	void Write8(u16 addr, u8 val) override;
+	u8 Read8(u16 addr) const override;
+
+private:
+	std::vector<NESMemSRAMBank*> sram_;
+	std::vector<NESMemCHRBank*> chr_;
+	std::vector<const NESMemPRGROMBank*> prg_;
+	NESNameTableMirroringType& ntMirror_;
+
+	std::array<std::size_t, 2> chrBankIndices_;
+	std::array<std::size_t, 2> prgBankIndices_;
+
+	// shift reg, chr mode, prg mode [5-bits].
+	u8 shiftReg_;
+	u8 prgBankMode_, chrBankMode_;
+
+	void WriteControlRegister(u8 val);
+	void WriteCHRBankRegister(u8 bankNum, u8 val);
+	void WritePRGBankRegister(u8 val);
+
+	void HandleRegisterWrite(u16 addr, u8 val);
 };

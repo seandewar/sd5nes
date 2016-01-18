@@ -20,11 +20,11 @@ public:
 	virtual ~NESGamePakLoadException() { }
 };
 
-typedef NESMemory<0x2000> NESMemSRAM;
+typedef NESMemory<0x2000> NESMemSRAMBank;
 typedef NESMemory<0x4000> NESMemPRGROMBank;
 typedef NESMemory<0x2000> NESMemCHRBank;
 
-class NESMMC;
+class INESMMC;
 
 /**
 * Handles emulation of the NES Game Pak cartridge.
@@ -48,10 +48,10 @@ public:
 	const std::vector<NESMemCHRBank>& GetCharacterBanks() const;
 
 	// Gets the mirroring type used by the ROM.
-	NESPPUMirroringType GetMirroringType() const;
+	NESNameTableMirroringType GetMirroringType() const;
 
 	// Gets the MMC @TODO Debug?
-	inline NESMMC* GetMMC() const { return mmc_.get(); }
+	inline INESMMC* GetMMC() const { return mmc_.get(); }
 
 	// Returns whether or not the ROM has battery-packed RAM.
 	bool HasBatteryPackedRAM() const;
@@ -64,17 +64,16 @@ private:
 	std::string romFileName_;
 
 	/* ROM Info variables */
-	NESPPUMirroringType mirrorType_;
+	NESNameTableMirroringType mirrorType_;
 	bool hasBatteryPackedRam_;
 	bool hasTrainer_;
-	u8 ramBanks_;
 
 	/* MMC, SRAM, PRG-ROM and CHR-ROM of the cart. */
 	// @TODO: Only store ROM and copy somewhere for RAM.
-	std::unique_ptr<NESMMC> mmc_;
-	std::vector<const NESMemPRGROMBank> prgRomBanks_;
+	std::unique_ptr<INESMMC> mmc_;
+	std::vector<const NESMemPRGROMBank> prgBanks_;
 	std::vector<NESMemCHRBank> chrBanks_;
-	NESMemSRAM sram_;
+	std::vector<NESMemSRAMBank> sramBanks_;
 
 	// Resets the state of loading.
 	void ResetLoadedState();

@@ -65,6 +65,13 @@ NESStandardController::~NESStandardController()
 }
 
 
+void NESStandardController::ResetButtonStates()
+{
+	for (auto& state : buttonStates_)
+		state.second = false;
+}
+
+
 bool NESStandardController::GetButtonState(NESControllerButton button) const
 {
 	const auto it = buttonStates_.find(button);

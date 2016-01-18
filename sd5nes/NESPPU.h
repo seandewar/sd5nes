@@ -25,7 +25,7 @@ struct NESPPUMemory
 /**
 * The types of nametable mirroring that can be used.
 */
-enum class NESPPUMirroringType
+enum class NESNameTableMirroringType
 {
 	HORIZONTAL,
 	VERTICAL,
