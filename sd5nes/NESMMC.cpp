@@ -101,7 +101,7 @@ void NESMMC1::WriteCHRBankRegister(u8 bankNum, u8 val)
 	case 0: // One 8 KB Bank
 		// Ignore bit 0 so we choose from 16 banks.
 		chrBankIndices_[0] = (val & 0x1E) % chr_.size();
-		chrBankIndices_[1] = ((val + 1) & 0x1F) % chr_.size();
+		chrBankIndices_[1] = (chr_.size() - ((val & 0x1E) | 1)) % chr_.size();
 		break;
 
 	case 1: // Two 4 KB Banks
@@ -120,7 +120,7 @@ void NESMMC1::WritePRGBankRegister(u8 val)
 	case 1: // 32 KB Bank
 		// Ignore bit 0 so we choose from 16 banks. (32 indices)
 		prgBankIndices_[0] = (val & 0xE) % prg_.size();
-		prgBankIndices_[1] = ((val + 1) & 0xF) % prg_.size();
+		prgBankIndices_[1] = (prg_.size() - ((val & 0xE) | 1)) % prg_.size();
 		break;
 
 	case 2: // Switch 16 KB Bank at $C000
@@ -145,7 +145,7 @@ void NESMMC1::HandleRegisterWrite(u16 addr, u8 val)
 	}
 	else
 	{
-		const auto newShift = (shiftReg_ >> 1) | ((val & 1) << 4);
+		const u8 newShift = (shiftReg_ >> 1) | ((val & 1) << 4);
 
 		if (NESHelper::IsBitSet(shiftReg_, 0))
 		{

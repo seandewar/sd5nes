@@ -413,10 +413,17 @@ void NESCPU::ExecuteNextOp()
 	//	std::cout << std::hex << +comm_->Read8(NES_CPU_STACK_START + i) << ", ";
 	//std::cout << std::endl;
 	//
-	//static int a = 0;
-	//if (a < 20)
-	//	std::cout << "C: " << elapsedCycles_ << "||" << reg_.ToString() << "\t I: " << OpAsAsm(opMapping.opName, opMapping.addrMode, val) << std::endl;
-	//++a;
+	//if (elapsedCycles_ >= 29000)
+	//{
+	//	std::cout << "C: " << elapsedCycles_ << "|" << reg_.ToString() << "\t I: " << OpAsAsm(opMapping.opName, opMapping.addrMode, val) << std::endl;
+	//}
+	//
+	//static bool a = false;
+	//if (reg_.PC == 0xc50a || a)
+	//{
+	//	std::cout << std::endl;
+	//	a = true;
+	//}
 
 	// Execute instruction.
 	(this->*opMapping.opFunc)(argInfo);
