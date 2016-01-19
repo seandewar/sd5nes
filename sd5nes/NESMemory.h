@@ -94,3 +94,7 @@ public:
 private:
 	std::array<u8, size> data_;
 };
+
+typedef NESMemory<0x4000> NESMemPRGROMBank;
+typedef NESMemory<0x2000> NESMemCHRBank;
+typedef NESMemory<0x2000> NESMemSRAMBank;

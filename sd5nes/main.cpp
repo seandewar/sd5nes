@@ -25,9 +25,9 @@ int main(int argc, char* argv[])
 	//emu.LoadROM("roms//nestest.nes"); // PASS
 	//emu.LoadROM("roms//galaga_eu.nes"); // PASS
 	//emu.LoadROM("roms//smb_jp_usa.nes"); // PASS
-	emu.LoadROM("roms//zelda_usa.nes");
+	emu.LoadROM("roms//zelda_usa.nes"); // PASS
 	//emu.LoadROM("roms//zelda_2_usa.nes");
-	//emu.LoadROM("roms//final_fantasy_usa.nes");
+	//emu.LoadROM("roms//final_fantasy_usa.nes"); // PASS
 	//emu.LoadROM("roms//excitebike_jp_usa.nes"); // PASS
 	//emu.LoadROM("roms//arkanoid_usa.nes");
 	//emu.LoadROM("roms//digdug.nes"); // PASS

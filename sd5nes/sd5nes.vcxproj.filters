@@ -51,6 +51,9 @@
     <ClCompile Include="NESController.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="NESGamePakPowerState.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="NESCPU.h">
@@ -63,9 +66,6 @@
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="NESMemoryConstants.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="NESCPUConstants.h">
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="NESEmulationConstants.h">
@@ -102,6 +102,9 @@
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="NESException.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="NESGamePakPowerState.h">
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>

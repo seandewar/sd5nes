@@ -13,7 +13,7 @@
 class NESPPUEmuComm : public INESPPUCommunicationsInterface
 {
 public:
-	NESPPUEmuComm(NESPPUMemory& mem, NESCPU& cpu, INESMMC& mmc, NESNameTableMirroringType ntMirror);
+	NESPPUEmuComm(NESPPUMemory& mem, NESCPU& cpu, INESMMC& mmc, const NESNameTableMirroringType& ntMirror);
 	virtual ~NESPPUEmuComm();
 
 	/**
@@ -32,7 +32,7 @@ public:
 private:
 	NESPPUMemory& mem_;
 	INESMMC* mmc_;
-	NESNameTableMirroringType ntMirror_;
+	const NESNameTableMirroringType& ntMirror_;
 
 	NESCPU& cpu_;
 

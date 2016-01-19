@@ -1,7 +1,7 @@
 #include "NESPPUEmuComm.h"
 
 
-NESPPUEmuComm::NESPPUEmuComm(NESPPUMemory& mem, NESCPU& cpu, INESMMC& mmc, NESNameTableMirroringType ntMirror) :
+NESPPUEmuComm::NESPPUEmuComm(NESPPUMemory& mem, NESCPU& cpu, INESMMC& mmc, const NESNameTableMirroringType& ntMirror) :
 mem_(mem),
 cpu_(cpu),
 mmc_(&mmc),
@@ -30,7 +30,7 @@ std::size_t NESPPUEmuComm::GetNameTableIndex(u16 addr) const
 		return 0;
 
 	case NESNameTableMirroringType::FOUR_SCREEN:
-		// @TODO NOT IMPLEMENTED YET!
+		return 0; // @TODO NOT IMPLEMENTED YET!
 
 	default:
 		assert("Invalid name table mirror type!" && false);

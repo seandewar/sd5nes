@@ -3,7 +3,7 @@
 #include <array>
 #include <vector>
 
-#include "NESGamePak.h"
+#include "NESPPU.h"
 
 /**
 * The type of MMC.
@@ -56,9 +56,9 @@ private:
 class NESMMC1 : public INESMMC
 {
 public:
-	NESMMC1(const std::vector<NESMemSRAMBank*>& sram,
-			const std::vector<NESMemCHRBank*>& chr,
-			const std::vector<const NESMemPRGROMBank*>& prg,
+	NESMMC1(const std::vector<NESMemSRAMBank>& sram,
+			const std::vector<NESMemCHRBank>& chr,
+			const std::vector<NESMemPRGROMBank>& prg,
 			NESNameTableMirroringType& ntMirror);
 	virtual ~NESMMC1();
 
@@ -68,9 +68,9 @@ public:
 	u8 Read8(u16 addr) const override;
 
 private:
-	std::vector<NESMemSRAMBank*> sram_;
-	std::vector<NESMemCHRBank*> chr_;
-	std::vector<const NESMemPRGROMBank*> prg_;
+	std::vector<NESMemSRAMBank> sram_;
+	std::vector<NESMemCHRBank> chr_;
+	const std::vector<NESMemPRGROMBank> prg_;
 	NESNameTableMirroringType& ntMirror_;
 
 	std::array<std::size_t, 2> chrBankIndices_;

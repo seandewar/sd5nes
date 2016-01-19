@@ -80,6 +80,7 @@
     <ClCompile Include="NESCPUOpcodes.cpp" />
     <ClCompile Include="NESEmulator.cpp" />
     <ClCompile Include="NESGamePak.cpp" />
+    <ClCompile Include="NESGamePakPowerState.cpp" />
     <ClCompile Include="NESHelper.cpp" />
     <ClCompile Include="NESMMC.cpp" />
     <ClCompile Include="NESPPU.cpp" />
@@ -89,13 +90,13 @@
   <ItemGroup>
     <ClInclude Include="NESController.h" />
     <ClInclude Include="NESCPU.h" />
-    <ClInclude Include="NESCPUConstants.h" />
     <ClInclude Include="NESCPUEmuComm.h" />
     <ClInclude Include="NESCPUOpConstants.h" />
     <ClInclude Include="NESEmulationConstants.h" />
     <ClInclude Include="NESEmulator.h" />
     <ClInclude Include="NESException.h" />
     <ClInclude Include="NESGamePak.h" />
+    <ClInclude Include="NESGamePakPowerState.h" />
     <ClInclude Include="NESHelper.h" />
     <ClInclude Include="NESMemoryConstants.h" />
     <ClInclude Include="NESMemory.h" />

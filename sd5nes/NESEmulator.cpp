@@ -78,12 +78,10 @@ void NESEmulator::LoadROM(const std::string& fileName)
 {
 	// @TODO: debugdebugdebug
 	cart_.LoadROM(fileName);
+	cartState_ = cart_.GetNewGamePakPowerState();
 
-	auto mmc = cart_.GetMMC();
-	assert(mmc != nullptr);
-
-	cpuComm_ = std::make_unique<NESCPUEmuComm>(cpuRam_, ppu_, *mmc, controllers_);
-	ppuComm_ = std::make_unique<NESPPUEmuComm>(ppuMem_, cpu_, *mmc, cart_.GetMirroringType());
+	cpuComm_ = std::make_unique<NESCPUEmuComm>(cpuRam_, ppu_, cartState_->GetMMC(), controllers_);
+	ppuComm_ = std::make_unique<NESPPUEmuComm>(ppuMem_, cpu_, cartState_->GetMMC(), cartState_->GetNameTableMirroringRef());
 
 	cpu_.Initialize(*cpuComm_);
 	ppu_.Initialize(*ppuComm_);

@@ -4,5 +4,3 @@
 #define NES_CPU_NTSC_CLOCK_SPEED_MHZ 1.7897725
 #define NES_CPU_PAL_CLOCK_SPEED_MHZ 1.773447
 
-/* Address in memory where the CPU stack begins. */
-#define NES_CPU_STACK_START 0x0100

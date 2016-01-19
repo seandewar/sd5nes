@@ -198,6 +198,9 @@ private:
 	bool isValid_;
 };
 
+/* Address in memory where the CPU stack begins. */
+#define NES_CPU_STACK_START 0x0100
+
 /**
 * Interface for allowing the CPU to communicate with other devices.
 */

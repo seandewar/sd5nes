@@ -38,9 +38,9 @@ u8 NESMMCNROM::Read8(u16 addr) const
 }
 
 
-NESMMC1::NESMMC1(const std::vector<NESMemSRAMBank*>& sram,
-				 const std::vector<NESMemCHRBank*>& chr,
-				 const std::vector<const NESMemPRGROMBank*>& prg,
+NESMMC1::NESMMC1(const std::vector<NESMemSRAMBank>& sram,
+				 const std::vector<NESMemCHRBank>& chr,
+				 const std::vector<NESMemPRGROMBank>& prg,
 				 NESNameTableMirroringType& ntMirror) :
 sram_(sram),
 chr_(chr),
@@ -170,9 +170,9 @@ void NESMMC1::HandleRegisterWrite(u16 addr, u8 val)
 void NESMMC1::Write8(u16 addr, u8 val)
 {
 	if (addr < 0x2000) // CHR-ROM / CHR-RAM
-		chr_[chrBankIndices_[addr / 0x1000]]->Write8(addr, val);
+		chr_[chrBankIndices_[addr / 0x1000]].Write8(addr, val);
 	else if (addr >= 0x6000 && addr < 0x8000) // SRAM
-		sram_[0]->Write8(addr - 0x6000, val); // @TODO
+		sram_[0].Write8(addr - 0x6000, val); // @TODO
 	else if (addr >= 0x8000) // MMC1 Registers
 		HandleRegisterWrite(addr, val);
 }
@@ -181,9 +181,9 @@ void NESMMC1::Write8(u16 addr, u8 val)
 u8 NESMMC1::Read8(u16 addr) const
 {
 	if (addr < 0x2000) // CHR-ROM / CHR-RAM
-		return chr_[chrBankIndices_[addr / 0x1000]]->Read8(addr);
+		return chr_[chrBankIndices_[addr / 0x1000]].Read8(addr);
 	else if (addr >= 0x6000 && addr < 0x8000) // SRAM
-		return sram_[0]->Read8(addr - 0x6000);
+		return sram_[0].Read8(addr - 0x6000);
 	else // PRG-ROM Banks
-		return prg_[prgBankIndices_[(addr - 0x8000) / 0x4000]]->Read8(addr & 0x3FFF);
+		return prg_[prgBankIndices_[(addr - 0x8000) / 0x4000]].Read8(addr & 0x3FFF);
 }

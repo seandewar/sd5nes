@@ -60,6 +60,7 @@ private:
 	NESControllerPorts controllers_;
 
 	NESGamePak cart_;
+	std::unique_ptr<NESGamePakPowerState> cartState_;
 
 	NESMemCPURAM cpuRam_;
 	std::unique_ptr<NESCPUEmuComm> cpuComm_;

@@ -390,8 +390,8 @@ void NESPPU::TickEvaluateSprites()
 		{
 			const u16 oamAddr = (4 * n) + m;
 			const u8 sprY = primaryOam_.Read8(oamAddr);
-			const auto sprInRange = (sprY <= currentScanline_ && 
-				static_cast<unsigned int>(sprY) + GetSpriteHeight() > currentScanline_);
+			const bool sprInRange = (sprY <= currentScanline_ && 
+									 static_cast<unsigned int>(sprY) + GetSpriteHeight() > currentScanline_);
 
 			// Check if we already have 8 sprites found and check for overflow if we do.
 			// Otherwise, check if sprite is in range. If H is set in PPUCTRL, sprite is 16 px high.
@@ -559,8 +559,8 @@ void NESPPU::TickRenderPixel()
 	else if (bgPixel != 0)
 	{
 		// Get the correct attrib for which corner the tile is on.
-		const auto isBottom = (((((vScroll_ & 0x60) >> 2) | ((vScroll_ >> 12) & 7)) % 32) >= 16);
-		const auto isRight = (((((vScroll_ & 3) << 3) + (xScroll_ & 7) + (currentCycle_ % 8)) % 32) < 16);
+		const bool isBottom = (((((vScroll_ & 0x60) >> 2) | ((vScroll_ >> 12) & 7)) % 32) >= 16);
+		const bool isRight = (((((vScroll_ & 3) << 3) + (xScroll_ & 7) + (currentCycle_ % 8)) % 32) < 16);
 		const u8 bgPixAttrib = (bgAttrib >> ((isBottom ? 4 : 0) + (isRight ? 2 : 0))) & 3;
 
 		pixelColor = GetPPUPaletteColor(comm_->Read8(0x3F00 + (4 * bgPixAttrib) + bgPixel));
