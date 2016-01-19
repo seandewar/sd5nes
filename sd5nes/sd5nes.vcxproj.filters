@@ -54,6 +54,9 @@
     <ClCompile Include="NESGamePakPowerState.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="NESAPU.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="NESCPU.h">
@@ -105,6 +108,9 @@
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="NESGamePakPowerState.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="NESAPU.h">
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>
