@@ -1,12 +1,12 @@
 #include "NESGamePakPowerState.h"
 
 
-NESGamePakPowerState::NESGamePakPowerState(NESMMCType mapperType,
-										   const std::vector<NESMemPRGROMBank>& prg,
-										   const std::vector<NESMemCHRBank>& chr,
-										   const std::vector<NESMemSRAMBank>& sram,
-										   NESNameTableMirroringType mirrorType,
-										   bool hasBatteryPackedRam) :
+NESGamePakPowerState::NESGamePakPowerState(NESMMCType mapperType, 
+	const std::vector<NESMemPRGROMBank>& prg,
+	const std::vector<NESMemCHRBank>& chr,
+	const std::vector<NESMemSRAMBank>& sram,
+	NESNameTableMirroringType mirrorType,
+	bool hasBatteryPackedRam) :
 mapperType_(mapperType),
 prgBanks_(prg),
 chrBanks_(chr),
