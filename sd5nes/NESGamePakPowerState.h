@@ -5,7 +5,8 @@
 #include "NESMMC.h"
 
 /**
-* Represents the internal active state of a GamePak when it is powered on.
+* Represents the internal active state of a GamePak when it is powered on
+* and to be used by the NES.
 */
 class NESGamePakPowerState
 {
