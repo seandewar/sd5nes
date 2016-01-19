@@ -6,7 +6,6 @@
 #include "NESException.h"
 #include "NESTypes.h"
 #include "NESHelper.h"
-#include "NESCPUConstants.h"
 #include "NESCPUOpConstants.h"
 #include "NESMemoryConstants.h"
 #include "NESMemory.h"
