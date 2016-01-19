@@ -34,9 +34,9 @@ class NESMMCNROM : public INESMMC
 {
 public:
 	NESMMCNROM(NESMemSRAMBank& sram,
-			   NESMemCHRBank& chr,
-			   const NESMemPRGROMBank& prg1,
-			   const NESMemPRGROMBank* prg2 = nullptr);
+		NESMemCHRBank& chr,
+		const NESMemPRGROMBank& prg1,
+		const NESMemPRGROMBank* prg2 = nullptr);
 	virtual ~NESMMCNROM();
 
 	inline NESMMCType GetType() const override { return NESMMCType::NROM; }
@@ -57,9 +57,9 @@ class NESMMC1 : public INESMMC
 {
 public:
 	NESMMC1(const std::vector<NESMemSRAMBank>& sram,
-			const std::vector<NESMemCHRBank>& chr,
-			const std::vector<NESMemPRGROMBank>& prg,
-			NESNameTableMirroringType& ntMirror);
+		const std::vector<NESMemCHRBank>& chr,
+		const std::vector<NESMemPRGROMBank>& prg,
+		NESNameTableMirroringType& ntMirror);
 	virtual ~NESMMC1();
 
 	inline NESMMCType GetType() const override { return NESMMCType::MMC1; }

@@ -35,7 +35,7 @@ void NESGamePakPowerState::CreateMapper()
 			chrBanks_[0],
 			prgBanks_[0],
 			(prgBanks_.size() > 1 ? &prgBanks_[1] : nullptr)
-		);
+			);
 		break;
 
 	case NESMMCType::MMC1:

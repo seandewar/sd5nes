@@ -53,12 +53,14 @@ std::vector<u8> NESGamePak::ReadROMFile(const std::string& fileName)
 
 std::unique_ptr<NESGamePakPowerState> NESGamePak::GetNewGamePakPowerState() const
 {
-	return std::make_unique<NESGamePakPowerState>(mapperType_,
-												  prgBanks_,
-												  chrBanks_,
-												  sramBanks_,
-												  mirrorType_,
-												  hasBatteryPackedRam_);
+	return std::make_unique<NESGamePakPowerState>(
+		mapperType_,
+		prgBanks_,
+		chrBanks_,
+		sramBanks_,
+		mirrorType_,
+		hasBatteryPackedRam_
+		);
 }
 
 

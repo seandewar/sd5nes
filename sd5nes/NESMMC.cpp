@@ -2,9 +2,9 @@
 
 
 NESMMCNROM::NESMMCNROM(NESMemSRAMBank& sram, 
-					   NESMemCHRBank& chr, 
-					   const NESMemPRGROMBank& prg1, 
-					   const NESMemPRGROMBank* prg2) :
+	NESMemCHRBank& chr, 
+	const NESMemPRGROMBank& prg1, 
+	const NESMemPRGROMBank* prg2) :
 sram_(sram),
 chr_(chr)
 {
@@ -38,10 +38,10 @@ u8 NESMMCNROM::Read8(u16 addr) const
 }
 
 
-NESMMC1::NESMMC1(const std::vector<NESMemSRAMBank>& sram,
-				 const std::vector<NESMemCHRBank>& chr,
-				 const std::vector<NESMemPRGROMBank>& prg,
-				 NESNameTableMirroringType& ntMirror) :
+NESMMC1::NESMMC1(const std::vector<NESMemSRAMBank>& sram, 
+	const std::vector<NESMemCHRBank>& chr,
+	const std::vector<NESMemPRGROMBank>& prg,
+	NESNameTableMirroringType& ntMirror) :
 sram_(sram),
 chr_(chr),
 prg_(prg),
