@@ -11,11 +11,11 @@ class NESGamePakPowerState
 {
 public:
 	NESGamePakPowerState(NESMMCType mapperType,
-						 const std::vector<NESMemPRGROMBank>& prg,
-						 const std::vector<NESMemCHRBank>& chr,
-						 const std::vector<NESMemSRAMBank>& sram,
-						 NESNameTableMirroringType mirrorType,
-						 bool hasBatteryPackedRam);
+		const std::vector<NESMemPRGROMBank>& prg,
+		const std::vector<NESMemCHRBank>& chr,
+		const std::vector<NESMemSRAMBank>& sram,
+		NESNameTableMirroringType mirrorType,
+		bool hasBatteryPackedRam);
 	~NESGamePakPowerState();
 
 	inline NESMMCType GetMMCType() const { return mapperType_; }
