@@ -33,8 +33,10 @@ u8 NESMMCNROM::Read8(u16 addr) const
 		return chr_.Read8(addr);
 	else if (addr >= 0x6000 && addr < 0x8000) // SRAM
 		return sram_.Read8(addr - 0x6000);
-	else // Upper & Lower PRG-ROM Banks
+	else if (addr >= 0x8000) // Upper & Lower PRG-ROM Banks
 		return prg_[(addr - 0x8000) / 0x4000]->Read8(addr & 0x3FFF);
+	else
+		return 0;
 }
 
 
@@ -49,13 +51,13 @@ ntMirror_(ntMirror),
 shiftReg_(0x10),
 prgBankMode_(0),
 chrBankMode_(0),
-chrBankIndices_({ 0, chr_.size() - 1 }),
-prgBankIndices_({ 0, prg_.size() - 1 })
+chrBankIndices_({ { 0, chr_.size() - 1 } }),
+prgBankIndices_({ { 0, prg_.size() - 1 } })
 {
 	// Ensure that we have at least one valid bank in SRAM, CHR and PRG.
 	// and that we do not have more banks than the mapper can use.
 	assert(sram_.size() != 0 && chr_.size() != 0 && prg_.size() != 0);
-	assert(sram_.size() < 4 && chr_.size() < 16 && prg_.size() < 32);
+	assert(sram_.size() <= 4 && chr_.size() <= 16 && prg_.size() <= 32);
 }
 
 
@@ -99,13 +101,16 @@ void NESMMC1::WriteCHRBankRegister(u8 bankNum, u8 val)
 	switch (chrBankMode_)
 	{
 	case 0: // One 8 KB Bank
-		// Ignore bit 0 so we choose from 16 banks.
-		chrBankIndices_[0] = (val & 0x1E) % chr_.size();
-		chrBankIndices_[1] = ((val + 1) & 0x1F) % chr_.size();
+		// Ignore bit 0 so we choose from 16 banks for bank 0.
+		// Bank 1 will be the next 4KB bank of CHR afterwards.
+		// @NOTE: NESMemCHRBank is 8KB, so we need to convert the index
+		// to one that works with this type.
+		chrBankIndices_[0] = (val & 0x1E) % (chr_.size() * 2);
+		chrBankIndices_[1] = ((val & 0x1E) | 1) % (chr_.size() * 2);
 		break;
 
 	case 1: // Two 4 KB Banks
-		chrBankIndices_[bankNum] = (val & 0x1F) % chr_.size();
+		chrBankIndices_[bankNum] = (val & 0x1F) % (chr_.size() * 2);
 		break;
 	}
 }
@@ -120,7 +125,7 @@ void NESMMC1::WritePRGBankRegister(u8 val)
 	case 1: // 32 KB Bank
 		// Ignore bit 0 so we choose from 16 banks. (32 indices)
 		prgBankIndices_[0] = (val & 0xE) % prg_.size();
-		prgBankIndices_[1] = ((val + 1) & 0xF) % prg_.size();
+		prgBankIndices_[1] = ((val & 0xE) | 1) % prg_.size();
 		break;
 
 	case 2: // Switch 16 KB Bank at $C000
@@ -145,7 +150,7 @@ void NESMMC1::HandleRegisterWrite(u16 addr, u8 val)
 	}
 	else
 	{
-		const auto newShift = (shiftReg_ >> 1) | ((val & 1) << 4);
+		const u8 newShift = (shiftReg_ >> 1) | ((val & 1) << 4);
 
 		if (NESHelper::IsBitSet(shiftReg_, 0))
 		{
@@ -170,9 +175,17 @@ void NESMMC1::HandleRegisterWrite(u16 addr, u8 val)
 void NESMMC1::Write8(u16 addr, u8 val)
 {
 	if (addr < 0x2000) // CHR-ROM / CHR-RAM
-		chr_[chrBankIndices_[addr / 0x1000]].Write8(addr, val);
-	else if (addr >= 0x6000 && addr < 0x8000) // SRAM
-		sram_[0].Write8(addr - 0x6000, val); // @TODO
+	{
+		const auto addrBankNum = addr / 0x1000;
+		const auto chrIdx = chrBankIndices_[addrBankNum];
+
+		if (chrBankMode_ == 0) // 8 KB Banks
+			chr_[chrIdx].Write8(addr, val);
+		else // 4+4 KB Banks - We consider upper or lower part of the 8KB NESMemCHRBank.
+			chr_[chrIdx / 2].Write8(addr - ((chrIdx % 2) * 0x1000), val);
+	}
+	else if (addr >= 0x6000 && addr < 0x8000) // SRAM @TODO
+		sram_[0].Write8(addr - 0x6000, val);
 	else if (addr >= 0x8000) // MMC1 Registers
 		HandleRegisterWrite(addr, val);
 }
@@ -181,9 +194,19 @@ void NESMMC1::Write8(u16 addr, u8 val)
 u8 NESMMC1::Read8(u16 addr) const
 {
 	if (addr < 0x2000) // CHR-ROM / CHR-RAM
-		return chr_[chrBankIndices_[addr / 0x1000]].Read8(addr);
-	else if (addr >= 0x6000 && addr < 0x8000) // SRAM
+	{
+		const auto addrBankNum = addr / 0x1000;
+		const auto chrIdx = chrBankIndices_[addrBankNum];
+
+		if (chrBankMode_ == 0) // 8 KB Banks
+			return chr_[chrIdx / 2].Read8(addr);
+		else // 4+4 KB Banks - We consider upper or lower part of the 8KB NESMemCHRBank.
+			return chr_[chrIdx / 2].Read8(addr - ((chrIdx % 2) * 0x1000));
+	}
+	else if (addr >= 0x6000 && addr < 0x8000) // SRAM @TODO
 		return sram_[0].Read8(addr - 0x6000);
-	else // PRG-ROM Banks
+	else if (addr >= 0x8000) // PRG-ROM Banks
 		return prg_[prgBankIndices_[(addr - 0x8000) / 0x4000]].Read8(addr & 0x3FFF);
+	else
+		return 0;
 }

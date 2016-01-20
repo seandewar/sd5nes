@@ -153,7 +153,6 @@ u8 NESPPU::ReadRegister(NESPPURegisterType reg)
 
 		// The V-Blank flag is cleared upon read
 		NESHelper::ClearRefBit(reg_.PPUSTATUS, NES_PPU_REG_PPUSTATUS_V_BIT);
-
 		latches_.isAddressLatchOn = false; // Reset address latch
 		break;
 
