@@ -180,7 +180,7 @@ void NESMMC1::Write8(u16 addr, u8 val)
 		const auto chrIdx = chrBankIndices_[addrBankNum];
 
 		if (chrBankMode_ == 0) // 8 KB Banks
-			chr_[chrIdx].Write8(addr, val);
+			chr_[chrIdx / 2].Write8(addr, val);
 		else // 4+4 KB Banks - We consider upper or lower part of the 8KB NESMemCHRBank.
 			chr_[chrIdx / 2].Write8(addr - ((chrIdx % 2) * 0x1000), val);
 	}
