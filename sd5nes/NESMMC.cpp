@@ -180,7 +180,7 @@ void NESMMC1::Write8(u16 addr, u8 val)
 		const auto chrIdx = chrBankIndices_[addrBankNum];
 
 		if (chrBankMode_ == 0) // 8 KB Banks
-			chr_[chrIdx / 2].Write8(addr, val);
+			chr_[chrIdx].Write8(addr, val);
 		else // 4+4 KB Banks - We consider upper or lower part of the 8KB NESMemCHRBank.
 			chr_[chrIdx / 2].Write8(addr - ((chrIdx % 2) * 0x1000), val);
 	}
@@ -199,9 +199,9 @@ u8 NESMMC1::Read8(u16 addr) const
 		const auto chrIdx = chrBankIndices_[addrBankNum];
 
 		if (chrBankMode_ == 0) // 8 KB Banks
-			chr_[chrIdx / 2].Read8(addr);
+			return chr_[chrIdx / 2].Read8(addr);
 		else // 4+4 KB Banks - We consider upper or lower part of the 8KB NESMemCHRBank.
-			chr_[chrIdx / 2].Read8(addr - ((chrIdx % 2) * 0x1000));
+			return chr_[chrIdx / 2].Read8(addr - ((chrIdx % 2) * 0x1000));
 	}
 	else if (addr >= 0x6000 && addr < 0x8000) // SRAM @TODO
 		return sram_[0].Read8(addr - 0x6000);
