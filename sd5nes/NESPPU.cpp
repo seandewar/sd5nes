@@ -500,50 +500,53 @@ void NESPPU::TickRenderPixel()
 	u8 sprAttrib = 0;
 	u8 sprPixel = 0;
 
-	// Check if we should render background pixels
-	if (!(currentCycle_ <= 7 && !NESHelper::IsBitSet(reg_.PPUMASK, NES_PPU_REG_PPUMASK_m_BIT)) &&
-		NESHelper::IsBitSet(reg_.PPUMASK, NES_PPU_REG_PPUMASK_b_BIT))
+	if (IsRenderingEnabled())
 	{
-		const auto bgTilePixelX = (currentCycle_ % 8) + (xScroll_ & 7);
-		const auto bgTile = activeTiles_[(bgTilePixelX < 8 ? 1 : 0)];
-
-		// Get the color of the background pixel at this position.
-		bgAttrib = bgTile.atByte;
-		bgPixel = GetTileBitmapLinePixel(bgTile.tileBitmapHi, bgTile.tileBitmapLo, bgTilePixelX % 8);
-	}
-
-	// Check if we should render sprite pixels
-	if (!(currentCycle_ <= 7 && !NESHelper::IsBitSet(reg_.PPUMASK, NES_PPU_REG_PPUMASK_M_BIT)) &&
-		NESHelper::IsBitSet(reg_.PPUMASK, NES_PPU_REG_PPUMASK_s_BIT))
-	{
-		// Loop through active sprites to see if any should be drawn.
-		for (u8 i = 0; i < activeSpriteCount_; ++i)
+		// Check if we should render background pixels
+		if (!(currentCycle_ <= 7 && !NESHelper::IsBitSet(reg_.PPUMASK, NES_PPU_REG_PPUMASK_m_BIT)) &&
+			NESHelper::IsBitSet(reg_.PPUMASK, NES_PPU_REG_PPUMASK_b_BIT))
 		{
-			const auto& sprite = activeSprites_[i];
+			const auto bgTilePixelX = (currentCycle_ % 8) + (xScroll_ & 7);
+			const auto bgTile = activeTiles_[(bgTilePixelX < 8 ? 1 : 0)];
 
-			if (sprite.x <= currentCycle_ && sprite.x + 8u > currentCycle_)
+			// Get the color of the background pixel at this position.
+			bgAttrib = bgTile.atByte;
+			bgPixel = GetTileBitmapLinePixel(bgTile.tileBitmapHi, bgTile.tileBitmapLo, bgTilePixelX % 8);
+		}
+
+		// Check if we should render sprite pixels
+		if (!(currentCycle_ <= 7 && !NESHelper::IsBitSet(reg_.PPUMASK, NES_PPU_REG_PPUMASK_M_BIT)) &&
+			NESHelper::IsBitSet(reg_.PPUMASK, NES_PPU_REG_PPUMASK_s_BIT))
+		{
+			// Loop through active sprites to see if any should be drawn.
+			for (u8 i = 0; i < activeSpriteCount_; ++i)
 			{
-				// Sprite is in range!
-				sprAttrib = sprite.attributes;
-				sprPixel = GetTileBitmapLinePixel(sprite.tileBitmapHi, sprite.tileBitmapLo,
-					currentCycle_ - sprite.x
-				);
+				const auto& sprite = activeSprites_[i];
 
-				// If this is a transparent pixel, just continue to the next entry.
-				if (sprPixel == 0)
-					continue;
+				if (sprite.x <= currentCycle_ && sprite.x + 8u > currentCycle_)
+				{
+					// Sprite is in range!
+					sprAttrib = sprite.attributes;
+					sprPixel = GetTileBitmapLinePixel(sprite.tileBitmapHi, sprite.tileBitmapLo,
+						currentCycle_ - sprite.x
+						);
 
-				// Check for Sprite-0 hits. (Cannot happen on cycle >= 255 or cycle < 2).
-				if (sprite.GetPrimaryOAMIndex() == 0 && bgPixel != 0 && currentCycle_ < 255 && currentCycle_ >= 2)
-					NESHelper::SetRefBit(reg_.PPUSTATUS, NES_PPU_REG_PPUSTATUS_S_BIT);
+					// If this is a transparent pixel, just continue to the next entry.
+					if (sprPixel == 0)
+						continue;
 
-				// Check sprite priority - background flag is bit 5, we do not render this
-				// pixel of the sprite if the background flag is set and a background pixel is
-				// being drawn.
-				if (NESHelper::IsBitSet(sprite.attributes, 5) && bgPixel != 0)
-					sprPixel = 0;
+					// Check for Sprite-0 hits. (Cannot happen on cycle >= 255 or cycle < 2).
+					if (sprite.GetPrimaryOAMIndex() == 0 && bgPixel != 0 && currentCycle_ < 255 && currentCycle_ >= 2)
+						NESHelper::SetRefBit(reg_.PPUSTATUS, NES_PPU_REG_PPUSTATUS_S_BIT);
 
-				break;
+					// Check sprite priority - background flag is bit 5, we do not render this
+					// pixel of the sprite if the background flag is set and a background pixel is
+					// being drawn.
+					if (NESHelper::IsBitSet(sprite.attributes, 5) && bgPixel != 0)
+						sprPixel = 0;
+
+					break;
+				}
 			}
 		}
 	}
@@ -564,9 +567,13 @@ void NESPPU::TickRenderPixel()
 
 		pixelColor = GetPPUPaletteColor(comm_->Read8(0x3F00 + (4 * bgPixAttrib) + bgPixel));
 	}
-
-	if (sprPixel != 0 || bgPixel != 0)
-		debug_.setPixel(currentCycle_, currentScanline_, pixelColor.ToSFColor()); // @TODO: DEBUG!
+	else
+	{
+		// Get color from backdrop palette.
+		pixelColor = GetPPUPaletteColor(comm_->Read8(0x3F00));
+	}
+	
+	debug_.setPixel(currentCycle_, currentScanline_, pixelColor.ToSFColor()); // @TODO: DEBUG!
 }
 
 
@@ -641,8 +648,9 @@ void NESPPU::Tick()
 
 				TickEvaluateSprites();
 				TickFetchTileData();
-				TickRenderPixel();
 			}
+
+			TickRenderPixel();
 		}
 	}
 

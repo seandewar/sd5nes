@@ -80,9 +80,11 @@ private:
 	u8 shiftReg_;
 	u8 prgBankMode_, chrBankMode_;
 
-	void WriteControlRegister(u8 val);
-	void WriteCHRBankRegister(u8 bankNum, u8 val);
-	void WritePRGBankRegister(u8 val);
+	u8 prgBankNumber_;
+	u8 chrBank0Number_, chrBank1Number_;
 
+	void UpdateBankMappings();
+
+	void WriteControlRegister(u8 val);
 	void HandleRegisterWrite(u16 addr, u8 val);
 };

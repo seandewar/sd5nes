@@ -52,7 +52,10 @@ shiftReg_(0x10),
 prgBankMode_(0),
 chrBankMode_(0),
 chrBankIndices_({ { 0, chr_.size() - 1 } }),
-prgBankIndices_({ { 0, prg_.size() - 1 } })
+prgBankIndices_({ { 0, prg_.size() - 1 } }),
+chrBank0Number_(0),
+chrBank1Number_(0),
+prgBankNumber_(0)
 {
 	// Ensure that we have at least one valid bank in SRAM, CHR and PRG.
 	// and that we do not have more banks than the mapper can use.
@@ -63,6 +66,45 @@ prgBankIndices_({ { 0, prg_.size() - 1 } })
 
 NESMMC1::~NESMMC1()
 {
+}
+
+
+void NESMMC1::UpdateBankMappings()
+{
+	switch (prgBankMode_)
+	{
+	case 0:
+	case 1: // 32 KB Bank
+		// Ignore bit 0 so we choose from 16 banks. (32 indices)
+		prgBankIndices_[0] = (prgBankNumber_ & 0xE) % prg_.size();
+		prgBankIndices_[1] = ((prgBankNumber_ & 0xE) | 1) % prg_.size();
+		break;
+
+	case 2: // Switch 16 KB Bank at $C000
+		prgBankIndices_[1] = (prgBankNumber_ & 0xF) % prg_.size();
+		break;
+
+	case 3: // Switch 16 KB Bank at $8000
+		prgBankIndices_[0] = (prgBankNumber_ & 0xF) % prg_.size();
+		break;
+	}
+
+	switch (chrBankMode_)
+	{
+	case 0: // One 8 KB Bank
+		// Ignore bit 0 so we choose from 16 banks for bank 0.
+		// Bank 1 will be the next 4KB bank of CHR afterwards.
+		// @NOTE: NESMemCHRBank is 8KB, so we need to convert the index
+		// to one that works with this type.
+		chrBankIndices_[0] = (chrBank0Number_ & 0x1E) % (chr_.size() * 2);
+		chrBankIndices_[1] = ((chrBank0Number_ & 0x1E) | 1) % (chr_.size() * 2);
+		break;
+
+	case 1: // Two 4 KB Banks
+		chrBankIndices_[0] = (chrBank0Number_ & 0x1F) % (chr_.size() * 2);
+		chrBankIndices_[1] = (chrBank1Number_ & 0x1F) % (chr_.size() * 2);
+		break;
+	}
 }
 
 
@@ -94,58 +136,17 @@ void NESMMC1::WriteControlRegister(u8 val)
 }
 
 
-void NESMMC1::WriteCHRBankRegister(u8 bankNum, u8 val)
-{
-	assert(bankNum < 2);
-
-	switch (chrBankMode_)
-	{
-	case 0: // One 8 KB Bank
-		// Ignore bit 0 so we choose from 16 banks for bank 0.
-		// Bank 1 will be the next 4KB bank of CHR afterwards.
-		// @NOTE: NESMemCHRBank is 8KB, so we need to convert the index
-		// to one that works with this type.
-		chrBankIndices_[0] = (val & 0x1E) % (chr_.size() * 2);
-		chrBankIndices_[1] = ((val & 0x1E) | 1) % (chr_.size() * 2);
-		break;
-
-	case 1: // Two 4 KB Banks
-		chrBankIndices_[bankNum] = (val & 0x1F) % (chr_.size() * 2);
-		break;
-	}
-}
-
-
-void NESMMC1::WritePRGBankRegister(u8 val)
-{
-	// @TODO: Handle change of SRAM.
-	switch (prgBankMode_)
-	{
-	case 0:
-	case 1: // 32 KB Bank
-		// Ignore bit 0 so we choose from 16 banks. (32 indices)
-		prgBankIndices_[0] = (val & 0xE) % prg_.size();
-		prgBankIndices_[1] = ((val & 0xE) | 1) % prg_.size();
-		break;
-
-	case 2: // Switch 16 KB Bank at $C000
-		prgBankIndices_[1] = (val & 0xF) % prg_.size();
-		break;
-
-	case 3: // Switch 16 KB Bank at $8000
-		prgBankIndices_[0] = (val & 0xF) % prg_.size();
-		break;
-	}
-}
-
-
 void NESMMC1::HandleRegisterWrite(u16 addr, u8 val)
 {
 	assert(addr >= 0x8000);
 
 	if (NESHelper::IsBitSet(val, 7))
 	{
-		// Clear shift register to initial state.
+		// Clear shift register to initial state
+		// and change PRG-ROM banking to mode 3.
+		prgBankMode_ = 3;
+		UpdateBankMappings();
+
 		shiftReg_ = 0x10;
 	}
 	else
@@ -159,11 +160,14 @@ void NESMMC1::HandleRegisterWrite(u16 addr, u8 val)
 
 			if (addr < 0xA000) // Control Register
 				WriteControlRegister(newShift);
-			else if (addr < 0xE000) // CHR Bank 0 or 1
-				WriteCHRBankRegister((addr - 0xA000) / 0x2000, newShift);
+			else if (addr < 0xC000) // CHR Bank 0
+				chrBank0Number_ = newShift;
+			else if (addr < 0xE000) // CHR Bank 1
+				chrBank1Number_ = newShift;
 			else // PRG Bank
-				WritePRGBankRegister(newShift);
+				prgBankNumber_ = newShift;
 
+			UpdateBankMappings();
 			shiftReg_ = 0x10;
 		}
 		else
@@ -180,7 +184,7 @@ void NESMMC1::Write8(u16 addr, u8 val)
 		const auto chrIdx = chrBankIndices_[addrBankNum];
 
 		if (chrBankMode_ == 0) // 8 KB Banks
-			chr_[chrIdx].Write8(addr, val);
+			chr_[chrIdx / 2].Write8(addr, val);
 		else // 4+4 KB Banks - We consider upper or lower part of the 8KB NESMemCHRBank.
 			chr_[chrIdx / 2].Write8(addr - ((chrIdx % 2) * 0x1000), val);
 	}
