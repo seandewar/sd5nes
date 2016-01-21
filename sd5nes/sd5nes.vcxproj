@@ -74,7 +74,6 @@
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClCompile Include="main.cpp" />
-    <ClCompile Include="NESAPU.cpp" />
     <ClCompile Include="NESController.cpp" />
     <ClCompile Include="NESCPU.cpp" />
     <ClCompile Include="NESCPUEmuComm.cpp" />
@@ -89,7 +88,6 @@
     <ClCompile Include="NESReadBuffer.cpp" />
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="NESAPU.h" />
     <ClInclude Include="NESController.h" />
     <ClInclude Include="NESCPU.h" />
     <ClInclude Include="NESCPUEmuComm.h" />
