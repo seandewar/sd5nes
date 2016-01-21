@@ -58,7 +58,6 @@ struct NESCPURegisters
 		oss << "PC: $" << std::hex << PC << ", SP: $" << std::hex << +SP
 			<< ", A: $" << std::hex << +A << ", X: $" << std::hex << +X << ", Y: $" << std::hex << +Y
 			<< ", P: $" << std::hex << +P_;
-
 		return oss.str();
 	}
 

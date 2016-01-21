@@ -1,7 +1,8 @@
 #include "NESAPU.h"
 
 
-NESAPU::NESAPU()
+NESAPU::NESAPU() :
+regStatus_(0)
 {
 }
 
@@ -16,8 +17,7 @@ u8 NESAPU::ReadRegister(NESAPURegisterType type)
 	switch (type)
 	{
 	case NESAPURegisterType::STATUS_CONTROL:
-		// @TODO
-		return 0;
+		return regStatus_;
 
 	default:
 		// Every other register is write-only.
@@ -29,4 +29,10 @@ u8 NESAPU::ReadRegister(NESAPURegisterType type)
 void NESAPU::WriteRegister(NESAPURegisterType type, u8 val)
 {
 	// @TODO
+}
+
+
+void NESAPU::Tick()
+{
+
 }

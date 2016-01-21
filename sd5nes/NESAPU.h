@@ -47,7 +47,7 @@ struct NESAPUDMCChannel : public NESAPUChannel
 };
 
 /**
-* The different registers of the APU.
+* The different register types of the APU.
 */
 enum class NESAPURegisterType
 {
@@ -97,7 +97,14 @@ public:
 	u8 ReadRegister(NESAPURegisterType type);
 	void WriteRegister(NESAPURegisterType type, u8 val);
 
+	/**
+	* Ticks the APU for one cycle.
+	*/
+	void Tick();
+
 private:
+	u8 regStatus_;
+
 	NESAPUPulseChannel pulse1_;
 	NESAPUPulseChannel pulse2_;
 	NESAPUTriangleChannel triangle_;
