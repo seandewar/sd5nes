@@ -317,7 +317,7 @@ void NESPPU::IncrementScrollY()
 void NESPPU::TickFetchTileData()
 {
 	// Only evaluate tile data on visible scanlines.
-	if (currentScanline_ > 239)
+	if (currentScanline_ > 239 || !IsRenderingEnabled())
 		return;
 
 	switch (currentCycle_ % 8)
@@ -365,7 +365,7 @@ void NESPPU::TickFetchTileData()
 void NESPPU::TickEvaluateSprites()
 {
 	// Only evaluate sprites during visible scanlines.
-	if (currentScanline_ > 239)
+	if (currentScanline_ > 239 || !IsRenderingEnabled())
 	{
 		activeSpriteCount_ = 0;
 		return;
@@ -645,11 +645,10 @@ void NESPPU::Tick()
 				if ((currentCycle_ <= 256 && currentCycle_ % 8 == 0) ||
 					currentCycle_ == 328 || currentCycle_ == 336)
 					IncrementScrollX();
-
-				TickEvaluateSprites();
-				TickFetchTileData();
 			}
 
+			TickEvaluateSprites();
+			TickFetchTileData();
 			TickRenderPixel();
 		}
 	}
