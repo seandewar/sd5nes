@@ -105,7 +105,8 @@ void NESEmulator::Frame()
 	debug_.create(341, 262, ppu_.GetBackdropColor().ToSFColor());
 	text.setFont(debugFont_);
 	text.setColor(sf::Color(0xFF, 0, 0));
-	text.setString(cpu_.GetRegisters().ToString());
+	text.setString("\tCPU REGISTERS:\n" + cpu_.GetRegisters().ToString()
+		+ "\n\tPPU REGISTERS:\n" + ppu_.GetRegisters().ToString());
 	text.setCharacterSize(9);
 
 	// Keep ticking until a frame is fully rendered by the PPU.

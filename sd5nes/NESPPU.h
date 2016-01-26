@@ -1,6 +1,7 @@
 #pragma once
 
 #include <array>
+#include <sstream>
 
 #include <SFML\Graphics\Color.hpp>
 #include <SFML\Graphics\Image.hpp>
@@ -167,6 +168,14 @@ struct NESPPURegisters
 		OAMADDR(0),
 		writeIgnoreCyclesLeft(0)
 	{ }
+
+	inline std::string ToString() const
+	{
+		std::ostringstream oss;
+		oss << "PPUCTRL $" << std::hex << +PPUCTRL << ", PPUMASK $" << std::hex << +PPUMASK
+			<< ", PPUSTATUS $" << std::hex << +PPUSTATUS << ", OAMADDR $" << std::hex << +OAMADDR;
+		return oss.str();
+	}
 };
 
 /* Specifies an invalid index inside of OAM. */
@@ -288,6 +297,11 @@ public:
 	* Reads from the specified PPU register.
 	*/
 	u8 ReadRegister(NESPPURegisterType reg);
+
+	/**
+	* Gets a const reference to the PPU's stored registers.
+	*/
+	inline const NESPPURegisters& GetRegisters() const { return reg_; }
 
 	/**
 	* Gets the universal backdrop color at $3F00.
