@@ -102,7 +102,7 @@ void NESMovie::ParseMovieFileData(const std::vector<u8>& data)
 		else
 		{
 			// Text mode
-			// @TODO
+			// @TODO: Support this movie format first - this is the most used one!
 		}
 	}
 	catch (const NESReadBufferException&)
