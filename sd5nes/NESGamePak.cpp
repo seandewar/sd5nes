@@ -1,5 +1,6 @@
 #include "NESGamePak.h"
 
+#include <iostream>
 #include <fstream>
 #include <sstream>
 
@@ -170,4 +171,8 @@ void NESGamePak::LoadROM(const std::string& fileName)
 	ParseROMFileData(ReadROMFile(fileName));
 
 	isRomLoaded_ = true;
+	std::cout << "Loaded GamePak ROM image \"" << fileName << "\"" << std::endl;
+	std::cout << "\t8K CHR Banks: " << chrBanks_.size() << std::endl;
+	std::cout << "\t8K SRAM Banks: " << sramBanks_.size() << std::endl;
+	std::cout << "\t16K PRG-ROM Banks: " << prgBanks_.size() << std::endl;
 }
