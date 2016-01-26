@@ -55,9 +55,9 @@ struct NESCPURegisters
 	inline std::string ToString() const
 	{
 		std::ostringstream oss;
-		oss << "PC: $" << std::hex << PC << ", SP: $" << std::hex << +SP
-			<< ", A: $" << std::hex << +A << ", X: $" << std::hex << +X << ", Y: $" << std::hex << +Y
-			<< ", P: $" << std::hex << +P_;
+		oss << "PC $" << std::hex << PC << ", SP $" << std::hex << +SP
+			<< ", A $" << std::hex << +A << ", X $" << std::hex << +X << ", Y $" << std::hex << +Y
+			<< ", P $" << std::hex << +P_;
 		return oss.str();
 	}
 
@@ -264,6 +264,11 @@ public:
 	* Gets the amount of elapsed CPU cycles since power.
 	*/
 	inline unsigned int GetElapsedCycles() const { return elapsedCycles_; }
+
+	/**
+	* Returns a const reference to the current CPU registers.
+	*/
+	inline const NESCPURegisters& GetRegisters() const { return reg_; }
 
 private:
 	// Contains opcode info.

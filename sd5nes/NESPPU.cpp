@@ -528,8 +528,7 @@ void NESPPU::TickRenderPixel()
 					// Sprite is in range!
 					sprAttrib = sprite.attributes;
 					sprPixel = GetTileBitmapLinePixel(sprite.tileBitmapHi, sprite.tileBitmapLo,
-						currentCycle_ - sprite.x
-						);
+						currentCycle_ - sprite.x);
 
 					// If this is a transparent pixel, just continue to the next entry.
 					if (sprPixel == 0)

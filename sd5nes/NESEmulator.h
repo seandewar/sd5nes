@@ -3,6 +3,7 @@
 #include <memory>
 
 #include <SFML\Graphics\RenderTarget.hpp>
+#include <SFML\Graphics\Font.hpp>
 
 #include "NESCPU.h"
 #include "NESCPUEmuComm.h"
@@ -26,7 +27,7 @@ enum class NESControllerPort
 class NESEmulator
 {
 public:
-	NESEmulator(sf::RenderTarget& target);
+	NESEmulator(sf::RenderTarget& target, const sf::Font& debugFont);
 	~NESEmulator();
 
 	/**
@@ -53,6 +54,7 @@ public:
 
 private:
 	sf::RenderTarget& target_;
+	const sf::Font& debugFont_;
 	
 	// @TODO Debug!! everyWHERE!!
 	sf::Image debug_;

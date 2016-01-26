@@ -2,6 +2,7 @@
 
 #include <SFML\Graphics\RenderWindow.hpp>
 #include <SFML\Window\Event.hpp>
+#include <SFML\Graphics\Font.hpp>
 
 #include "NESEmulationConstants.h"
 #include "NESEmulator.h"
@@ -16,7 +17,11 @@ int main(int argc, char* argv[])
 	);
 	window.setFramerateLimit(60);
 
-	NESEmulator emu(window);
+	// @TODO: DEBUG!
+	sf::Font font;
+	font.loadFromFile("font.ttf");
+
+	NESEmulator emu(window, font);
 
 	NESStandardController controller;
 	emu.AddController(NESControllerPort::CONTROLLER_1, controller);
@@ -35,10 +40,10 @@ int main(int argc, char* argv[])
 	//emu.LoadROM("roms//instr_test-v4//rom_singles//07-abs_xy.nes"); // PASS
 	//emu.LoadROM("roms//nestest.nes"); // PASS
 	//emu.LoadROM("roms//galaga_eu.nes"); // PASS
-	//emu.LoadROM("roms//smb_jp_usa.nes"); // PASS
+	emu.LoadROM("roms//smb_jp_usa.nes"); // PASS
 	//emu.LoadROM("roms//zelda_usa.nes"); // PASS
 	//emu.LoadROM("roms//metroid_u.nes"); // PASS
-	emu.LoadROM("roms//pictionary_usa.nes"); // PASS?
+	//emu.LoadROM("roms//pictionary_usa.nes"); // PASS?
 	//emu.LoadROM("roms//zelda_2_usa.nes"); // PASS
 	//emu.LoadROM("roms//final_fantasy_usa.nes"); // PASS
 	//emu.LoadROM("roms//excitebike_jp_usa.nes"); // PASS

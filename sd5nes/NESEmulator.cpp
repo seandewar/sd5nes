@@ -6,10 +6,13 @@
 #include <SFML\Graphics\Sprite.hpp>
 #include <SFML\Graphics\Texture.hpp>
 
+#include <SFML\Graphics\Text.hpp> //@TODO DEBUG!
 
-NESEmulator::NESEmulator(sf::RenderTarget& target) :
+
+NESEmulator::NESEmulator(sf::RenderTarget& target, const sf::Font& debugFont) :
 target_(target),
-ppu_(debug_) // @TODO DEBUG!
+ppu_(debug_), // @TODO DEBUG!
+debugFont_(debugFont)
 {
 	// Init controller ports
 	for (auto& port : controllers_)
@@ -93,11 +96,17 @@ void NESEmulator::LoadROM(const std::string& fileName)
 
 void NESEmulator::Frame()
 {
+	// @TODO So much debug!!1
 	sf::Sprite spr;
 	sf::Texture tex;
+	sf::Text text;
 
 	// @TODO: DEBUG!!
 	debug_.create(341, 262, ppu_.GetBackdropColor().ToSFColor());
+	text.setFont(debugFont_);
+	text.setColor(sf::Color(0xFF, 0, 0));
+	text.setString(cpu_.GetRegisters().ToString());
+	text.setCharacterSize(9);
 
 	// Keep ticking until a frame is fully rendered by the PPU.
 	const auto elapsedFrames = ppu_.GetElapsedFramesCount();
@@ -108,9 +117,10 @@ void NESEmulator::Frame()
 		ppu_.Tick();
 		ppu_.Tick();
 		ppu_.Tick();
-	} 
+	}
 
 	tex.loadFromImage(debug_);
 	spr.setTexture(tex);
 	target_.draw(spr);
+	target_.draw(text);
 }
