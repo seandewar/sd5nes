@@ -83,6 +83,7 @@
     <ClCompile Include="NESGamePakPowerState.cpp" />
     <ClCompile Include="NESHelper.cpp" />
     <ClCompile Include="NESMMC.cpp" />
+    <ClCompile Include="NESMovie.cpp" />
     <ClCompile Include="NESPPU.cpp" />
     <ClCompile Include="NESPPUEmuComm.cpp" />
     <ClCompile Include="NESReadBuffer.cpp" />
@@ -101,6 +102,7 @@
     <ClInclude Include="NESMemoryConstants.h" />
     <ClInclude Include="NESMemory.h" />
     <ClInclude Include="NESMMC.h" />
+    <ClInclude Include="NESMovie.h" />
     <ClInclude Include="NESPPU.h" />
     <ClInclude Include="NESPPUEmuComm.h" />
     <ClInclude Include="NESReadBuffer.h" />
