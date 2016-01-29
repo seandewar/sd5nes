@@ -1,8 +1,8 @@
 #include <cstdlib>
 
-#include <SFML\Graphics\RenderWindow.hpp>
-#include <SFML\Window\Event.hpp>
-#include <SFML\Graphics\Font.hpp>
+#include <SFML/Graphics/RenderWindow.hpp>
+#include <SFML/Window/Event.hpp>
+#include <SFML/Graphics/Font.hpp>
 
 #include "NESEmulationConstants.h"
 #include "NESEmulator.h"

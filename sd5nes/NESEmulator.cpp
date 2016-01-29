@@ -3,10 +3,10 @@
 #include <fstream>
 #include <iostream> // @TODO DEBUG!
 
-#include <SFML\Graphics\Sprite.hpp>
-#include <SFML\Graphics\Texture.hpp>
+#include <SFML/Graphics/Sprite.hpp>
+#include <SFML/Graphics/Texture.hpp>
 
-#include <SFML\Graphics\Text.hpp> //@TODO DEBUG!
+#include <SFML/Graphics/Text.hpp> //@TODO DEBUG!
 
 
 NESEmulator::NESEmulator(sf::RenderTarget& target, const sf::Font& debugFont) :

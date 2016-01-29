@@ -3,8 +3,8 @@
 #include <array>
 #include <sstream>
 
-#include <SFML\Graphics\Color.hpp>
-#include <SFML\Graphics\Image.hpp>
+#include <SFML/Graphics/Color.hpp>
+#include <SFML/Graphics/Image.hpp>
 
 #include "NESTypes.h"
 #include "NESHelper.h"

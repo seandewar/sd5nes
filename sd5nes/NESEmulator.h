@@ -2,8 +2,8 @@
 
 #include <memory>
 
-#include <SFML\Graphics\RenderTarget.hpp>
-#include <SFML\Graphics\Font.hpp>
+#include <SFML/Graphics/RenderTarget.hpp>
+#include <SFML/Graphics/Font.hpp>
 
 #include "NESCPU.h"
 #include "NESCPUEmuComm.h"
