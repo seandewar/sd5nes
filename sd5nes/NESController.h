@@ -3,6 +3,7 @@
 #include <unordered_map>
 
 #include "NESTypes.h"
+#include "NESHelper.h"
 
 /**
 * Allows controller input for the system.
@@ -76,7 +77,7 @@ private:
 	*/
 	static NESControllerButton GetButtonFromNumber(unsigned int buttonNumber);
 
-	std::unordered_map<NESControllerButton, bool> buttonStates_;
+	std::unordered_map<NESControllerButton, bool, NESHelper::EnumClassHash> buttonStates_;
 
 	// Whether or not pressing Up+Down / Left+Right simultaneously should be allowed.
 	bool allowUpDownOrLeftRight_;

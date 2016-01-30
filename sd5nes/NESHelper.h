@@ -7,10 +7,41 @@
 #include "NESMemory.h"
 
 /**
+* Define std::make_unique for compilers
+* that actually follow the C++11 standard properly...
+*/
+#ifndef _MSC_VER
+
+#include <memory>
+
+namespace std
+{
+    template<typename T, typename... Args>
+    std::unique_ptr<T> make_unique(Args&&... args)
+    {
+        return std::unique_ptr<T>(new T(std::forward<Args>(args)...));
+    }
+}
+#endif
+
+/**
 * Contains helper functions.
 */
 namespace NESHelper
 {
+	/**
+	* Struct that allows enum classes to be stored in an
+	* unordered_map.
+	*/
+	struct EnumClassHash
+	{
+		template<typename T>
+		inline std::size_t operator()(T val) const
+		{
+			return static_cast<std::size_t>(val);
+		}
+	};
+
 	/**
 	* Gets a random bool. The chance of the returned value being true
 	* is affected by trueChance. 1.0 = always true, 0.0 = always false.
