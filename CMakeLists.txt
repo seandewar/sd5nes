@@ -50,10 +50,6 @@ set(sd5nes_SOURCE_FILES
 add_executable(sd5nes ${sd5nes_SOURCE_FILES})
 
 # Find SFML (Requires FindSFML.cmake in ./cmake/)
-set(SFML_ROOT 
-	/s_home/sdjd1/SFML-2.3.2/
-	~/Documents/libs/SFML-2.3.2/
-)
 set(CMAKE_MODULE_PATH
 	${CMAKE_SOURCE_DIR}/cmake
 	${CMAKE_MODULE_PATH}
