@@ -99,18 +99,18 @@ void NESEmulator::Frame()
 	// @TODO So much debug!!1
 	sf::Sprite spr;
 	sf::Texture tex;
-	sf::Text text;
 
 	// @TODO: DEBUG!!
 	debug_.create(341, 262, ppu_.GetBackdropColor().ToSFColor());
-	text.setFont(debugFont_);
-	text.setColor(sf::Color(0xFF, 0, 0));
-	text.setString("\tCPU REGISTERS:\n" + cpu_.GetRegisters().ToString()
-		+ "\n\tPPU REGISTERS:\n" + ppu_.GetRegisters().ToString());
-	text.setCharacterSize(9);
 
 	// Keep ticking until a frame is fully rendered by the PPU.
 	const auto elapsedFrames = ppu_.GetElapsedFramesCount();
+
+    // @TODO: Debug information to console
+    std::cout << "F " << elapsedFrames << ", C " << cpu_.GetElapsedCycles() << std::endl;
+    std::cout << " CPU: " << cpu_.GetRegisters().ToString() << std::endl;
+    std::cout << " PPU: " << ppu_.GetRegisters().ToString() << std::endl;
+
 	while (elapsedFrames == ppu_.GetElapsedFramesCount())
 	{
 		cpu_.Tick();
@@ -123,5 +123,4 @@ void NESEmulator::Frame()
 	tex.loadFromImage(debug_);
 	spr.setTexture(tex);
 	target_.draw(spr);
-	target_.draw(text);
 }

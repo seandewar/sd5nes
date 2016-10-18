@@ -569,10 +569,14 @@ void NESPPU::TickRenderPixel()
 	else
 	{
 		// Get color from backdrop palette.
-		pixelColor = GetPPUPaletteColor(comm_->Read8(0x3F00));
-	}
-	
-	debug_.setPixel(currentCycle_, currentScanline_, pixelColor.ToSFColor()); // @TODO: DEBUG!
+        // @NOTE: Reads from vScroll if rendering disabled and if vScroll in $3F00 - $3FFF range.
+        if (IsRenderingEnabled())
+            pixelColor = GetPPUPaletteColor(comm_->Read8(0x3F00));
+        else if (vScroll_ >= 0x3F00 && vScroll_ <= 0x3FFF)
+            pixelColor = GetPPUPaletteColor(comm_->Read8(vScroll_));
+    }
+    
+    debug_.setPixel(currentCycle_, currentScanline_, pixelColor.ToSFColor()); // @TODO: DEBUG!
 }
 
 
